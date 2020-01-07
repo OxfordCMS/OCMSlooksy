@@ -25,13 +25,13 @@ mod_import_ui <- function(id){
       dashboardHeader(),
       dashboardSidebar(
         # Use sample dataset
-        shinyWidgets::materialSwitch("example", "Example dataset",
+        shinyWidgets::materialSwitch(ns("example"), "Example dataset",
                                      inline = TRUE, value = FALSE,
                                      status = 'success'),
         
         br(),
         
-        conditionalPanel(condition = "input.example == false",
+        conditionalPanel(condition = paste0("input['", ns('example'), "'] == false"),
                          
                          # Upload sqlite database file
                          fileInput(ns("db_file"), "Database file", accept = '.db')),
@@ -126,7 +126,6 @@ mod_import_server <- function(input, output, session, parent_session) {
   
   # Use example dataset---------------------------------------------------------
   data_set <- eventReactive(input$example, {
-    removeUI("div:has(> #db_file)")
     
     switch(input$example, OCMSExplorer::example_data)
   })
@@ -207,6 +206,8 @@ mod_import_server <- function(input, output, session, parent_session) {
     output$tax_summary <- renderPrint({
       summary(pdata())
     })
+    
+ 
   })
   # jump to next tab------------------------------------------------------------
   observeEvent(input$next_tab, {

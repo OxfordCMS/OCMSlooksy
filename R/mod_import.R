@@ -25,14 +25,16 @@ mod_import_ui <- function(id){
       dashboardHeader(),
       dashboardSidebar(
         # Use sample dataset
-        shinyWidgets::materialSwitch(ns("example"), "Example dataset",
+        shinyWidgets::materialSwitch("example", "Example dataset",
                                      inline = TRUE, value = FALSE,
                                      status = 'success'),
         
         br(),
         
-        # Upload sqlite database file
-        fileInput(ns("db_file"), "Database file", accept = '.db'),
+        conditionalPanel(condition = "input.example == false",
+                         
+                         # Upload sqlite database file
+                         fileInput(ns("db_file"), "Database file", accept = '.db')),
         
         br(),
         
@@ -55,9 +57,7 @@ mod_import_ui <- function(id){
         
         # Dataset at a glance---------------------------------------------------
         fluidRow(
-          box(width = 12,
-            h3('Check Box'), verbatimTextOutput(ns('check'))),
-          box(width = 12,
+          box(width = 8,
               title = h3('Dataset at a glance'),
               
               tags$b('Number of samples:'),
@@ -72,21 +72,22 @@ mod_import_ui <- function(id){
         
         # Summary of metadata---------------------------------------------------
         fluidRow(
-          box(width = 12,
+          box(width = 8,
               title = h3('Summary of metadata'),
-              DTOutput(ns('metadata_preview')),
+              DTOutput(ns('metadata_preview'))),
+          box(width = 4,
               tags$b('Metadata summary'),
               verbatimTextOutput(ns('metadata_summary')))),
         
 
         # Summary of taxonomic assigment----------------------------------------
         fluidRow(
-          box(width = 12,
+          box(width = 8,
               title = h3('Taxonomic assignment'),
               plotOutput(ns('plot_preview'))),
           box(width = 4,
-              tags$b('Percent assigned:'),
-              plotOutput(ns('perc_assigned'))))
+              tags$b('Taxonomy summary:'),
+              verbatimTextOutput(ns('tax_summary'))))
         )
     )
   )
@@ -172,11 +173,6 @@ mod_import_server <- function(input, output, session, parent_session) {
         ungroup() 
     })
     
-    output$check <- renderPrint({
-      head(wip())
-    })
-    
-    
     # Dataset at a glance-------------------------------------------------------
     output$n_sample <- renderText(length(unique(met$sampleID)))
     output$ref_tax <- renderText(random_text(nwords = 1))
@@ -190,14 +186,16 @@ mod_import_server <- function(input, output, session, parent_session) {
 
     
     # Distribution of taxonomic assignment--------------------------------------
+    pdata <- reactive({
+      wip() %>%
+      select(.data[[input$tax_level]], agg_count) %>%
+      group_by(.data[[input$tax_level]]) %>%
+      summarize(agg_count = sum(agg_count))
+      })
+    
     output$plot_preview <- renderPlot({
-
-      pdata <- wip() %>%
-        select(.data[[input$tax_level]], agg_count) %>%
-        group_by(.data[[input$tax_level]]) %>%
-        summarize(agg_count = sum(agg_count))
       
-      ggplot(pdata, aes(x = "", y = agg_count)) +
+      ggplot(pdata(), aes(x = "", y = agg_count)) +
         geom_bar(aes_string( fill = input$tax_level), 
                  stat = 'identity', width = 1, colour = 'grey45') +
         coord_polar('y', start = 0) +
@@ -205,14 +203,10 @@ mod_import_server <- function(input, output, session, parent_session) {
         scale_fill_discrete(name = input$tax_level) +
         theme_void(14)
     })
-    
-    output$perc_assigned <- renderPlot({
-      random_ggplot('bar') +
-        ggtitle("Sequences that were successfully assigned taxonomy") +
-        xlab("Taxonomy level") +
-        ylab("Percent assigned")
-    })
   
+    output$tax_summary <- renderPrint({
+      summary(pdata())
+    })
   })
   # jump to next tab------------------------------------------------------------
   observeEvent(input$next_tab, {

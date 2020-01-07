@@ -4,7 +4,7 @@ usethis::use_data("example_data")
 
 # read in local file
 ## open connection
-con <- RSQLite::dbConnect(RSQLite::SQLite(), 'H:/example_data.db')
+con <- RSQLite::dbConnect(RSQLite::SQLite(), '/gfs/devel/syen/OCMSExplorer/data-raw/example_database.db')
 
 # extract data tables
 table_ls <- RSQLite::dbListTables(con)
@@ -14,6 +14,9 @@ for(i in 1:length(table_ls)) {
   query <- sprintf("SELECT * FROM %s", table_ls[i])
   entry <- RSQLite::dbGetQuery(con, query)
   
+  # set first row to column names
+  colnames(entry) <- entry[1,]
+  entry <- entry[2:nrow(entry),]
   example_data[[table_ls[i]]] <- entry
 }
 

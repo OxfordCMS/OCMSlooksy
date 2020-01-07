@@ -7,9 +7,11 @@
 
 ## 2.1 Add modules
 ## 
-golem::add_module( name = "intro" ) # Name of the module
-golem::add_module( name = "import" ) # Name of the module
-golem::add_module( name = "explore" ) # Name of the module
+golem::add_module( name = "intro" ) # Intro to app and OCMS
+golem::add_module( name = "import" ) # Import dataset
+golem::add_module( name = "qc" ) # Interactive QC report
+golem::add_module( name = "setup" ) # Prepare data for analysis
+golem::add_module( name = "explore" ) # Exploratory analysis
 
 ## 2.2 Add dependencies
 

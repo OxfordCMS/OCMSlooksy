@@ -14,16 +14,19 @@
 #' @export 
 #' @importFrom shiny NS tagList 
 #' @import shinyjs
+#' @import shinydashboard
+#' @import stringr
+#' @import dplyr
+#' @import forcats
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(
     dashboardPage(
       dashboardHeader(),
       dashboardSidebar(
-        shinyjs::shinyjs(),
         # Use sample dataset
-        shinyWidgets::materialSwitch(ns("example"),
-                                     "Example dataset",
+        shinyWidgets::materialSwitch(ns("example"), "Example dataset",
+                                     inline = TRUE, value = FALSE,
                                      status = 'success'),
         
         br(),
@@ -34,47 +37,57 @@ mod_import_ui <- function(id){
         br(),
         
         # Launch data
-        actionButton(ns('launch'), 'Launch Dataset')
+        actionButton(ns('launch'), 'Launch Dataset'),
+        
+        tags$hr(),
+
+        uiOutput(ns('tax_ui')),
+        
+        tags$hr(),
+        br(),
+        br(),
+        
+        # next tab
+        actionButton("next_tab", "Next Step")
+        
       ),
       dashboardBody(
-        box(width = 12,
+        
+        # Dataset at a glance---------------------------------------------------
+        fluidRow(
+          box(width = 12,
             h3('Check Box'), verbatimTextOutput(ns('check'))),
-        box(width = 12,
-            title = h3('Dataset at a glance'),
-            
-            tags$b('Read count preview:'),
-            DTOutput(ns('table_preview')),
-            
-            tags$b('Read count summary:'),
-            verbatimTextOutput('read_summary'),
-            
-            tags$b('Read count distribution:'),
-            plotOutput(ns('read_distribution')),
-            
-            tags$b('Number of samples:'),
-            textOutput(ns('n_sample'), inline = TRUE)),
-        box(width = 12,
-            title = h3('Taxonomic assignment'),
-            box(width = 4,
-                tags$b('Reference Database:'), 
-                textOutput(ns('ref_tax'), inline = TRUE),
-                
-                selectInput(ns('tax_level'), 'Taxonomy level:',
-                            choices = c('ASV','Phylum','Class','Order',
-                                        'Family','Genus','Species'),
-                            selected = 'ASV'),
-                tags$b('Number of ASVs:'), 
-                textOutput(ns('n_asv'), inline = TRUE)),
-            box(width = 8,
-                plotOutput(ns('plot_preview')))
-        ),
-        box(width = 12,
-            title = h3('Summary of metadata'),
-            DTOutput(ns('metadata_preview')),
-            tags$b('Metadata summary'),
-            verbatimTextOutput(ns('metadata_summary')),
+          box(width = 12,
+              title = h3('Dataset at a glance'),
+              
+              tags$b('Number of samples:'),
+              textOutput(ns('n_sample'), inline = TRUE),
+              br(),
+              tags$b('Number of ASVs:'), 
+              textOutput(ns('n_asv'), inline = TRUE),
+              br(),
+              tags$b('Reference database:'), 
+              textOutput(ns('ref_tax'), inline = TRUE),
+              br())),
+        
+        # Summary of metadata---------------------------------------------------
+        fluidRow(
+          box(width = 12,
+              title = h3('Summary of metadata'),
+              DTOutput(ns('metadata_preview')),
+              tags$b('Metadata summary'),
+              verbatimTextOutput(ns('metadata_summary')))),
+        
+
+        # Summary of taxonomic assigment----------------------------------------
+        fluidRow(
+          box(width = 12,
+              title = h3('Taxonomic assignment'),
+              plotOutput(ns('plot_preview'))),
+          box(width = 4,
+              tags$b('Percent assigned:'),
+              plotOutput(ns('perc_assigned'))))
         )
-      )
     )
   )
 }
@@ -85,13 +98,11 @@ mod_import_ui <- function(id){
 #' @export
 #' @keywords internal
 
-mod_import_server <- function(input, output, session){
+mod_import_server <- function(input, output, session, parent_session) {
   ns <- session$ns
   
   # read in database file-----------------------------------------------------
-  
   data_set <- reactive({
-    req(input$db_file)
     
     # validate file is db file
     ext <- tools::file_ext(input$db_file$filename)
@@ -110,80 +121,112 @@ mod_import_server <- function(input, output, session){
       data_ls[[table_ls[i]]] <- entry
     }
     RSQLite::dbDisconnect(con)
-    
-    ## Extract database tables
-    # phylum <- data_set()[[grep('phylum', names(data_set()))]]
-    # metadata <- data_set()[[grep('metadata', names(data_set()))]]
-    # taxonomy <- data_set()[[grep('taxonomy', names(data_set()))]]
   })
   
   # Use example dataset---------------------------------------------------------
   data_set <- eventReactive(input$example, {
     removeUI("div:has(> #db_file)")
     
-    switch(input$example, OCMSexplorer::example_data)
+    switch(input$example, OCMSExplorer::example_data)
   })
   
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
     
-    asv <- data_set()$example_asv
-    met <- data_set()$example_metadata
-    tax <- data_set()$example_taxonomy
+    asv <- data_set()$species_abundance
+    met <- data_set()$metadata
+    tax <- data_set()$merged_taxonomy
     
-    output$check <- renderPrint(unique(as.character(tax_view()[[input$tax_level]])))
+    # format taxonomy table
+    tax_format <- tax %>% 
+      mutate(Taxon = paste(Phylum, Class, Order, Family, 
+                           Genus, Species, sep=";"))
+    tax_format$Taxon <- stringr::str_replace_all(tax_format$Taxon, "_", "__")
     
-    # Dataset at a glance
-    output$table_preview <- renderDT(asv)
-    output$read_summary <- renderPrint(summary(asv))
-    output$read_distribution <- renderPlot(random_ggplot('histogram'))
-    output$n_sample <- renderText(sample(10:50, 1))
+    # combine tables into working dataframe
+    work <- asv %>%
+      gather('sampleID','read_count', -Taxon) %>%
+      inner_join(tax_format, by = 'Taxon') %>%
+      mutate(read_count = as.numeric(read_count))
+     
     
+    output$tax_ui <- renderUI({
+        radioButtons(ns('tax_level'), 'Taxonomic level',
+                     c('ASV'='Taxon','Phylum'='Phylum','Class'='Class',
+                       'Order'='Order','Family'='Family','Genus'='Genus',
+                       'Species'='Species'),
+                     selected = 'Taxon')
+    })
+    
+    # customize count data based on selected taxonomic level--------------------
+    wip <- reactive({
+      work %>%
+        group_by(.data[[input$tax_level]], sampleID) %>%
+        select(.data[[input$tax_level]], sampleID, read_count) %>%
+        summarise(agg_count = sum(read_count)) %>%
+        ungroup() %>%
+        group_by(sampleID) %>%
+        # adding arbitrary ASV number to use as sequence ID
+        mutate(ASV = paste('ASV', stringr::str_pad(1:n(), 3, pad = '0'), 
+                           sep = '')) %>% 
+        ungroup() 
+    })
+    
+    output$check <- renderPrint({
+      head(wip())
+    })
+    
+    
+    # Dataset at a glance-------------------------------------------------------
+    output$n_sample <- renderText(length(unique(met$sampleID)))
     output$ref_tax <- renderText(random_text(nwords = 1))
     output$n_asv <- renderText({
-      length(unique(as.character(tax_view()[[input$tax_level]])))
+      length(unique(wip()$ASV))
     })
     
-    # subset and summarize count based on selected taxon
-    tax_view <- reactive({
-      req(input$tax_level)
-      asv %>%
-        gather('sampleID','read_count', -ASV) %>%
-        inner_join(tax, by = 'ASV') %>%
-        group_by(.data[[input$tax_level]]) %>%
-        summarize(tot_tax = sum(read_count)) %>%
-        data.frame()
-    })
-    
-    output$plot_preview <- renderPlot({
-      
-      ggplot(tax_view(), aes(x = "", y = tot_tax)) +
-        geom_bar(width = 1, stat = 'identity', 
-                 aes(fill = .data[[input$tax_level]])) +
-        coord_polar('y', start = 0) +
-        ggtitle(input$tax_level) +
-        theme_minimal(12)
-    })
-    
-    # Summary of metadata
+    # Summary of metadata-------------------------------------------------------
     output$metadata_summary <- renderPrint(summary(met))
     output$metadata_preview <- renderDT(met)
-    data_set()
+
+    
+    # Distribution of taxonomic assignment--------------------------------------
+    output$plot_preview <- renderPlot({
+
+      pdata <- wip() %>%
+        select(.data[[input$tax_level]], agg_count) %>%
+        group_by(.data[[input$tax_level]]) %>%
+        summarize(agg_count = sum(agg_count))
+      
+      ggplot(pdata, aes(x = "", y = agg_count)) +
+        geom_bar(aes_string( fill = input$tax_level), 
+                 stat = 'identity', width = 1, colour = 'grey45') +
+        coord_polar('y', start = 0) +
+        ggtitle('Distribution of Taxonomic assigment') +
+        scale_fill_discrete(name = input$tax_level) +
+        theme_void(14)
+    })
+    
+    output$perc_assigned <- renderPlot({
+      random_ggplot('bar') +
+        ggtitle("Sequences that were successfully assigned taxonomy") +
+        xlab("Taxonomy level") +
+        ylab("Percent assigned")
+    })
+  
+  })
+  # jump to next tab------------------------------------------------------------
+  observeEvent(input$next_tab, {
+    updateTabsetPanel(session, "tabs", selected = "prepare")
   })
   
-  
-  
-  # asv <- reactive(parse_listDB(data_set(), 'asv'))
-  # output$table_summary <- renderPrint(summary(asv()))
-  # output$table_preview <- renderTable(asv())
-  
-  # data_set <- reactive({
-  #   req(input$example)
-  #   random_DT(50,8)
-  #   })
-  
-}
+  # return dataset
+  cross_module = reactiveValues()
+  observe({
+    cross_module$data_db <- data_set()
+  })
+  return(cross_module)
 
+}
 ## To be copied in the UI
 # mod_import_ui("import_ui_1")
 

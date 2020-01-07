@@ -7,7 +7,7 @@
 \usage{
 mod_intro_ui(id)
 
-mod_intro_server(input, output, session)
+mod_intro_server(input, output, session, parent_session)
 }
 \arguments{
 \item{id}{shiny id}

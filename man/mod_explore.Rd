@@ -7,7 +7,7 @@
 \usage{
 mod_explore_ui(id)
 
-mod_explore_server(input, output, session)
+mod_explore_server(input, output, session, improxy)
 }
 \arguments{
 \item{id}{shiny id}

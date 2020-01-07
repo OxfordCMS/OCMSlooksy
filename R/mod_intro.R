@@ -16,13 +16,19 @@
 mod_intro_ui <- function(id){
   ns <- NS(id)
   tagList(
-    fluidPage(h1('OCMS Explorer'),
-              column(8,
+    fluidPage(
+      fluidRow(h1('OCMS Explorer'),
+               column(8,
                      # Module 1 - Introduction
                      tableOutput(ns('paragraph'))),
-              column(4,
+               column(4,
                      h4('About OCMS'),
-                     tableOutput(ns('about')))
+                     tableOutput(ns('about')))),
+      br(),
+      br(),
+      tags$hr(),
+      fluidRow(# next tab
+               actionButton("next_tab", "Get Started"),)
     )
   )
 }
@@ -33,12 +39,16 @@ mod_intro_ui <- function(id){
 #' @export
 #' @keywords internal
 
-mod_intro_server <- function(input, output, session){
+mod_intro_server <- function(input, output, session, parent_session){
   ns <- session$ns
   
   output$paragraph <- renderText(random_text(nwords = 250))
   
   output$about <- renderText({ random_text(nwords = 100)})
+  
+  observeEvent(input$next_tab, {
+    updateTabsetPanel(session = parent_session, "tabs", selected = "import")
+  })
 }
 
 ## To be copied in the UI

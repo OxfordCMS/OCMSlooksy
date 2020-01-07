@@ -7,7 +7,7 @@
 \usage{
 mod_import_ui(id)
 
-mod_import_server(input, output, session)
+mod_import_server(input, output, session, parent_session)
 }
 \arguments{
 \item{id}{shiny id}

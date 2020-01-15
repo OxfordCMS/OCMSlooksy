@@ -11,31 +11,31 @@ app_ui <- function() {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # List the first level UI elements here 
-    
-    navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'static-top',
-               
+
+    navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'fixed-top',
+
                # Introduction---------------------------------------------------
                tabPanel(title = "Introduction", value = 'intro', icon = icon("book"),
                         mod_intro_ui("intro_ui_1")),
-               
+
                # Import data----------------------------------------------------
                tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
                         mod_import_ui("import_ui_1")),
-               
-               # QC report------------------------------------------------------
+
+               # # QC report------------------------------------------------------
                tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
-                        mod_qc_ui("qc_ui_1"))
-               
-               # Prepare dataset for analysis-----------------------------------
-               tabPanel(title = "Prepare Data Set", value = 'prepare', icon = icon("filter"),
-                        mod_setup_ui("setup_ui_1")),
-               
-               # Explore samples------------------------------------------------
-               tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
-                        mod_explore_ui("explore_ui_1"))
-               
+                        mod_qc_ui("qc_ui_1"))#,
+
+               # # Prepare dataset for analysis-----------------------------------
+               # tabPanel(title = "Prepare Data Set", value = 'prepare', icon = icon("filter"),
+               #          mod_setup_ui("setup_ui_1")),
+               # 
+               # # Explore samples------------------------------------------------
+               # tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
+               #          mod_explore_ui("explore_ui_1"))
+
                # Explore Beta-Diversity-----------------------------------------
-               
+
     ))
 }
 

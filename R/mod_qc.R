@@ -25,7 +25,8 @@ mod_qc_ui <- function(id){
       dashboardHeader(disable = TRUE),
       #sidebar------------------------------------------------------------------
       dashboardSidebar(
-        sidebarMenu(id = 'menu',
+        sidebarMenu(
+          id = 'menu',
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('ASV Prevalence', tabName = 'asv_prevalence'),

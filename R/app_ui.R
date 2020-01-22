@@ -10,6 +10,7 @@ app_ui <- function() {
   tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
+    shinyjs::useShinyjs(),
     # List the first level UI elements here 
 
     navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'fixed-top',
@@ -24,11 +25,11 @@ app_ui <- function() {
 
                # # QC report------------------------------------------------------
                tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
-                        mod_qc_ui("qc_ui_1"))#,
+                        mod_qc_ui("qc_ui_1")),
 
-               # # Prepare dataset for analysis-----------------------------------
-               # tabPanel(title = "Prepare Data Set", value = 'prepare', icon = icon("filter"),
-               #          mod_setup_ui("setup_ui_1")),
+               # Prepare dataset for analysis-----------------------------------
+               tabPanel(title = "Prepare Data Set", value = 'prepare',
+                        icon = icon("filter"), mod_setup_ui("setup_ui_1"))
                # 
                # # Explore samples------------------------------------------------
                # tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),

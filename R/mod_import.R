@@ -27,7 +27,7 @@ mod_import_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(id = 'menu',
         
-        menuItem('Upload Dataset', tabName = 'upload', startExpanded = TRUE,
+        menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, startExpanded = TRUE,
                  # Use sample dataset?
                  shinyWidgets::materialSwitch(
                    ns("example"), "Example dataset",
@@ -102,6 +102,7 @@ mod_import_server <- function(input, output, session, parent_session) {
   
   # Check
   output$check <- renderPrint({
+  
   })
   
   data_set <- eventReactive(input$example, {

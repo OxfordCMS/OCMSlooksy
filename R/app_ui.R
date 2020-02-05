@@ -29,11 +29,11 @@ app_ui <- function() {
 
                # Prepare dataset for analysis-----------------------------------
                tabPanel(title = "Prepare Data Set", value = 'prepare',
-                        icon = icon("filter"), mod_setup_ui("setup_ui_1"))
-               # 
-               # # Explore samples------------------------------------------------
-               # tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
-               #          mod_explore_ui("explore_ui_1"))
+                        icon = icon("filter"), mod_setup_ui("setup_ui_1")),
+               
+               # Overview samples------------------------------------------------
+               tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
+                        mod_overview_ui("overview_ui_1"))
 
                # Explore Beta-Diversity-----------------------------------------
 

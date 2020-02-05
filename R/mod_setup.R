@@ -24,8 +24,9 @@ mod_setup_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(
           id = 'menu',
+          br(),br(), br(),
           menuItem('Filter Samples', tabName = 'filter_sample', selected = FALSE),
-          menuItem('Filter ASVs', tabName = 'filter_asv'),
+          menuItem('Filter ASVs', tabName = 'filter_asv', selected = FALSE),
           
           conditionalPanel(
             condition = "input.menu === 'filter_sample'",
@@ -75,8 +76,9 @@ mod_setup_ui <- function(id){
       
       # main panel--------------------------------------------------------------
       dashboardBody(
-        box(width = '100%',
+        box(width = '100%', br(),br(), br(),
             h1('Prepare Data for Analysis'),
+            "Before starting data exploration, it may be desirable to specify which samples and ASVs should be included in all subsequent analyses. This ensures that the analysis is performed on a dataset that is relevant to the current research question.",
             fluidRow(width = 12,
                     h3('Check Box'), 
                     verbatimTextOutput(ns('check'))),
@@ -182,7 +184,10 @@ mod_setup_server <- function(input, output, session, improxy){
     tax() %>% 
       mutate(Taxon = paste(Phylum, Class, Order, Family, 
                          Genus, Species, sep=";"),
-             Taxon = stringr::str_replace_all(Taxon, "_", "__"))
+             Taxon = stringr::str_replace_all(Taxon, "_", "__"),
+             # adding arbitrary ASV number to use as sequence ID
+             ASV = paste('ASV', stringr::str_pad(1:n(), 3, pad = '0'),
+                         sep = ''))
   })
   
  
@@ -224,15 +229,14 @@ mod_setup_server <- function(input, output, session, improxy){
   output$sample_select <- renderUI({
     HTML(paste(all_sample()[rows_selected()], collapse = '<br/>'))
   })
-  
 
   # filter samples in data set
-  observeEvent(input$submit_sample, {
-    working_meta <- reactive({
+  working_meta <- eventReactive(input$submit_sample, {
       met() %>%
-        dplyr::filter(sampleID %in% sample_include())
+        filter(sampleID %in% sample_include())
     })
-    
+  
+  observeEvent(input$submit_sample, {
     output$preview_sample_title <- renderText({
       'Samples included in analysis:'
     })
@@ -321,10 +325,7 @@ mod_setup_server <- function(input, output, session, improxy){
     DT::datatable(out, options = list(scrollX = TRUE))
   })
   
-  output$check <- renderPrint({
 
-  })
-  
   # define ASVs to be removed---------------------------------------------------
   to_remove <- reactive({
     
@@ -372,6 +373,8 @@ mod_setup_server <- function(input, output, session, improxy){
 
     unique(out$Taxon)
   })
+  
+
 
   # show ASVs removed-----------------------------------------------------------
   output$asv_remove <- renderText({
@@ -380,19 +383,18 @@ mod_setup_server <- function(input, output, session, improxy){
   
   # filter ASVs based on set cutoff---------------------------------------------
 
+  working_asv <- eventReactive(input$submit_asv, {
+    if(input$asv_select_prompt == 'some') {
+      req(input$asv_filter_options)
+      format_asv() %>%
+        filter(!Taxon %in% to_remove())  
+    }
+    else {
+      format_asv()
+    }
+  })
+    
   observeEvent(input$submit_asv, {
-    
-    working_asv <- reactive({
-      if(input$asv_select_prompt == 'some') {
-        req(input$asv_filter_options)
-        format_asv() %>%
-          filter(!Taxon %in% to_remove())  
-      }
-      else {
-        format_asv()
-      }
-    })
-    
     output$preview_asv_title <- renderText({
       'ASVs included in analysis'
     })
@@ -408,13 +410,20 @@ mod_setup_server <- function(input, output, session, improxy){
     })
   })
   
+  output$check <- renderPrint({
+    format_tax() %>% 
+      filter(Taxon %in% working_asv()$Taxon)
+  })
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
+    req(input$sample_select_prompt, input$asv_select_prompt)
     # keep in wide format to be consistent with db format
     
     list(metadata = working_meta(),
          asv = working_asv() %>% spread(sampleID, read_count),
-         tax = format_tax() %>% filter(Taxon %in% working_asv()$Taxon))
+         tax = format_tax() %>% 
+           filter(Taxon %in% working_asv()$Taxon)
+         )
   })
   # jump to next tab
   observeEvent(input$next_tab, {
@@ -422,7 +431,7 @@ mod_setup_server <- function(input, output, session, improxy){
                       selected = "overview")
   })
   # return dataset
-  cross_module = reactiveValues()
+  cross_module <- reactiveValues()
   observe({cross_module$data_db <- working_set()})
   return(cross_module)
 }

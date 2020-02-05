@@ -27,6 +27,7 @@ mod_qc_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(
           id = 'menu',
+          br(),br(), br(),
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('ASV Prevalence', tabName = 'asv_prevalence'),
@@ -62,7 +63,7 @@ mod_qc_ui <- function(id){
       )),
       # dashboard---------------------------------------------------------------
       dashboardBody(
-        box(width = '100%',
+        box(width = '100%', br(),br(), br(),
           h1("QC Report"),
           fluidRow(
             box(width = 12, h3('Check'),

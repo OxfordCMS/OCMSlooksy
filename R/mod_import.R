@@ -26,7 +26,7 @@ mod_import_ui <- function(id){
       dashboardHeader(disable = TRUE),
       dashboardSidebar(
         sidebarMenu(id = 'menu',
-        
+                    br(),br(), br(),
         menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, startExpanded = TRUE,
                  # Use sample dataset?
                  shinyWidgets::materialSwitch(
@@ -61,6 +61,7 @@ mod_import_ui <- function(id){
       
       dashboardBody(
         box(width = "100%",
+            br(),br(), br(),
         # Dataset at a glance---------------------------------------------------
         h1('Dataset at a glance'),
         fluidRow(

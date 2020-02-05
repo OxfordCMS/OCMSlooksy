@@ -18,7 +18,7 @@ mod_intro_ui <- function(id){
   tagList(
     fluidPage(
         fluidRow(
-          br(), br(),
+          br(), br(),br(),br(), br(),
           column(width = 8,
               h2('About the OCMS Explorer App'),
               # Module 1 - Introduction

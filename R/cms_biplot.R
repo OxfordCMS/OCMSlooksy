@@ -41,7 +41,7 @@
 #' @param loadings.label.hjust hjust of loading labels. default NULL
 #' @param loadings.label.vjust vjust of loading labels. defualt NULL
 #' @param loadings.label.repel use ggrepel on loading labels. default FALSE
-#' @param loadings.show.legend show legend for loadings. default FALSE
+#' @param label.show.legend show legend labels. default NA
 #' @param frame frame clusters based on confidence interval estimation default FALSE
 #' @param frame.type type of CI estimation. must one of: \code{convex, t, norm or euclid} default NULL
 #' @param fram.colour frame colour. default \code{colour}
@@ -56,33 +56,37 @@
 #' @param asp default NULL
 
 
-cms_biplot <- function (plot.data, loadings.data = NULL, xPC = 1, yPC = 2, 
-          colour = NULL, size = NULL, 
-          linetype = NULL, alpha = NULL, fill = NULL, shape = NULL, 
-          label = FALSE, label.label = "rownames", label.colour = colour, 
-          label.alpha = NULL, label.size = NULL, label.angle = NULL, 
-          label.family = NULL, label.fontface = NULL, label.lineheight = NULL, 
-          label.hjust = NULL, label.vjust = NULL, label.repel = FALSE, 
-          loadings = FALSE, loadings.colour = "#FF0000", loadings.size = NULL,
-          loadings.alpha = NULL, loadings.shape = NULL,
-          loadings.label = FALSE, loadings.arrow = FALSE,
-          loadings.label.label = "rownames", loadings.label.colour = "#FF0000", 
-          loadings.label.alpha = NULL, loadings.label.size = NULL, 
-          loadings.label.angle = NULL, loadings.label.family = NULL, 
-          loadings.label.fontface = NULL, loadings.label.lineheight = NULL, 
-          loadings.label.hjust = NULL, loadings.label.vjust = NULL, 
-          loadings.label.repel = FALSE, label.show.legend = NA, frame = FALSE, 
-          frame.type = NULL, frame.colour = colour, frame.level = 0.95, 
-          frame.alpha = 0.2, xlim = c(NA, NA), ylim = c(NA, NA), log = "", 
-          main = NULL, xlab = NULL, ylab = NULL, asp = NULL, ...) 
+cms_biplot <- function (plot.data, loadings.data = NULL, 
+                        colour = NULL, size = NULL, 
+                        linetype = NULL, alpha = NULL, fill = NULL, 
+                        shape = NULL, label = FALSE, label.label = "rownames", 
+                        label.colour = colour, label.alpha = NULL, 
+                        label.size = NULL, label.angle = NULL, 
+                        label.family = NULL, label.fontface = NULL, 
+                        label.lineheight = NULL, label.hjust = NULL, 
+                        label.vjust = NULL, label.repel = FALSE, 
+                        loadings = FALSE, loadings.colour = "#FF0000",
+                        loadings.shape = NULL, loadings.size = NULL,
+                        loadings.alpha = NULL,
+                        loadings.arrow = FALSE,
+                        loadings.label = FALSE, loadings.label.label = "rownames", 
+                        loadings.label.colour = "#FF0000", 
+                        loadings.label.alpha = NULL, loadings.label.size = NULL, 
+                        loadings.label.angle = NULL, loadings.label.family = NULL, 
+                        loadings.label.fontface = NULL, 
+                        loadings.label.lineheight = NULL, 
+                        loadings.label.hjust = NULL, loadings.label.vjust = NULL, 
+                        loadings.label.repel = FALSE, label.show.legend = NA, 
+                        frame = FALSE, frame.type = NULL, frame.colour = colour, 
+                        frame.level = 0.95, frame.alpha = 0.2, xlim = c(NA, NA), 
+                        ylim = c(NA, NA), log = "", main = NULL, 
+                        xlab = NULL, ylab = NULL, asp = NULL, ...) 
 {
-  # score column names
+  # score data
   plot.columns <- colnames(plot.data)
   
-  # define which PCs to plot in score
-  mapping <- ggplot2::aes_string(x = plot.columns[xPC], y = plot.columns[yPC])
-  
-  # define score labels
+  # initiate score plot mapping
+  mapping <- ggplot2::aes_string(x = plot.columns[1L], y = plot.columns[2L])
   if (is.logical(shape) && !shape && missing(label)) {
     label <- TRUE
   }
@@ -90,70 +94,76 @@ cms_biplot <- function (plot.data, loadings.data = NULL, xPC = 1, yPC = 2,
   # initiate score plot
   p <- ggplot2::ggplot(data = plot.data, mapping = mapping)
   
-  # score point aesthetics
+  # score points
   if (!is.logical(shape) || shape) {
     p <- p + ggfortify:::geom_factory(ggplot2::geom_point, plot.data, 
                           colour = colour, size = size, linetype = linetype, 
                           alpha = alpha, fill = fill, shape = shape)
   }
   
-  # score label aesthetics
+  # score labels
   p <- ggfortify:::plot_label(p = p, data = plot.data, label = label, 
-                  label.label = label.label, 
+                              label.label = label.label, 
                   label.colour = label.colour, label.alpha = label.alpha, 
                   label.size = label.size, label.angle = label.angle, 
-                  label.family = label.family, 
-                  label.fontface = label.fontface, label.lineheight = label.lineheight, 
+                  label.family = label.family, label.fontface = label.fontface, 
+                  label.lineheight = label.lineheight, 
                   label.hjust = label.hjust, label.vjust = label.vjust, 
                   label.repel = label.repel, label.show.legend = label.show.legend)
   
-  # define loading points and labels
+  # loading data
   if (loadings.label && !loadings) {
     loadings <- TRUE
   }
-  
-  # scale loadings so are on same scale as scores
   if (loadings && !is.null(loadings.data)) {
-    scaler <- min(max(abs(plot.data[, xPC])) / max(abs(loadings.data[,xPC])), 
-                  max(abs(plot.data[, yPC])) / max(abs(loadings.data[,yPC])))
+    scaler <- min(max(abs(plot.data[, 1L])) / 
+                    max(abs(loadings.data[,1L])), 
+                  max(abs(plot.data[, 2L])) / 
+                    max(abs(loadings.data[,2L])))
     
-    # loading column names
     loadings.columns <- colnames(loadings.data)
     
-    # define PCs to map in laodings
+    # loading plot mapping
     loadings.mapping <- ggplot2::aes_string(x = 0, y = 0, 
-                                            xend = loadings.columns[xPC], 
-                                            yend = loadings.columns[yPC])
+                                            xend = loadings.columns[1L], 
+                                            yend = loadings.columns[2L])
     
-    # apply scaling factor
-    loadings.data[, c(xPC, yPC)] <- loadings.data[, c(xPC, yPC)] * scaler * 
+    loadings.data[, 1L:2L] <- loadings.data[, 1L:2L] * scaler * 
       0.8
     
-    # add loading arrows
+    # loading points
+    if (!is.logical(loadings.shape) || loadings.shape) {
+      p <- p + ggfortify:::geom_factory(ggplot2::geom_point, loadings.data, 
+                                        colour = loadings.colour, 
+                                        size = loadings.size, 
+                                        alpha = loadings.alpha, 
+                                        shape = loadings.shape)
+    }
+    # loading arrows
     if(loadings.arrow) {
       p <- p + ggplot2::geom_segment(data = loadings.data, mapping = loadings.mapping, 
-                                     arrow = grid::arrow(length = grid::unit(8, "points")), 
-                                     colour = loadings.colour, alpha = loadings.alpha)  
+                            arrow = grid::arrow(length = grid::unit(8, "points")), 
+                            colour = 'grey50')  
     }
     
-    # loading point aesthetics
-    if (!is.logical(loadings.shape) || loadings.shape) {
-      p <- p + ggfortify:::geom_factory(ggplot2::geom_point, loadings.data,
-                            colour = loadings.colour, size = loadings.size,
-                            alpha = loadings.alpha, shape = loadings.shape)
-    }
-    # loading labels aesthetics
+    
+    # loading labels
     p <- ggfortify:::plot_label(p = p, data = loadings.data, label = loadings.label, 
-                    label.label = loadings.label.label, label.colour = loadings.label.colour, 
-                    label.alpha = loadings.label.alpha, label.size = loadings.label.size, 
-                    label.angle = loadings.label.angle, label.family = loadings.label.family, 
+                    label.label = loadings.label.label, 
+                    label.colour = loadings.label.colour, 
+                    label.alpha = loadings.label.alpha, 
+                    label.size = loadings.label.size, 
+                    label.angle = loadings.label.angle, 
+                    label.family = loadings.label.family, 
                     label.fontface = loadings.label.fontface, 
                     label.lineheight = loadings.label.lineheight, 
-                    label.hjust = loadings.label.hjust, label.vjust = loadings.label.vjust, 
-                    label.repel = loadings.label.repel, label.show.legend = label.show.legend)
+                    label.hjust = loadings.label.hjust, 
+                    label.vjust = loadings.label.vjust, 
+                    label.repel = loadings.label.repel, 
+                    label.show.legend = label.show.legend)
   }
   
-  # define plot frame
+  # framing clusters
   if (missing(frame) && !is.null(frame.type)) {
     frame <- TRUE
   }
@@ -163,11 +173,11 @@ cms_biplot <- function (plot.data, loadings.data = NULL, xPC = 1, yPC = 2,
       if (is.null(frame.colour) || !(frame.colour %in% 
                                      colnames(plot.data))) {
         hulls <- plot.data[grDevices::chull(plot.data[, 
-                                                      c(xPC, yPC)]), ]
+                                                      1L:2L]), ]
       }
       else {
         hulls <- plot.data %>% dplyr::group_by_(frame.colour) %>% 
-          dplyr::do(.[grDevices::chull(.[, c(xPC,yPC)]), ])
+          dplyr::do(.[grDevices::chull(.[, 1L:2L]), ])
       }
       mapping <- aes_string(colour = frame.colour, fill = frame.colour)
       p <- p + ggplot2::geom_polygon(data = hulls, mapping = mapping, 
@@ -183,6 +193,7 @@ cms_biplot <- function (plot.data, loadings.data = NULL, xPC = 1, yPC = 2,
       stop("frame.type must be convex, t, norm or euclid")
     }
   }
+  
   p <- ggfortify:::post_autoplot(p = p, xlim = xlim, ylim = ylim, log = log, 
                      main = main, xlab = xlab, ylab = ylab, asp = asp)
   return(p)

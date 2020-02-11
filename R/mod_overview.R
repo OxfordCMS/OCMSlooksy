@@ -17,7 +17,8 @@
 #' @import plotly
 #' @import ALDEx2
 #' @import ggfortify
-#' @import ggrepel
+#' @import heatmaply
+#' @import ggdendro
 mod_overview_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -33,9 +34,25 @@ mod_overview_ui <- function(id){
           menuItem('\u03B1-Diversity Analysis', tabName = 'alpha_tab', selected = FALSE),
           menuItem('Cluster Analysis', tabName = 'hmap_tab', selected = FALSE),
           
-          # Barplot-------------------------------------------------------------
-          
-          
+          # Bar plot controls---------------------------------------------------
+          conditionalPanel(
+           condition = "input.menu === 'bar_tab'",
+           div(id = ns('bar_param_div'),
+             tags$div(style = 'text_align: center', tags$b('Plot Parameters')),
+             br(), hr(),
+             fixedPanel(
+               uiOutput(ns('bar_x_ui')),
+               selectInput(ns('bar_tax'), 'Taxonomic level:',
+                            choices = c('ASV','Phylum','Class','Order',
+                                        'Family','Genus','Species'),
+                            selected = 'ASV'),
+               radioButtons(ns('bar_fill'), 'Colour by:',
+                            c('Relative abundance' = 'rel_abund',
+                              'Read count' = 'cnt_abund')),
+               actionButton(ns('bar_submit'), "Calculate and Plot")
+               )
+             )
+           ),
           # Multivariate analysis-----------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'pca_tab'",
@@ -74,14 +91,35 @@ mod_overview_ui <- function(id){
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b('NMDS Parameters')),
+              br(), br(),
               actionButton(ns('nmds_calculate'), "Calculate")
             ))
-          )
+          ),
               
           
-        # Alpha-diversity
+        # Alpha-diversity-------------------------------------------------------
         
-        # Heat map
+        # Heat map--------------------------------------------------------------
+        conditionalPanel(
+          condition = "input.menu === 'hmap_tab'",
+          div(id = ns('hmap_param_div'),
+              br(), hr(),
+              fixedPanel(
+                width = 225,
+                tags$div(style = "text-align: center",
+                         tags$b("Heirchical Cluster Parameters")),
+                selectInput(ns('hclust_method'), "Linkage method",
+                            choices = c('complete','ward.D','ward.D2','single',
+                                        'average','mcquitty','median','centroid'),
+                            selected = 'complete'),
+                selectInput(ns('dist_method'), "Distance method",
+                            choices = c('euclidean','maximum','manhattan',
+                                        'canberra','binary','minkowski'),
+                            selected = 'euclidean'),
+                actionButton(ns('hmap_calculate'), 'Calculate')
+                )
+              )
+        )
         
         # set taxonomic level
         )
@@ -94,33 +132,20 @@ mod_overview_ui <- function(id){
           column(width = 12, "A suite of tools to perform exploratory analysis in order to get an overall sense of the data set.",
           br()),
           tabItems(
-            # bar plot--------------------------------------------------------
+            # bar plot body--------------------------------------------------------
             tabItem(
               tabName = 'bar_tab',
               column(width = 12,
                 h2('Relative Distribution of Taxa')),
-              column(width = 4,
-                wellPanel(
-                  tags$div(style = 'text_align: center', tags$b('Plot Parameters')),
-                  
-                  uiOutput(ns('bar_x_ui')),
-                  selectInput(ns('bar_tax'), 'Taxonomic level:',
-                              choices = c('ASV','Phylum','Class','Order',
-                                          'Family','Genus','Species'),
-                              selected = 'ASV'),
-                  radioButtons(ns('bar_fill'), 'Colour by:',
-                               c('Relative abundance' = 'rel_abund',
-                                 'Read count' = 'cnt_abund')),
-                  actionButton(ns('submit_bar'), "Plot")
-                  )),
-              column(width = 8,
+              column(width = 12,
                 h3(textOutput(ns('bar_title'))),
                 DT::dataTableOutput(ns('bar_data'))),
               column(width = 12,
-                plotlyOutput(ns('bar_plot')))
+                     shinyjqui::jqui_resizabled(
+                       plotlyOutput(ns('bar_plot'))))
               ),
             
-            # multivariate analysis---------------------------------------------    
+            # multivariate analysis body---------------------------------------------    
             tabItem(
               tabName = 'pca_tab',
               column(width = 12,
@@ -128,8 +153,9 @@ mod_overview_ui <- function(id){
               column(width = 12,
                      h3('Summary of PCA'),
                      DT::dataTableOutput(ns('summary_pca'))),
-              h3('PCA Plot'),
+              
               hidden(div(id = ns('mva_param_div'),
+                h3('PCA Plot'),
                 wellPanel(
                   tags$div(style = 'text_align: center', h4(tags$b("Plot Parameters"))),
                   fluidRow(
@@ -168,10 +194,10 @@ mod_overview_ui <- function(id){
                       uiOutput(ns('score_label_ui')),
                       uiOutput(ns('score_lab_colour_ui')),
                       div(style = "display: inline-block;vertical-align: top",
-                          numericInput(ns('score_lab_size'), 'Score label size:',
+                          numericInput(ns('score_lab_size'), 'Label size:',
                                        min = 0.1, max = 5, value = 3, step = 0.5)),
                       div(style = "display: inline-block;vertical-align: top",
-                          numericInput(ns('score_lab_alpha'), 'Point transparency:',
+                          numericInput(ns('score_lab_alpha'), 'Label transparency:',
                                        min = 0.1, max = 1, value = 1, step = 0.1))
                       ),
                     
@@ -182,10 +208,10 @@ mod_overview_ui <- function(id){
                         uiOutput(ns('load_pt_colour_ui')),
                         uiOutput(ns('load_pt_shape_ui')),
                         div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_pt_size'), 'Loading Point size:',
+                            numericInput(ns('load_pt_size'), 'Point size:',
                                          min = 0.1, max = 5, value = 3, step = 0.5)),
                         div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_pt_alpha'), 'Loading Point transparency:',
+                            numericInput(ns('load_pt_alpha'), 'Point transparency:',
                                          min = 0.1, max = 1, value = 1, step = 0.1))
                         ),
                       # loading label aesthetics
@@ -194,19 +220,20 @@ mod_overview_ui <- function(id){
                         uiOutput(ns('load_label_ui')),
                         uiOutput(ns('load_lab_colour_ui')),
                         div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_lab_size'), 'Loading label size:',
+                            numericInput(ns('load_lab_size'), 'Label size:',
                                          min = 0.1, max = 5, value = 3, step = 0.5)),
                         div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_lab_alpha'), 'Loading label transparency:',
+                            numericInput(ns('load_lab_alpha'), 'Label transparency:',
                                          min = 0.1, max = 1, value = 1, step = 0.1))
                         )
                       )),
                     column(width = 12, hr(),
-                      actionButton(ns('submit_pca'), 'Plot PCA'))
+                      actionButton(ns('pca_submit'), 'Plot PCA'))
                   ))
                 )),
                 column(width = 12,
-                       plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto'))
+                       shinyjqui::jqui_resizabled(
+                         plotlyOutput(ns('plot_pca'))))
             ),
         
             tabItem(
@@ -214,9 +241,69 @@ mod_overview_ui <- function(id){
               plotlyOutput(ns('alpha_plot'), width = '100%', height = 'auto')
               ),
             
+            # heatmap body------------------------------------------------------
             tabItem(
               tabName = 'hmap_tab',
-              plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto')
+              hidden(div(id = ns('hmap_body_div'),
+                h3('Heirarchical Clustering'),
+                column(
+                  width = 12,
+                  column(width = 3,
+                    wellPanel(
+                      numericInput(ns('hmap_samp_k'), "Number of clusters, k",
+                                   value = 1, min = 1, step = 1),
+                      uiOutput(ns('hmap_samp_label_ui')),
+                      uiOutput(ns('hmap_samp_colour_ui'))
+                    )),
+                  column(width = 2,
+                        plotOutput(ns('sample_dendro_leg'))),
+                  column(width = 7,
+                         h4('Sample dendrogram'),
+                         shinyjqui::jqui_resizabled(
+                           plotlyOutput(ns('sample_dendro_plot'))))
+                ),
+                column(
+                  width = 12,
+                  column(width = 3,
+                    wellPanel(
+                      numericInput(ns('hmap_asv_k'), "Number of clusters, k", 
+                                   value = 1, min = 1, step = 1),
+                      uiOutput(ns('hmap_asv_label_ui')),
+                      uiOutput(ns('hmap_asv_colour_ui'))
+                      )),
+                  column(width = 2,
+                         plotOutput(ns('asv_dendro_leg'))),
+                  column(width = 7,
+                    h4('Taxonomy dendrogram'),
+                    shinyjqui::jqui_resizabled(
+                      plotlyOutput(ns('asv_dendro_plot'))))
+                  
+                ),
+                
+                h3('Heat map'),
+                wellPanel(  
+                  fluidRow(
+                    column(width = 3,
+                      radioButtons(ns('sample_as_x'), "Show samples along:",
+                                   choices = c('x-axis' = TRUE, 'y-axis' = FALSE),
+                                   selected = TRUE)),
+                      
+                    column(width = 3,
+                      checkboxGroupInput(ns('show_dendro'), 'Show dendrogram',
+                                       choices = c('x-axis' = 'show_dendro_x',
+                                                   'y-axis' = 'show_dendro_y'),
+                                       selected = c('show_dendro_x', 'show_dendro_y'))),
+                    column(width = 3,
+                      selectInput(ns('hmap_tax_label'), 'Label taxa by:',
+                                  choices = c('ASV','Taxon','Species')),
+                      actionButton(ns('hmap_submit'), 'Plot'))
+                  )),
+                column(width = 12,
+                       shinyjqui::jqui_resizabled(
+                         plotlyOutput(ns('hmap_plot'), 
+                                      width = '100%', height = 'auto')))
+                )),
+              
               )
             
           )
@@ -258,7 +345,6 @@ mod_overview_server <- function(input, output, session, improxy){
       inner_join(tax(), 'Taxon')
   })
   
-
   # toggle div for input controls-----------------------------------------------
   observeEvent(input$pca_calculate, {
     show('mva_param_div')
@@ -266,6 +352,10 @@ mod_overview_server <- function(input, output, session, improxy){
 
   observeEvent(input$mva_feature, {
     toggle('loading_div')
+  })
+  
+  observeEvent(input$hmap_calculate, {
+    show('hmap_body_div')
   })
   
   ## render controls bar plot---------------------------------------------------
@@ -319,11 +409,35 @@ mod_overview_server <- function(input, output, session, improxy){
   output$load_lab_shape_ui <- renderUI({
     selectInput(ns('load_lab_shape'), 'Label shape:', choices = c('none', colnames(tax())))
   })
+
   
 
-
+  ## render controls - heat map-------------------------------------------------
+  output$hmap_samp_label_ui <- renderUI({
+    selectInput(ns('hmap_samp_label'), "Label:",
+                choices = colnames(met()), selected = 'sampleID')
+  })
+  output$hmap_samp_colour_ui <- renderUI({
+    choices <- c('none', colnames(met()))
+    choices <- choices[choices != 'sampleID']
+    radioButtons(ns('hmap_samp_colour'), "Show sample metadata:",
+                 choices = choices,
+                 selected = 'none')
+  })
+  
+  output$hmap_asv_label_ui <- renderUI({
+    selectInput(ns('hmap_asv_label'), "Label:",
+                choices = colnames(tax()), selected = 'Taxon')
+  })
+  
+  output$hmap_asv_colour_ui <- renderUI({
+    choices <- c('none', colnames(tax()))
+    choices <- choices[!choices %in% c('sequence','ASV','Taxon')]
+    radioButtons(ns('hmap_asv_colour'), "Show taxonomy level:",
+                 choices = choices, selected = 'none')
+  })
   # calculate output bar plot---------------------------------------------------
-  observeEvent(input$submit_bar, {
+  observeEvent(input$bar_submit, {
     pdata <- work() %>%
       group_by(.data[[input$bar_x]]) %>%
       mutate(grp_total = sum(read_count)) %>%
@@ -362,7 +476,7 @@ mod_overview_server <- function(input, output, session, improxy){
     })
     output$bar_data <- DT::renderDataTable({
       out <-  pdata %>%
-        select(sampleID, ASV, Kingdom:Species, .data[[input$bar_fill]]) %>%
+        select(sampleID, ASV, Kingdom:.data[[input$bar_fill]], .data[[input$bar_fill]]) %>%
         distinct() %>%
         spread(sampleID, .data[[input$bar_fill]])
       DT::datatable(out, options = list(scrollX = TRUE)) %>%
@@ -373,8 +487,9 @@ mod_overview_server <- function(input, output, session, improxy){
       ggplotly(p)
     })  
   })
-  
-  # Transform counts to proportional data---------------------------------------
+
+  # calculate multivariate analysis---------------------------------------------
+  ## Transform counts to proportional data---------------------------------------
   asv_transform <- eventReactive(input$pca_calculate, {
     req(input$pca_transform)
     asv_df <- as.data.frame(asv())
@@ -401,8 +516,6 @@ mod_overview_server <- function(input, output, session, improxy){
     }
     out
   })
-
-  # multivariate analysis-------------------------------------------------------
   # centre and scale
   asv_scale <- eventReactive(input$pca_calculate, {
     if(input$pca_scale == 'UV') {
@@ -426,17 +539,28 @@ mod_overview_server <- function(input, output, session, improxy){
     prcomp(t(asv_scale()), center = FALSE, scale. = FALSE) 
   })
   
+  xPC <- reactive(paste0('PC', input$xPC))
+  yPC <- reactive(paste0('PC', input$yPC))
+  
   score_data <- reactive({
     out <- as.data.frame(d_pcx()$x)
     out$sampleID <- rownames(out)
-    met() %>% inner_join(out, 'sampleID')
+    out <- out %>% 
+      select(sampleID, xPC(), yPC()) %>%
+      left_join(met(), 'sampleID')
+    out <- out[,c(xPC(), yPC(), colnames(met()))]
+    out
   })
-  
+
   load_data <- reactive({
     out <- as.data.frame(d_pcx()$rotation)
     out$Taxon <- rownames(out)
-    tax() %>% inner_join(out, 'Taxon')
+    out <- out %>% select('Taxon', xPC(), yPC()) %>%
+      left_join(tax(), 'Taxon')
+    out <- out[, c(xPC(), yPC(), colnames(tax()))]
+    out
   })
+
   
   # summary of pca
   pcx_summary <- eventReactive(input$pca_calculate, {
@@ -457,26 +581,22 @@ mod_overview_server <- function(input, output, session, improxy){
       DT::datatable(options = list(scrollX = TRUE)) %>%
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
-  output$check <- renderPrint({
-
-  })
   
-  # pca plot parameters *******PICK UP HERE**********************
-  observeEvent(input$submit_pca, {
+  # pca plot parameters
+  observeEvent(input$pca_submit, {
 
     ## score point parameters
     if(input$score_pt_colour == 'none') {
       score_pt_colour <- 'black'
     }
     else{
-      var_coded <- as.numeric(as.factor(met()[,input$score_pt_colour]))
-      score_pt_colour <- OCMSExplorer:::cms_palette(full = TRUE)[var_coded]
+      score_pt_colour <- input$score_pt_colour
     }
     if(input$score_pt_shape == 'none') {
       score_pt_shape <- 1
     }
     else{
-      score_pt_shape <- as.numeric(as.factor(score_data()[,input$score_pt_shape])) 
+      score_pt_shape <- input$score_pt_shape
     }
     score_pt_size <- input$score_pt_size
     score_pt_alpha <- input$score_pt_alpha
@@ -488,14 +608,14 @@ mod_overview_server <- function(input, output, session, improxy){
     }
     else{
       score_label <- TRUE
-      score_label_by <- score_data()[,input$score_label_by]
+      score_label_by <- input$score_label_by
     }
     if(input$score_lab_colour == 'none') {
       score_lab_colour <- 'black'
     }
     else {
-      var_coded <- as.numeric(as.factor(met()[,input$score_lab_colour]))
-      score_lab_colour <- OCMSExplorer:::cms_palette(full = TRUE)[var_coded]
+   
+      score_lab_colour <- input$score_lab_colour
     }
     score_lab_size <- input$score_lab_size
     score_lab_alpha <- input$score_lab_alpha
@@ -507,33 +627,32 @@ mod_overview_server <- function(input, output, session, improxy){
         load_pt_colour <- 'darkred'
       }
       else{
-        var_coded <- as.numeric(as.factor(tax()[,input$load_pt_colour]))
-        load_pt_colour <- OCMSExplorer:::cms_palette(full = TRUE)[var_coded]
+        load_pt_colour <- input$load_pt_colour
       }
       if(input$load_pt_shape == 'none') {
         load_pt_shape <- 2
       }
       else {
-        load_pt_shape <- as.numeric(as.factor(load_data()[,input$load_pt_shape]))
+        load_pt_shape <- input$load_pt_shape
       }
       load_pt_size <- input$load_pt_size
       load_pt_alpha <- input$load_pt_alpha
       load_arrow <- input$load_arrow
+      
       ## loading label parameters
       if(input$load_label_by == 'none') {
         load_label_by <- NULL
         show_load_label <- FALSE
       }
       else {
-        load_label_by <- load_data()[, input$load_label_by]
+        load_label_by <- input$load_label_by
         show_load_label <- TRUE
       }
       if(input$load_lab_colour == 'none') {
         load_lab_colour <- 'darkred'
       }
       else {
-        var_coded <- as.numeric(as.factor(tax()[,input$load_lab_colour]))
-        load_lab_colour <- OCMSExplorer:::cms_palette(full = TRUE)[var_coded]
+        load_lab_colour <- input$load_lab_colour
       }
       load_lab_size <- input$load_lab_size
       load_lab_alpha <- input$load_lab_alpha
@@ -552,10 +671,8 @@ mod_overview_server <- function(input, output, session, improxy){
     
 
     output$plot_pca <- renderPlotly({
-      # p_biplot <- OCMSExplorer:::cms_biplot(as.data.frame(d_pcx()$x), 
-      #                                  as.data.frame(d_pcx()$rotation))      
       p_biplot <- OCMSExplorer:::cms_biplot(
-        as.data.frame(d_pcx()$x), as.data.frame(d_pcx()$rotation),
+        score_data(), load_data(),
         xPC = input$xPC, yPC = input$yPC,
         # score point
         colour = score_pt_colour, shape = score_pt_shape,
@@ -573,6 +690,15 @@ mod_overview_server <- function(input, output, session, improxy){
         loadings.label.colour = load_lab_colour, loadings.label.repel = FALSE,
         loadings.label.size = load_lab_size, loadings.label.alpha = load_lab_alpha
       )
+      
+      p_biplot <- p_biplot +
+        theme_bw(12) +
+        xlab(sprintf("PC%s (%s%%)", 
+                     input$xPC, 
+                     round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
+        ylab(sprintf("PC%s (%s%%)", 
+                     input$yPC, 
+                     round(pcx_summary()['Variance Explained', input$yPC]), 2))
       ggplotly(p_biplot)
     })
   
@@ -587,14 +713,148 @@ mod_overview_server <- function(input, output, session, improxy){
         yaxis = list(title = 'Alpha diversity')
       )
   })
+  
   # heatmap---------------------------------------------------------------------
+  output$check <- renderPrint({
+
+  })
+  
+  # Transform counts to proportional data---------------------------------------
+  asv_transform <- eventReactive(input$hmap_calculate, {
+    asv_df <- as.data.frame(asv())
+    rownames(asv_df) <- asv_df$Taxon
+    asv_df <- asv_df[,colnames(asv_df) != 'Taxon']
+    
+    ## generate Monte Carlo samples from Dirichlet distribution
+    ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
+    ## use geometric mean abundance of features
+    
+    asv_clr <- ALDEx2::aldex.clr(asv_df, conds = met()$sampleID)
+    clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
+                           function(m){t(apply(m,1,median))})
+    ## samples in columns
+    clr_df <- data.frame(matrix(unlist(clr_instance), ncol = length(clr_instance),
+                                byrow = FALSE,
+                                dimnames = list(colnames(clr_instance[[1]]),
+                                                names(clr_instance))),
+                         stringsAsFactors=FALSE)
+    clr_df
+  })
+  
+  # calculate sample clustering-------------------------------------------------
+  samp_hclust <- reactive({
+    req(input$hmap_calculate)
+    hclust(dist(t(asv_transform()), method = input$dist_method), 
+           method = input$hclust_method)
+  })
+  
+  samp_ddata <- reactive({
+    req(input$hmap_calculate)
+    OCMSExplorer:::dendro_data_k(samp_hclust(), input$hmap_samp_k)
+  })
+  
+  # sample dendrogram-----------------------------------------------------------
+  observe({
+    req(input$hmap_samp_k, input$hmap_samp_colour)
+    if(input$hmap_samp_colour == 'none') category <- NULL
+    else category <- input$hmap_samp_colour
+    p <- OCMSExplorer:::plot_ggdendro(
+      samp_ddata(),
+      direction = 'lr',
+      branch.size = 0.5,
+      metadata = met(),
+      category = category,
+      label.category = input$hmap_samp_label,
+      id = 'sampleID')
+    
+    p_legend <- cowplot::get_legend(p)
+    
+    output$sample_dendro_plot <- renderPlotly({
+      label_data <- ggplot_build(p)$data[[2]]
+      
+      ggplotly(p + theme(legend.position = 'none')) %>% 
+        style(text = label_data$label, textposition = "middle right")
+    })
+    
+    output$sample_dendro_leg <- renderPlot({
+      grid::grid.draw(p_legend)
+    })
+  })
+  
+  
+  # calculate asv clustering----------------------------------------------------
+  
+  asv_hclust <- reactive({
+    req(input$hmap_calculate)
+    hclust(dist(asv_transform(), method = input$dist_method),
+           method = input$hclust_method)
+  })
+  
+  asv_ddata <- reactive({
+    req(input$hmap_calculate)
+    OCMSExplorer:::dendro_data_k(asv_hclust(), input$hmap_asv_k)
+  })
+  
+  # asv dendrogram--------------------------------------------------------------
+  observe({
+    req(input$hmap_asv_k, input$hmap_asv_colour)
+    if(input$hmap_asv_colour == 'none') category <- NULL
+    else category <- input$hmap_asv_colour
+    
+    p <- OCMSExplorer:::plot_ggdendro(
+      asv_ddata(),
+      direction = 'lr',
+      branch.size = 0.5,
+      metadata = tax(),
+      label.category = input$hmap_asv_label,
+      category = category,
+      id = 'Taxon')
+    
+    p_legend <- cowplot::get_legend(p)
+    
+    output$asv_dendro_plot <- renderPlotly({
+      label_data <- ggplot_build(p)$data[[2]]
+      ggplotly(p + theme(legend.position = 'none')) %>% 
+        style(text = label_data$label, textposition = "middle right")
+    })
+    
+    output$asv_dendro_leg <- renderPlot({
+      grid::grid.draw(p_legend)
+    })
+  })
+  
+  # set heatmap orientation
+  hmap_data <- eventReactive(input$hmap_submit, {
+    req(input$sample_as_x)
+    if(input$sample_as_x) {
+      hmap_data <- asv_transform() # taxon in rows, samples in columns
+      rownames(hmap_data) <- tax()[, input$hmap_tax_label]
+    }
+    else {
+      hmap_data <- t(asv_transform())
+      colnames(hmap_data) <- tax()[, input$hmap_tax_label]
+    }
+    hmap_data
+  })
+  
+  # parameterizing heat map object
+  hmap <- eventReactive(input$hmap_submit, {
+    heatmapr(
+      x = hmap_data(), 
+      dist_method = input$dist_method,
+      hclust_method = input$hclust_method,
+      dendrogram = 'both',
+      show_dendrogram = c('show_dendro_y' %in% input$show_dendro,
+                          'show_dendro_x' %in% input$show_dendro),
+      digits = 3,
+      show_grid = TRUE
+    )
+  })
+  
+  # plot heat map
   output$hmap_plot <- renderPlotly({
-    random_ggplotly('tile') %>%
-      layout(
-        title = 'Clustered heat map of samples and ASV',
-        xaxis = list(title = 'Samples'),
-        yaxis = list(title = 'ASV at chosen taxon level')
-      )
+    heatmaply(hmap(), node_type = 'heatmap', colors = 'RdYlBu',
+              key.title = 'Normalized\nRelative Abundance') 
   })
 }
 

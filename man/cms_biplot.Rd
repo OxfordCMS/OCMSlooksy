@@ -7,8 +7,6 @@
 cms_biplot(
   plot.data,
   loadings.data = NULL,
-  xPC = 1,
-  yPC = 2,
   colour = NULL,
   size = NULL,
   linetype = NULL,
@@ -29,11 +27,11 @@ cms_biplot(
   label.repel = FALSE,
   loadings = FALSE,
   loadings.colour = "#FF0000",
+  loadings.shape = NULL,
   loadings.size = NULL,
   loadings.alpha = NULL,
-  loadings.shape = NULL,
-  loadings.label = FALSE,
   loadings.arrow = FALSE,
+  loadings.label = FALSE,
   loadings.label.label = "rownames",
   loadings.label.colour = "#FF0000",
   loadings.label.alpha = NULL,
@@ -63,10 +61,6 @@ cms_biplot(
 }
 \arguments{
 \item{plot.data}{score data, samples in rows}
-
-\item{xPC}{numeric; PC number for x axis. default 1}
-
-\item{yPC}{number; PC number for y axis. default 2}
 
 \item{colour}{colour of score points. default NULL}
 
@@ -108,15 +102,15 @@ cms_biplot(
 
 \item{loadings.colour}{colour of loadings. default red (#FF0000)}
 
+\item{loadings.shape}{shape of loadings. default NULL}
+
 \item{loadings.size}{size of loadings. default NULL}
 
 \item{loadings.alpha}{alpha of loadings. default NULL}
 
-\item{loadings.shape}{shape of loadings. default NULL}
+\item{loadings.arrow}{show line to loadings. default FALSE}
 
 \item{loadings.label}{show labels for loadings. default FALSE}
-
-\item{loadings.arrow}{show line to loadings. default FALSE}
 
 \item{loadings.label.label}{column used to label loadings. default 'rownames'}
 
@@ -137,6 +131,8 @@ cms_biplot(
 \item{loadings.label.vjust}{vjust of loading labels. defualt NULL}
 
 \item{loadings.label.repel}{use ggrepel on loading labels. default FALSE}
+
+\item{label.show.legend}{show legend labels. default NA}
 
 \item{frame}{frame clusters based on confidence interval estimation default FALSE}
 
@@ -162,7 +158,9 @@ cms_biplot(
 
 \item{loadings_data}{loading data, features in rows}
 
-\item{loadings.show.legend}{show legend for loadings. default FALSE}
+\item{xPC}{numeric; PC number for x axis. default 1}
+
+\item{yPC}{number; PC number for y axis. default 2}
 
 \item{fram.colour}{frame colour. default \code{colour}}
 }

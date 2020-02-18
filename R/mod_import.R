@@ -26,8 +26,9 @@ mod_import_ui <- function(id){
       dashboardHeader(disable = TRUE),
       dashboardSidebar(
         sidebarMenu(id = 'menu',
-                    br(),br(), br(),
-        menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, startExpanded = TRUE,
+                    br(),
+        menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, 
+                 startExpanded = TRUE,
                  # Use sample dataset?
                  shinyWidgets::materialSwitch(
                    ns("example"), "Example dataset",

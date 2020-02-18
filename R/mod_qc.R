@@ -27,29 +27,15 @@ mod_qc_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(
           id = 'menu',
-          br(),br(), br(),
-          menuItem('Main Page', tabName = 'main_tab_qc', selected = TRUE),
+          br(),
+          menuItem('Task Info', tabName = 'info_tab_qc',
+                   icon = icon('info-circle'), selected = TRUE),
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('ASV Prevalence', tabName = 'asv_prevalence'),
           menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
           menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
-          
-          conditionalPanel(
-            condition = "input.menu === 'tax_distribution_tab'",
-            br(), hr(),
-            div(style="text-align: center",
-                tags$b('Input controls')),
-            
-            fixedPanel(
-              # taxonomy level
-              radioButtons(ns('tax_level'), 'Taxonomic level',
-                           c('ASV'='Taxon','Phylum'='Phylum',
-                            'Class'='Class', 'Order'='Order',
-                            'Family'='Family','Genus'='Genus',
-                            'Species'='Species'),
-                          selected = 'Taxon'))),
-          
+      
           conditionalPanel(
             condition = "input.menu === 'group_distribution_tab'",
             br(), hr(),
@@ -72,7 +58,7 @@ mod_qc_ui <- function(id){
           tabItems(
               # main page---------------------------------------------------------
               tabItem(
-                tabName = 'main_tab_qc',
+                tabName = 'info_tab_qc',
                 column(width = 12, h1("QC Report"),
                 tags$div("Raw sequences were processed through the OCMS 16S rRNA gene pipeline to assure all sequences used during analysis have been quality controlled. This report outlines the processing steps that occured, and depicts the changes applied to the dataset through this process."))
               ),
@@ -83,7 +69,7 @@ mod_qc_ui <- function(id){
                 column(width = 12,
                       h1("dada2 filtering reads"),
                       tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
-                      plotlyOutput(ns('plot_filt'))
+                      shinyjqui::jqui_resizable(plotlyOutput(ns('plot_filt')))
                       ))
               ),
             # denoising-----------------------------------------------------------
@@ -94,7 +80,7 @@ mod_qc_ui <- function(id){
                       h1("De-replication, sample inference, merging and chimera removal"),
                       tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
                       br(),
-                      plotlyOutput(ns('plot_nochim'))
+                      shinyjqui::jqui_resizable(plotlyOutput(ns('plot_nochim')))
                       ))
               ),
             
@@ -105,14 +91,15 @@ mod_qc_ui <- function(id){
                 column(width = 12,
                       h1("Number of ASVs called per sample and their prevalence"),
                       tags$div("A useful metric is the number of ASVs that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of ASVs per sample we also plot the prevalence of these ASVs i.e. the proportion of samples that each ASV is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of suprious ASVs i.e. low prevalence and low abundance."),
-                      plotlyOutput(ns('plot_nasv')),
+                      shinyjqui::jqui_resizable(plotlyOutput(ns('plot_nasv'))),
                       br(),
                       column(width = 6, 
                              tags$b('Distribution of ASV Prevalence'),
-                             plotlyOutput(ns('plot_prevalence'))),
+                             shinyjqui::jqui_resizable(
+                               plotlyOutput(ns('plot_prevalence')))),
                       column(width = 6, 
                              tags$b('Prevalence of ASV with respects to Relative Abundance'),
-                             plotlyOutput(ns('plot_spurious')))
+                             shinyjqui::jqui_resizable(plotlyOutput(ns('plot_spurious'))))
                       ))
               ),
             
@@ -124,7 +111,16 @@ mod_qc_ui <- function(id){
                       h1("Taxonomic Distribution"),
                       tags$div("The next stage is to assign each of the amplicon sequence variants (ASV) to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
                     
-                      column(width = 2,
+                      column(width = 4,
+                             br(), br(),
+                             wellPanel(
+                               # taxonomy level
+                               radioButtons(ns('tax_level'), 'Taxonomic level',
+                                            c('ASV'='Taxon','Phylum'='Phylum',
+                                              'Class'='Class', 'Order'='Order',
+                                              'Family'='Family','Genus'='Genus',
+                                              'Species'='Species'),
+                                            selected = 'Taxon')),
                              br(),
                              tags$b('Number of samples:'),
                              textOutput(ns('n_sample'), inline = TRUE),
@@ -134,15 +130,16 @@ mod_qc_ui <- function(id){
                              br(),
                              tags$b('Reference database:'), 
                              textOutput(ns('ref_tax'), inline = TRUE)),
-                      column(width = 10,
-                             br(),
-                             tags$b('Distribution of Taxa'),
-                             plotlyOutput(ns('tax_distribution'))),
-                      
-                      br(),
-                      tags$b('Percent assigned:'),
-                      br(),
-                      plotlyOutput(ns('perc_assigned')))
+                      column(width = 8,
+                             h2('Table of Distribution of Taxa'),
+                             DT::dataTableOutput(ns('tax_distrib_table'))),
+                      column(width = 12,
+                             h2('Distribution of Taxa'),
+                             shinyjqui::jqui_resizable(
+                               plotlyOutput(ns('tax_distribution')))),
+                      column(width = 12,
+                             h2('Percent assigned:'),
+                             shinyjqui::jqui_resizable(plotlyOutput(ns('perc_assigned')))))
                       
               )),
             
@@ -155,12 +152,12 @@ mod_qc_ui <- function(id){
                       tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
                       br(),
                       tags$b('Total read counts across sample or sample groups'),
-                      plotlyOutput(ns('group_distribution')),
+                      shinyjqui::jqui_resizable(plotlyOutput(ns('group_distribution'))),
                       br(),
                       tags$div("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
                       br(),
                       tags$b("Distribution of average read counts across sample groups"),
-                      plotlyOutput(ns('sample_distribution')))
+                      shinyjqui::jqui_resizable(plotlyOutput(ns('sample_distribution'))))
               ))
           )
         )
@@ -351,26 +348,38 @@ mod_qc_server <- function(input, output, session, improxy){
   # read count distribution of taxa---------------------------------------------
   # customize count data based on selected taxonomic level
 
-  
   output$n_sample <- renderText({length(unique(met()$sampleID))})
   output$ref_tax <- renderText({random_text(nwords = 1)})
-  output$n_asv <- renderText({
-    length(unique(work()[,input$tax_level]))
-  })
   
-  output$tax_distribution <- renderPlotly({
-
-    pdata <- work() %>%
+  tax_distrb_df <- eventReactive(input$tax_level, {
+    work() %>%
       group_by(.data[[input$tax_level]]) %>%
       select(.data[[input$tax_level]], read_count) %>%
       summarise(agg_count = sum(read_count)) %>%
       mutate(agg_perc = agg_count / sum(work()$read_count) * 100) %>%
       mutate(agg_perc = round(agg_perc, 2)) %>%
-      ungroup()
+      ungroup() %>%
+      distinct(.data[[input$tax_level]], agg_count, agg_perc)
+  })
+  
+  observeEvent(input$tax_level, {
+    output$n_asv <- renderText({
+      nrow(unique(tax_distrb_df()[,input$tax_level]))
+    })
+  })
+  
+  
+  output$tax_distrib_table <- DT::renderDataTable({
+    out <- tax_distrb_df()
+    colnames(out) <- c(input$tax_level, "Read Count", "Relative Abundance")
+    DT::datatable(out, options = list(scrollX = TRUE))
+  })
+  
+  output$tax_distribution <- renderPlotly({
     
-    p <- ggplot(pdata, aes(x = 1, y = agg_perc, 
-                           fill = !!as.symbol(input$tax_level),
-                           colour = !!as.symbol(input$tax_level))) +
+    p <- ggplot(tax_distrb_df(), 
+                aes(x = 1, y = agg_perc, fill = !!as.symbol(input$tax_level),
+                    colour = !!as.symbol(input$tax_level))) +
       geom_bar(stat = 'identity') +
       scale_fill_discrete(name = input$tax_level) +
       scale_y_continuous(limits = c(0,100)) +

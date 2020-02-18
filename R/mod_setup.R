@@ -24,8 +24,9 @@ mod_setup_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(
           id = 'menu',
-          br(),br(), br(),
-          menuItem('Main Page', tabName = 'main_tab_setup', selected = TRUE),
+          br(),
+          menuItem('Task Info', tabName = 'info_tab_setup', 
+                   icon = icon('info-circle'), selected = TRUE),
           menuItem('Filter Samples', tabName = 'filter_sample'),
           menuItem('Filter ASVs', tabName = 'filter_asv'),
           menuItem('Read Count Transformation', tabName = "transform_asv"),
@@ -60,7 +61,7 @@ mod_setup_ui <- function(id){
             
             fixedPanel(
               radioButtons(ns('asv_select_prompt'), 
-                           "ASVs to include in analysis:",
+                           "ASVs to exclude from analysis:",
                            choices = c('Use all ASVs' = 'all', 
                                        'Filter ASVs' = 'some'),
                            selected = 'all'),
@@ -101,13 +102,13 @@ mod_setup_ui <- function(id){
         box(width = '100%', br(),br(), br(),
             
             # fluidRow(width = 12,
-            #         h3('Check Box'), 
+            #         h3('Check Box'),
             #         verbatimTextOutput(ns('check'))),
             
             tabItems(
               # main page---------------------------------------------------------
               tabItem(
-                tabName = 'main_tab_setup',
+                tabName = 'info_tab_setup',
                 column(width = 12, 
                   h1('Prepare Data for Analysis'),
                   tags$div("Before starting data exploration, it may be desirable to specify which samples and ASVs should be included in all subsequent analyses. This ensures that the analysis is performed on a dataset that is relevant to the current research question.
@@ -121,7 +122,7 @@ mod_setup_ui <- function(id){
                        h1('Filter Samples'), br(),
                        tags$div(
                          "It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
-                br(),
+                br(), br(),
                 hidden(div(id = ns('sample_filter_div'),
                    column(width = 8,
                           DT::dataTableOutput(ns('sample_options_ui'))),
@@ -142,48 +143,50 @@ mod_setup_ui <- function(id){
                     br(),br(),
                     tags$em(
                       tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering ASVs at this stage should only be done if you have additional reasoning for omitting certain sequences or ASVs"),
-                    br())),
+                    br()),
                 
                 div(id = ns('asv_filter_div'),
                 column(width = 12,
-                       
-                       hidden(
-                         div(id = ns('asv_option_count'),
-                             fluidRow(h3('Filter ASVs based on read count threshold'),
-                             radioButtons(
-                               ns('cutoff_method'), 'Set filter cutoff by:',
-                               c('Read count' = 'abs_count',
-                                 'Percent of total read count of each sample' = 'percent_sample',
-                                 'Percent of total read count of dataset' = 'percent_total'),
-                               selected = character(0))),
-                             fluidRow(
-                               column(width = 2, 
-                                 tags$div(
-                                   br(), 'min: 0',br(),
-                                   'max:', textOutput(ns('cutoff_max'), inline = TRUE))),
-                               column(width = 6,
-                                    uiOutput(ns('asv_cutoff_ui')))),
-                             fluidRow(tags$b(textOutput(ns('asv_cutoff_msg'))))
-                             )),
-                       hidden(
-                         div(id = ns('asv_option_select'),
-                             h3('Filter ASVs based on selection'),
-                             DT::dataTableOutput(ns('asv_table_select'))
-                             )) 
-                       ),
+                  hidden(
+                   div(id = ns('asv_option_count'),
+                       column(width = 5, br(),
+                              wellPanel(
+                                h3('Filter ASVs based on read count threshold'),
+                                radioButtons(
+                                  ns('cutoff_method'), 'Set filter cutoff by:',
+                                  c('Read count' = 'abs_count',
+                                    'Percent of total read count of each sample' = 'percent_sample',
+                                    'Percent of total read count of dataset' = 'percent_total'),
+                                  selected = character(0)))),
+                       column(width = 5, br(),
+                         hidden(
+                           div(id = ns('cutoff_limit'),
+                               wellPanel(
+                                 tags$div('min: 0', br(),
+                                    'max:', 
+                                    textOutput(ns('cutoff_max'), inline = TRUE)),
+                                 br(),
+                                 uiOutput(ns('asv_cutoff_ui')),
+                                 tags$b(textOutput(ns('asv_cutoff_msg')))))))
+                       )),
+                hidden(
+                 div(id = ns('asv_option_select'),
+                     column(
+                       width = 12,
+                          h3('Filter ASVs based on selection'),
+                          DT::dataTableOutput(ns('asv_table_select'))
+                     ))))),
                        
                 column(width = 12, br(),
                        hidden(
                          div(id = ns('asv_remove_div'),
-                             tags$b('ASVs to be removed:'),
-                             htmlOutput(ns('asv_remove'))
-                            ))
-                       )),
+                             wellPanel(tags$b('ASVs to be removed:'),
+                                htmlOutput(ns('asv_remove')))
+                            ))),
                 column(width = 12,
                        h3(textOutput(ns('preview_asv_title'))),
                        DT::dataTableOutput(ns('preview_asv')))
-                       
-              ),
+              )),
               
               # asv transformation----------------------------------------------
               tabItem(
@@ -289,6 +292,11 @@ mod_setup_server <- function(input, output, session, improxy){
     })
   })
   
+  # update ASV with filtered samples
+  asv_filt_samp <- eventReactive(input$submit_sample, {
+    format_asv() %>%
+      filter(sampleID %in% working_meta()$sampleID)
+  })
   
   # subset ASVs-----------------------------------------------------------------
   
@@ -304,6 +312,7 @@ mod_setup_server <- function(input, output, session, improxy){
   observeEvent(input$asv_filter_options, {
     toggle(id = 'asv_option_count', 
            condition = stringr::str_detect(input$asv_filter_options, 'asv_by_count'))
+    show(id = "cutoff_limit")
   })
   
   
@@ -319,7 +328,7 @@ mod_setup_server <- function(input, output, session, improxy){
     
     if(input$cutoff_method == 'abs_count') {
       label <- 'Read count cut-off:'
-      max_cutoff <- max(format_asv()$read_count)
+      max_cutoff <- max(asv_filt_samp()$read_count)
       step <- 1000
       default_value <- 1
 
@@ -353,7 +362,9 @@ mod_setup_server <- function(input, output, session, improxy){
                  min = 0, max = ui_entry()$max_cutoff)
   })
   
-  output$cutoff_max <- renderText(ui_entry()$max_cutoff)
+  output$cutoff_max <- renderText({
+    req(input$cutoff_method)
+    ui_entry()$max_cutoff})
   output$asv_cutoff_msg <- renderText({
     stringr::str_replace(ui_entry()$msg, 'REPLACE', as.character(input$asv_cutoff))
   })
@@ -378,12 +389,12 @@ mod_setup_server <- function(input, output, session, improxy){
       # count cut-off
       if(input$cutoff_method == 'abs_count') {
         
-        out <- format_asv() %>%
+        out <- asv_filt_samp() %>%
           filter(read_count < input$asv_cutoff)
       }
       # cut-off based on percent of sample total
       if(input$cutoff_method == 'percent_sample') {
-        out <- format_asv() %>%
+        out <- asv_filt_samp() %>%
           group_by(sampleID) %>%
           mutate(sample_total = sum(read_count),
                  rel_abund = read_count / sample_total * 100) %>%
@@ -394,9 +405,9 @@ mod_setup_server <- function(input, output, session, improxy){
       # cut-off based on percent of dataset total
       if(input$cutoff_method == 'percent_total') {
         
-        dataset_total <- sum(format_asv()$read_count)
+        dataset_total <- sum(asv_filt_samp()$read_count)
         
-        out <- format_asv() %>%
+        out <- asv_filt_samp() %>%
           mutate(rel_abund = read_count / dataset_total * 100) %>%
           filter(rel_abund < input$asv_cutoff) %>%
           select(-rel_abund)
@@ -421,7 +432,7 @@ mod_setup_server <- function(input, output, session, improxy){
 
   # show ASVs removed-----------------------------------------------------------
   output$asv_remove <- renderText({
-    to_remove()
+    HTML(paste(to_remove(), collapse = "<br/>"))
   })
   
   # filter ASVs based on set cutoff---------------------------------------------
@@ -429,11 +440,11 @@ mod_setup_server <- function(input, output, session, improxy){
   working_asv <- eventReactive(input$submit_asv, {
     if(input$asv_select_prompt == 'some') {
       req(input$asv_filter_options)
-      format_asv() %>%
+      asv_filt_samp() %>%
         filter(!Taxon %in% to_remove())  
     }
     else {
-      format_asv()
+      asv_filt_samp()
     }
   })
     
@@ -454,6 +465,7 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   
   output$check <- renderPrint({
+
   })
   
   # transform ASVs--------------------------------------------------------------
@@ -461,7 +473,7 @@ mod_setup_server <- function(input, output, session, improxy){
     req(input$transform_method)
     
     asv_df <- as.data.frame(working_asv() %>% spread(sampleID, read_count))
-    rownames(asv_df) <- asv()$Taxon
+    rownames(asv_df) <- asv_df$Taxon
     asv_df <- asv_df[,colnames(asv_df) != 'Taxon']
     
     if(input$transform_method == 'clr') {
@@ -469,7 +481,7 @@ mod_setup_server <- function(input, output, session, improxy){
       ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
       ## use geometric mean abundance of features
       
-      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = met()$sampleID)
+      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = working_meta()$sampleID)
       clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
                              function(m){t(apply(m,1,median))})
       ## samples in columns

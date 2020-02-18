@@ -25,8 +25,9 @@ mod_overview_ui <- function(id){
     dashboardPage(
       dashboardHeader(disable = TRUE),
       dashboardSidebar(
-        sidebarMenu(id = 'menu', br(),br(), br(),
-          menuItem('Main Page', tabName = 'main_tab_overview', selected = TRUE),
+        sidebarMenu(id = 'menu', br(),
+          menuItem('Task Info', tabName = 'info_tab_overview', 
+                   icon = icon('info-circle'), selected = TRUE),
           menuItem('Relative Abundance', tabName = 'bar_tab'),
           menuItem('Multivariate Analysis'),
                    menuSubItem('PCA', tabName = 'pca_tab'),
@@ -43,7 +44,7 @@ mod_overview_ui <- function(id){
                 tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
                 uiOutput(ns('bar_x_ui')),
                 selectInput(ns('bar_tax'), 'Taxonomic level:',
-                            choices = c('ASV','Phylum','Class','Order',
+                            choices = c('ASV','Taxon','Phylum','Class','Order',
                                         'Family','Genus','Species'),
                             selected = 'ASV'),
                 radioButtons(ns('bar_y'), 'Response measure:',
@@ -141,12 +142,12 @@ mod_overview_ui <- function(id){
         box(
           width = '100%', br(), br(), br(),
           
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           
           tabItems(
             # main page---------------------------------------------------------
             tabItem(
-              tabName = 'main_tab_overview',
+              tabName = 'info_tab_overview',
               h1('Overview of data set'),
               column(width = 12, "A suite of tools to perform exploratory analysis in order to get an overall sense of the data set.")
             ),
@@ -156,7 +157,7 @@ mod_overview_ui <- function(id){
                 h1('Relative Distribution of Taxa'),
                 column(width = 12,
                   h3(textOutput(ns('bar_title'))),
-                  DT::dataTableOutput(ns('bar_data'))),
+                  DT::dataTableOutput(ns('bar_table'))),
                 column(width = 12,
                   shinyjqui::jqui_resizable(
                     plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto'))
@@ -194,24 +195,21 @@ mod_overview_ui <- function(id){
                       h3("Score points aesthetics"),
                       uiOutput(ns('score_pt_colour_ui')),
                       uiOutput(ns('score_pt_shape_ui')),
-                      div(style = "display: inline-block;vertical-align: top",
-                          numericInput(ns('score_pt_size'), 'Point size:',
-                                       min = 0.1, max = 5, value = 3, step = 0.5)),
-                      div(style = "display: inline-block;vertical-align: top",
-                        numericInput(ns('score_pt_alpha'), 'Point transparency:',
-                                     min = 0.1, max = 1, value = 1, step = 0.1))
+                      sliderInput(ns('score_pt_size'), 'Point size:',
+                                  min = 0.1, max = 5, value = 3, step = 0.5,
+                                  ticks = FALSE),
+                      sliderInput(ns('score_pt_alpha'), 'Point transparency:',
+                                     min = 0.1, max = 1, value = 1, step = 0.1)
                       ),
                     # score label aesthetics
                     column(width = 3,
                       h3("Score labels aesthetics"),
                       uiOutput(ns('score_label_ui')),
                       uiOutput(ns('score_lab_colour_ui')),
-                      div(style = "display: inline-block;vertical-align: top",
-                          numericInput(ns('score_lab_size'), 'Label size:',
-                                       min = 0.1, max = 5, value = 3, step = 0.5)),
-                      div(style = "display: inline-block;vertical-align: top",
-                          numericInput(ns('score_lab_alpha'), 'Label transparency:',
-                                       min = 0.1, max = 1, value = 1, step = 0.1))
+                      sliderInput(ns('score_lab_size'), 'Label size:',
+                                       min = 0.1, max = 5, value = 3, step = 0.5),
+                      sliderInput(ns('score_lab_alpha'), 'Label transparency:',
+                                       min = 0.1, max = 1, value = 1, step = 0.1)
                       ),
                     
                     hidden(div(id=ns('loading_div'),
@@ -220,24 +218,20 @@ mod_overview_ui <- function(id){
                         h3('Loading points aesthetics'),
                         uiOutput(ns('load_pt_colour_ui')),
                         uiOutput(ns('load_pt_shape_ui')),
-                        div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_pt_size'), 'Point size:',
-                                         min = 0.1, max = 5, value = 3, step = 0.5)),
-                        div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_pt_alpha'), 'Point transparency:',
-                                         min = 0.1, max = 1, value = 1, step = 0.1))
+                        sliderInput(ns('load_pt_size'), 'Point size:',
+                                         min = 0.1, max = 5, value = 3, step = 0.5),
+                        sliderInput(ns('load_pt_alpha'), 'Point transparency:',
+                                         min = 0.1, max = 1, value = 1, step = 0.1)
                         ),
                       # loading label aesthetics
                       column(width = 3,
                         h3('Loading labels aethetics'),
                         uiOutput(ns('load_label_ui')),
                         uiOutput(ns('load_lab_colour_ui')),
-                        div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_lab_size'), 'Label size:',
-                                         min = 0.1, max = 5, value = 3, step = 0.5)),
-                        div(style = "display: inline-block;vertical-align: top",
-                            numericInput(ns('load_lab_alpha'), 'Label transparency:',
-                                         min = 0.1, max = 1, value = 1, step = 0.1))
+                        sliderInput(ns('load_lab_size'), 'Label size:',
+                                         min = 0.1, max = 5, value = 3, step = 0.5),
+                        sliderInput(ns('load_lab_alpha'), 'Label transparency:',
+                                         min = 0.1, max = 1, value = 1, step = 0.1)
                         )
                       ))
                   ))
@@ -352,14 +346,19 @@ mod_overview_server <- function(input, output, session, improxy){
     out <- out[out != 'sampleID']
   })
   
-  tax_bar <- reactive({
-    out <- colnames(tax())
-    out <- out[!out %in% c('ASV','Taxon','Species')]
-  })
   # putting data into one dataframe---------------------------------------------
   work <- reactive({
+    clr_gather <- asv_transform()
+    clr_gather$Taxon <- rownames(clr_gather)
+    clr_gather <- clr_gather %>%
+      gather('sampleID', 'clr_count')
+    
+    asv_gather <- asv() %>% 
+      gather('sampleID','read_count', -Taxon) %>%
+      inner_join(clr_gather, 'sampleID')
+    
     met() %>%
-      inner_join(asv() %>% gather('sampleID','read_count', -Taxon), 'sampleID') %>%
+      inner_join(asv_gather, 'sampleID') %>%
       inner_join(tax(), 'Taxon')
   })
   
@@ -466,7 +465,9 @@ mod_overview_server <- function(input, output, session, improxy){
                  choices = choices, selected = 'none')
   })
   # calculate output bar plot---------------------------------------------------
-  pdata <- reactive({
+  
+  bar_data <- reactive({
+    req(input$bar_tax, input$bar_x, input$bar_y)
     work() %>%
       # sample total read count
       group_by(sampleID) %>%
@@ -482,25 +483,24 @@ mod_overview_server <- function(input, output, session, improxy){
       mutate(cnt_abund = mean(tax_cnt),
              rel_abund = mean(tax_rel)) %>%
       ungroup()
-
     })
-    
-    output$bar_title  <- renderText({
+  
+  output$bar_title  <- renderText({
       
-      if(input$bar_y == 'rel_abund') {
-        req(input$bar_y)
-        sprintf('Mean Relative Abundance (%%), %s', input$bar_tax)
-      }
-      else {
-        req(input$bar_tax)
-        sprintf('Mean Cumulative Read Count, %s', input$bar_tax)
-      }
-    })
+    if(input$bar_y == 'rel_abund') {
+      req(input$bar_y)
+      sprintf('Mean Relative Abundance (%%), %s', input$bar_tax)
+    }
+    else {
+      req(input$bar_tax)
+      sprintf('Mean Cumulative Read Count, %s', input$bar_tax)
+    }
+  })
     
-    output$bar_data <- DT::renderDataTable({
+    output$bar_table <- DT::renderDataTable({
       req(input$bar_y, input$bar_tax, input$bar_x)
       
-      out <-  pdata() %>%
+      out <-  bar_data() %>%
         distinct(.data[[input$bar_tax]], .data[[input$bar_x]], .data[[input$bar_y]]) %>%
         spread(.data[[input$bar_x]], .data[[input$bar_y]])
         
@@ -515,8 +515,7 @@ mod_overview_server <- function(input, output, session, improxy){
     })
     
     output$bar_plot <- renderPlotly({
-      req(input$bar_y, input$bar_tax, input$bar_x)
-      p <- ggplot(pdata() %>%
+      p <- ggplot(bar_data() %>%
                     distinct(.data[[input$bar_x]], .data[[input$bar_tax]], 
                              cnt_abund, rel_abund),
                   aes_string(x = input$bar_x, y = input$bar_y, 
@@ -540,6 +539,9 @@ mod_overview_server <- function(input, output, session, improxy){
 
 
   # calculate multivariate analysis---------------------------------------------
+    output$check <- renderPrint({
+
+    })
   # centre and scale
   asv_scale <- eventReactive(input$pca_calculate, {
     if(input$pca_scale == 'UV') {
@@ -742,15 +744,6 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   # calculate alpha diversity---------------------------------------------------
-  output$check <- renderPrint({
-    xorder <- pdata() %>%
-      group_by(.data[[input$alpha_grp]]) %>%
-      mutate(alpha_avg = mean(alpha_value)) %>%
-      distinct(.data[[input$alpha_grp]], alpha_avg) %>%
-      ungroup() %>%
-      mutate(x = forcats::fct_reorder(.data[[input$alpha_grp]], desc(alpha_avg)))
-    levels(xorder$x)
-  })
 
   div_result <- eventReactive(input$alpha_calculate, {
 

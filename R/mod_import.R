@@ -64,9 +64,9 @@ mod_import_ui <- function(id){
             br(),br(), br(),
         # Dataset at a glance---------------------------------------------------
         h1('Dataset at a glance'),
-        fluidRow(
-          box(width = 12, h3('Check'),
-              verbatimTextOutput(ns('check')))),
+        # fluidRow(
+        #   box(width = 12, h3('Check'),
+        #       verbatimTextOutput(ns('check')))),
         tabItems(
           
           # Preview of metadata-------------------------------------------------
@@ -74,7 +74,7 @@ mod_import_ui <- function(id){
             tabName = 'metadata',
             fluidRow(
               column(width = 12,
-                     h3('Preview of metadata'),
+                     h2('Preview of metadata'),
                      DT::DTOutput(ns('metadata_preview'))))),
           
           # Preview of read count-----------------------------------------------
@@ -82,7 +82,7 @@ mod_import_ui <- function(id){
             tabName = 'tax_preview',
             fluidRow(
               column(width = 12,
-                     h3('Preview of read counts'),
+                     h2('Preview of read counts'),
                      DT::DTOutput(ns('read_preview')))),
             )
           )

@@ -28,6 +28,7 @@ mod_qc_ui <- function(id){
         sidebarMenu(
           id = 'menu',
           br(),br(), br(),
+          menuItem('Main Page', tabName = 'main_tab_qc', selected = TRUE),
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('ASV Prevalence', tabName = 'asv_prevalence'),
@@ -64,39 +65,45 @@ mod_qc_ui <- function(id){
       # dashboard---------------------------------------------------------------
       dashboardBody(
         box(width = '100%', br(),br(), br(),
-          h1("QC Report"),
-          fluidRow(
-            box(width = 12, h3('Check'),
-                verbatimTextOutput(ns('check')))),
+          
+          # fluidRow(
+          #   box(width = 12, h3('Check'),
+          #       verbatimTextOutput(ns('check')))),
           tabItems(
-            
+              # main page---------------------------------------------------------
+              tabItem(
+                tabName = 'main_tab_qc',
+                column(width = 12, h1("QC Report"),
+                tags$div("Raw sequences were processed through the OCMS 16S rRNA gene pipeline to assure all sequences used during analysis have been quality controlled. This report outlines the processing steps that occured, and depicts the changes applied to the dataset through this process."))
+              ),
             # filtering-----------------------------------------------------------
             tabItem(
               tabName = 'dada2_filter',
               fluidRow(
                 column(width = 12,
-                      h2("dada2 filtering reads"),
+                      h1("dada2 filtering reads"),
                       tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
                       plotlyOutput(ns('plot_filt'))
-                      ))),
-            
+                      ))
+              ),
             # denoising-----------------------------------------------------------
             tabItem(
               tabName = 'dada2_denoise',
               fluidRow(
                 column(width = 12,
-                      h2("De-replication, sample inference, merging and chimera removal"),
+                      h1("De-replication, sample inference, merging and chimera removal"),
                       tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
                       br(),
                       plotlyOutput(ns('plot_nochim'))
-                      ))),
+                      ))
+              ),
             
             # ASV Prevalence------------------------------------------------------
             tabItem(
               tabName = 'asv_prevalence',
               fluidRow(
                 column(width = 12,
-                      h2("Number of ASVs called per sample and their prevalence"),
+                      h1("Number of ASVs called per sample and their prevalence"),
                       tags$div("A useful metric is the number of ASVs that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of ASVs per sample we also plot the prevalence of these ASVs i.e. the proportion of samples that each ASV is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of suprious ASVs i.e. low prevalence and low abundance."),
                       plotlyOutput(ns('plot_nasv')),
                       br(),
@@ -106,14 +113,15 @@ mod_qc_ui <- function(id){
                       column(width = 6, 
                              tags$b('Prevalence of ASV with respects to Relative Abundance'),
                              plotlyOutput(ns('plot_spurious')))
-                      ))),
+                      ))
+              ),
             
             # taxonomy overview---------------------------------------------------
             tabItem(
               tabName = 'tax_distribution_tab',
               fluidRow(
                 column(width = 12,
-                      h2("Taxonomic Distribution"),
+                      h1("Taxonomic Distribution"),
                       tags$div("The next stage is to assign each of the amplicon sequence variants (ASV) to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
                     
                       column(width = 2,
@@ -143,7 +151,7 @@ mod_qc_ui <- function(id){
               tabName = 'group_distribution_tab',
               fluidRow(
                 column(width = 12,
-                      h2('Read Count Distribution'),
+                      h1('Read Count Distribution'),
                       tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
                       br(),
                       tags$b('Total read counts across sample or sample groups'),

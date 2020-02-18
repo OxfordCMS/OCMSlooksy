@@ -25,9 +25,12 @@ mod_setup_ui <- function(id){
         sidebarMenu(
           id = 'menu',
           br(),br(), br(),
-          menuItem('Filter Samples', tabName = 'filter_sample', selected = FALSE),
-          menuItem('Filter ASVs', tabName = 'filter_asv', selected = FALSE),
+          menuItem('Main Page', tabName = 'main_tab_setup', selected = TRUE),
+          menuItem('Filter Samples', tabName = 'filter_sample'),
+          menuItem('Filter ASVs', tabName = 'filter_asv'),
+          menuItem('Read Count Transformation', tabName = "transform_asv"),
           
+          # filter samples------------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'filter_sample'",
             br(), hr(),
@@ -47,6 +50,7 @@ mod_setup_ui <- function(id){
               actionButton(ns('submit_sample'), "Filter samples")
             )),
           
+          # filter asvs---------------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'filter_asv'",
             br(), hr(),
@@ -70,32 +74,60 @@ mod_setup_ui <- function(id){
                       selected = character(0))
                     )),
               br(), br(), br(),
-              actionButton(ns('submit_asv'), "Filter ASVs")))
-              
+              actionButton(ns('submit_asv'), "Filter ASVs"))),
+            
+          # transform counts----------------------------------------------------
+          conditionalPanel(
+            condition = "input.menu === 'transform_asv'",
+            br(), hr(),
+            tags$div(
+              style = 'text-align: center',
+              tags$b('Input controls')),
+            fixedPanel(
+              radioButtons(ns('transform_method'), "Transformation method:",
+                                 choices = c('none' = 'none', 
+                                             'centre log-ratio' = 'clr',
+                                             'additive log-ratio' = 'alr'),
+                                 selected = 'clr'),
+              br(),br(),br(),
+              actionButton(ns('submit_transform'), "Transform Counts")
+            )
+           
+          )
           )),
       
       # main panel--------------------------------------------------------------
       dashboardBody(
         box(width = '100%', br(),br(), br(),
-            h1('Prepare Data for Analysis'),
-            "Before starting data exploration, it may be desirable to specify which samples and ASVs should be included in all subsequent analyses. This ensures that the analysis is performed on a dataset that is relevant to the current research question.",
-            fluidRow(width = 12,
-                    h3('Check Box'), 
-                    verbatimTextOutput(ns('check'))),
+            
+            # fluidRow(width = 12,
+            #         h3('Check Box'), 
+            #         verbatimTextOutput(ns('check'))),
             
             tabItems(
+              # main page---------------------------------------------------------
+              tabItem(
+                tabName = 'main_tab_setup',
+                column(width = 12, 
+                  h1('Prepare Data for Analysis'),
+                  tags$div("Before starting data exploration, it may be desirable to specify which samples and ASVs should be included in all subsequent analyses. This ensures that the analysis is performed on a dataset that is relevant to the current research question.
+                  
+                  Read counts also need to be normalized to compensate for the fact the marker gene sequencing produces compositional data, rather than absolute counts. Please see [link] for more information on compositional data."))
+              ),
               # filter samples--------------------------------------------------
               tabItem(
                 tabName = 'filter_sample', 
                 column(width = 12,
+                       h1('Filter Samples'), br(),
                        tags$div(
                          "It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
                 br(),
-                column(width = 8,
-                       DT::dataTableOutput(ns('sample_options_ui'))),
-                column(width = 4,
-                       tags$b('Selected samples:'),
-                       htmlOutput(ns('sample_select'))),
+                hidden(div(id = ns('sample_filter_div'),
+                   column(width = 8,
+                          DT::dataTableOutput(ns('sample_options_ui'))),
+                   column(width = 4,
+                          wellPanel(tags$b('Selected samples:'),
+                          htmlOutput(ns('sample_select')))))),
                 column(width = 12,
                        h3(textOutput(ns('preview_sample_title'))),
                        DT::dataTableOutput(ns('preview_sample')))),
@@ -104,12 +136,13 @@ mod_setup_ui <- function(id){
               tabItem(
                 tabName = 'filter_asv',
                 column(width = 12,
-                        tags$div(
-                          "It may be desirable to perform analysis on a subset of ASVs if certain taxa are considered contamination, or are no longer relevant to the current research question.",
-                          br(),br(),
-                          tags$em(
-                            tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering ASVs at this stage should only be done if you have additional reasoning for omitting certain sequences or ASVs"),
-                          br())),
+                  h1('Filter ASVs'),
+                  tags$div(
+                    "It may be desirable to perform analysis on a subset of ASVs if certain taxa are considered contamination, or are no longer relevant to the current research question.",
+                    br(),br(),
+                    tags$em(
+                      tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering ASVs at this stage should only be done if you have additional reasoning for omitting certain sequences or ASVs"),
+                    br())),
                 
                 div(id = ns('asv_filter_div'),
                 column(width = 12,
@@ -150,6 +183,14 @@ mod_setup_ui <- function(id){
                        h3(textOutput(ns('preview_asv_title'))),
                        DT::dataTableOutput(ns('preview_asv')))
                        
+              ),
+              
+              # asv transformation----------------------------------------------
+              tabItem(
+                tabName = 'transform_asv',
+                column(width = 12,
+                       h1('Transform Read Counts'),
+                       DT::dataTableOutput(ns('preview_transform')))
               )
             )
         )
@@ -194,18 +235,23 @@ mod_setup_server <- function(input, output, session, improxy){
   
   # subset samples--------------------------------------------------------------
   # show sample table
+  observeEvent(input$sample_select_prompt, {
+    toggle("sample_filter_div", condition = input$sample_select_prompt != 'all')
+  })
+  
   output$sample_options_ui <- DT::renderDataTable({
     out <- met()
     DT::datatable(out, options = list(scrollX = TRUE))
   })
   
+  all_sample <- reactive(met()$sampleID)
+  
   # Decide if sample filtering desired
   rows_selected <- reactive({
-    req(input$sample_select_prompt)
     
     # select all samples
     if(input$sample_select_prompt == 'all') {
-      input$sample_options_ui_rows_all
+      1:length(all_sample())
     }
     else {
       # use metadata to select samples to be included in analysis
@@ -214,10 +260,7 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   
   # map row index to sample names
-  all_sample <- reactive(met()$sampleID)
-  
-  sample_include <- eventReactive(input$sample_select_prompt, {
-    req(rows_selected())
+  sample_include <- reactive({
     if(input$sample_select_prompt == 'exclude') {
       all_sample()[-rows_selected()]
     }
@@ -411,8 +454,40 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   
   output$check <- renderPrint({
-    format_tax() %>% 
-      filter(Taxon %in% working_asv()$Taxon)
+  })
+  
+  # transform ASVs--------------------------------------------------------------
+  asv_transform <- eventReactive(input$submit_transform, {
+    req(input$transform_method)
+    
+    asv_df <- as.data.frame(working_asv() %>% spread(sampleID, read_count))
+    rownames(asv_df) <- asv()$Taxon
+    asv_df <- asv_df[,colnames(asv_df) != 'Taxon']
+    
+    if(input$transform_method == 'clr') {
+      ## generate Monte Carlo samples from Dirichlet distribution
+      ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
+      ## use geometric mean abundance of features
+      
+      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = met()$sampleID)
+      clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
+                             function(m){t(apply(m,1,median))})
+      ## samples in columns
+      clr_df <- data.frame(matrix(unlist(clr_instance), ncol = length(clr_instance),
+                                  byrow = FALSE,
+                                  dimnames = list(colnames(clr_instance[[1]]),
+                                                  names(clr_instance))),
+                           stringsAsFactors=FALSE)
+      out <- clr_df
+    }
+    else {
+      out <- asv_df
+    }
+    out
+  })
+  
+  output$preview_transform <- DT::renderDataTable({
+    DT::datatable(asv_transform(), options = list(scrollX = TRUE))
   })
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
@@ -421,6 +496,7 @@ mod_setup_server <- function(input, output, session, improxy){
     
     list(metadata = working_meta(),
          asv = working_asv() %>% spread(sampleID, read_count),
+         t_asv = asv_transform(),
          tax = format_tax() %>% 
            filter(Taxon %in% working_asv()$Taxon)
          )

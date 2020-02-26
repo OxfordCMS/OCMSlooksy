@@ -32,7 +32,6 @@ mod_overview_ui <- function(id){
           menuItem('Multivariate Analysis'),
                    menuSubItem('PCA', tabName = 'pca_tab'),
                    menuSubItem('PCoA', tabName = 'pcoa_tab'),
-                   menuSubItem('NMDS', tabName = 'nmds_tab'),
           menuItem('\u03B1-Diversity Analysis', tabName = 'alpha_tab'),
           menuItem('Cluster Analysis', tabName = 'hmap_tab'),
           
@@ -51,44 +50,37 @@ mod_overview_ui <- function(id){
                              c('Relative abundance' = 'rel_abund',
                                'Read count' = 'cnt_abund')))
           ),
-          # Multivariate analysis-----------------------------------------------
+          # PCA controls--------------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'pca_tab'",
-            div(id = ns('pca_param_div'),
-                br(), hr(),
-                fixedPanel(
-                  width = 225,
-                  tags$div(style = "text-align: center", tags$b('PCA Parameters')),
-                  radioButtons(ns('pca_scale'), "Scale",
-                               choices = c("unit-variance scaling" = 'UV',
-                                           "pareto scaling" = 'pareto',
-                                           "vast scaling" = 'vast'),
-                               selected = 'UV'),
-                  actionButton(ns('pca_calculate'), "Calculate")
-                  ))
+            br(), hr(),
+            fixedPanel(
+              width = 225,
+              tags$div(style = "text-align: center", tags$b('PCA Parameters')),
+              radioButtons(ns('pca_scale'), "Scale",
+                           choices = c("unit-variance scaling" = 'UV',
+                                       "pareto scaling" = 'pareto',
+                                       "vast scaling" = 'vast'),
+                           selected = 'UV'),
+              actionButton(ns('pca_calculate'), "Calculate")
+              )
             ),
-
+          # PCoA controls------------------------------------------------------- 
           conditionalPanel(
             condition = "input.menu === 'pcoa_tab'",
-            div(id = ns('pcoa_param_div'),
             br(), hr(),
             fixedPanel(
               width = 225,
-              tags$div(style = "text-align: center", tags$b('PCoA Parameters')),
-              actionButton(ns('pcoa_calculate'), "Calculate")
-            ))
-          ),
-
-          conditionalPanel(
-            condition = "input.menu === 'nmds_tab'",
-            div(id = ns('nmds_param_div'),
-            br(), hr(),
-            fixedPanel(
-              width = 225,
-              tags$div(style = "text-align: center", tags$b('NMDS Parameters')),
-              br(), br(), br(),
-              actionButton(ns('nmds_calculate'), "Calculate")
-            ))
+              tags$div(style = "text-align: center", tags$b("PCoA Parameters")),
+              selectInput(ns('pcoa_dist'), "Distance Metric",
+                          choices = c("manhattan", "euclidean", "canberra", 
+                                      "clark", "bray", "kulczynski", "jaccard", 
+                                      "gower", "altGower", "morisita", "horn",
+                                      "mountford", "raup", "binomial", "chao", 
+                                      "cao", "mahalanobis"),
+                          selected = 'euclidean'),
+              actionButton(ns('pcoa_calculate'), 'Calculate')
+            )
           ),
         
           # # Alpha-diversity-------------------------------------------------------
@@ -101,16 +93,20 @@ mod_overview_ui <- function(id){
                   tags$div(style = "text-align: center", 
                            tags$b("\u03B1-Diversity Parameters")),
                   selectInput(ns('alpha_method'), "Diversity Metric",
-                              choices = list(
-                                          `Entropy Measures` =
-                                            list("Shannon-Weaver Index (H)"="shannon",
-                                                 "Simpson Index (D1)" = "simpson"),
-                                          `Diversity Measures` =
-                                            list("Shannon (H'), q = 1" = "shannon_d",
-                                                 "Inverse Simpson (D2), q = 2" = "invsimpson",
-                                                 "Species Richness (S), q = 0" = "richness",
-                                                 "Species Evenness (J)" = "evenness"))),
-                  br(),br(),br(),
+                    choices = list(
+                      `Entropy Measures` = 
+                        list("Shannon-Weaver Index (H)"="shannon",
+                             "Simpson Index (D1)" = "simpson"),
+                      `Diversity Measures` =
+                        list("Shannon (H'), q = 1" = "shannon_d",
+                             "Inverse Simpson (D2), q = 2" = "invsimpson",
+                             "Species Richness (S), q = 0" = "richness",
+                             "Species Evenness (J)" = "evenness"))),
+                  # checkboxGroupInput(ns('alpha_test'), "Statistical Test",
+                  #              c("ANOVA" = "anova",
+                  #                "Kruskal-Wallis" = 'kw',
+                  #                "Effect size" = "effect_size")),
+                  # checkboxInput(ns('alpha_paired'), "Paired data", FALSE),
                   actionButton(ns('alpha_calculate'), "Calculate")
                 ))
             ),
@@ -129,8 +125,11 @@ mod_overview_ui <- function(id){
                                           'average','mcquitty','median','centroid'),
                               selected = 'complete'),
                   selectInput(ns('dist_method'), "Distance method",
-                              choices = c('euclidean','maximum','manhattan',
-                                          'canberra','binary','minkowski'),
+                              choices = c("manhattan", "euclidean", "canberra", 
+                                          "clark", "bray", "kulczynski", "jaccard", 
+                                          "gower", "altGower", "morisita", "horn",
+                                          "mountford", "raup", "binomial", "chao", 
+                                          "cao", "mahalanobis"),
                               selected = 'euclidean'),
                   actionButton(ns('hmap_calculate'), 'Calculate')
                   ))
@@ -142,7 +141,7 @@ mod_overview_ui <- function(id){
         box(
           width = '100%', br(), br(), br(),
           
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           
           tabItems(
             # main page---------------------------------------------------------
@@ -159,21 +158,47 @@ mod_overview_ui <- function(id){
                   h3(textOutput(ns('bar_title'))),
                   DT::dataTableOutput(ns('bar_table'))),
                 column(width = 12,
-                  shinyjqui::jqui_resizable(
-                    plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto'))
+                   column(width = 1, style = 'padding:0px;', dropdown(
+                     size = 'xs', icon = icon('save'), inline = TRUE, 
+                     style = 'material-circle', width = 160,
+                   animate = animateOptions(
+                     enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                     exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                   
+                   downloadBttn(ns('dl_bar_original'), 
+                                list(icon('file-image'), "Original plot"),
+                                size = 'xs', style = 'minimal'), br(),
+                   downloadBttn(ns('dl_bar_html'), 
+                                list(icon('file-code'), "Interactive plot"),
+                                size = 'xs', style = 'minimal'), br(),
+                   downloadBttn(ns('dl_bar_data'), 
+                                list(icon('file-alt'), "Plot data"),
+                                size = 'xs', style = 'minimal'), br(),
+                   downloadBttn(ns('dl_bar_rds'), 
+                                list(icon('file-prescription'), "RDS"),
+                                size = 'xs', style = 'minimal'), br(),
+                   downloadBttn(ns('dl_bar_all'), 
+                                list(icon('file-archive'), "All"),
+                                size = 'xs', style = 'minimal')
+                  )),
+                  column(width = 11, style = 'padding:0px;',
+                         shinyjqui::jqui_resizable(
+                    plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')))
                   )
               ),
             
-            # multivariate analysis body---------------------------------------------    
+            # PCA body----------------------------------------------------------    
             tabItem(
               tabName = 'pca_tab',
               column(width = 12,
                 h1('Principle Component Analysis')),
-              column(width = 12,
-                h2('Summary of PCA'),
-                DT::dataTableOutput(ns('summary_pca'))),
+              tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data."),
               
-              hidden(div(id = ns('mva_param_div'),
+              hidden(div(id = ns('pca_summary_div'), 
+                h2('Summary of PCA'),
+                DT::dataTableOutput(ns('summary_pca')))),
+              
+              hidden(div(id = ns('pca_body_div'),
                 h2('PCA Plot'),
                 wellPanel(
                   tags$div(style = 'text_align: center', h3("Plot Parameters")),
@@ -237,23 +262,163 @@ mod_overview_ui <- function(id){
                   ))
                 )),
                 column(width = 12,
-                       shinyjqui::jqui_resizable(
-                         plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')))
+                       column(width = 1, style = 'padding:0px;', dropdown(
+                         size = 'xs', icon = icon('save'), inline = TRUE, 
+                         style = 'material-circle', width = 160,
+                         animate = animateOptions(
+                           enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                           exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                         
+                         downloadBttn(ns('dl_pca_original'), 
+                                      list(icon('file-image'), "Original plot"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_pca_html'), 
+                                      list(icon('file-code'), "Interactive plot"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_pca_data'), 
+                                      list(icon('file-alt'), "Plot data"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_pca_rds'), 
+                                      list(icon('file-prescription'), "RDS"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_pca_all'), 
+                                      list(icon('file-archive'), "All"),
+                                      size = 'xs', style = 'minimal')
+                       )),
+                       column(width = 11, style = 'padding:0px;',
+                              shinyjqui::jqui_resizable(
+                         plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto'))))
             ),
-        
+            
+            #PCoA body----------------------------------------------------------
+            tabItem(
+              tabName = "pcoa_tab",
+              h1("Principal Coordinate Analysis"),
+              tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
+              hidden(div(id = ns('pcoa_body_div'),
+                h2("Distance Matrix"),
+                DT::dataTableOutput(ns('pcoa_dist_table')),
+                h2("PCoA Summary"),
+                DT::dataTableOutput(ns('pcoa_summary')),
+                h2('PCoA plot'),
+                wellPanel(
+                  tags$div(style = 'text_align: center', h3("Plot Parameters")),
+                  fluidRow(
+                    # Plot controls
+                    column(width = 3,
+                      div(style = "display: inline-block;vertical-align: top",
+                         uiOutput(ns('xPCo_ui'))),
+                      div(style = "display: inline-block;vertical-align: top",
+                         uiOutput(ns('yPCo_ui'))),
+                    checkboxInput(ns('pcoa_ellipse'), "Show clusters", 
+                                  value = TRUE)),
+                    column(width = 3,
+                      # score point aesthetics
+                      h4("Score points aesthetics"),
+                      uiOutput(ns('pcoa_pt_colour_ui')),
+                      uiOutput(ns('pcoa_pt_shape_ui')),
+                      sliderInput(ns('pcoa_pt_size'), 'Point size:',
+                                 min = 0.1, max = 5, value = 3, step = 0.5,
+                                 ticks = FALSE),
+                      sliderInput(ns('pcoa_pt_alpha'), 'Point transparency:',
+                                 min = 0.1, max = 1, value = 1, step = 0.1)),
+                    # score label aesthetics
+                    column(width = 3,
+                      h4("Score labels aesthetics"),
+                      uiOutput(ns('pcoa_label_ui')),
+                      uiOutput(ns('pcoa_lab_colour_ui')),
+                      sliderInput(ns('pcoa_lab_size'), 'Label size:',
+                                 min = 0.1, max = 5, value = 3, step = 0.5),
+                      sliderInput(ns('pcoa_lab_alpha'), 'Label transparency:',
+                                 min = 0.1, max = 1, value = 1, step = 0.1)),
+                    
+                    # cluster aethetics
+                    hidden(div(id = ns('pcoa_ell_div'),
+                      column(width = 3,
+                        h4("Cluster aesthetics"),
+                        uiOutput(ns('pcoa_nclust_ui')),
+                        checkboxInput(ns('pcoa_ell_colour'),"Colour by cluster",
+                                      value = TRUE),
+                        selectInput(ns('pcoa_ell_type'), "Type of ellipse",
+                                    choices = c('t-distribution' = 't',
+                                                'normal distribution' = 'norm',
+                                                'Euclidean distance' = 'euclid'),
+                                    selected = 'norm'),
+                        radioButtons(ns('pcoa_ell_line'), "Linetype",
+                                     choices = c('solid','dashed','longdash',
+                                                 'dotdash'),
+                                     selected = 'solid'),
+                        numericInput(ns('pcoa_ell_ci'), "Confidence Interval",
+                                     min = 0.1, max = 0.99, value = 0.95, 
+                                     step = 0.05))))
+                    ))
+                )),
+              # column(width = 6, plotlyOutput(ns('CH_plot'))),
+              # column(width = 6, verbatimTextOutput(ns('CH_index'))),
+              column(width = 12, 
+                     dropdown(
+                       size = 'xs', icon = icon('save'), inline = TRUE, 
+                       style = 'material-circle',
+                       animate = animateOptions(
+                         enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                         exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                       
+                       downloadBttn(ns('dl_pcoa_original'), 
+                                    list(icon('file-image'), "Original plot"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pcoa_html'), 
+                                    list(icon('file-code'), "Interactive plot"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pcoa_data'), 
+                                    list(icon('file-alt'), "Plot data"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pcoa_rds'), 
+                                    list(icon('file-prescription'), "RDS"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pcoa_all'), 
+                                    list(icon('file-archive'), "All"),
+                                    size = 'xs', style = 'minimal')
+                     ),
+                     shinyjqui::jqui_resizable(
+                       plotlyOutput(ns('pcoa_plot'), width = '100%')))
+            ),
             # alpha diversity body----------------------------------------------
             tabItem(
               tabName = 'alpha_tab',
               h1("\u03B1-Diversity"),
+              tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
               column(width = 12,
                      DT::dataTableOutput(ns('alpha_table'))),
               hidden(div(id = ns('alpha_body_div'),
-                column(width = 3,
+                column(width = 3, br(), br(),
                   wellPanel(
                     uiOutput(ns('alpha_grp_ui')))),
                 column(width = 9,
+                       dropdown(
+                         size = 'xs', icon = icon('save'), inline = TRUE, 
+                         style = 'material-circle',
+                         animate = animateOptions(
+                           enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                           exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                         
+                         downloadBttn(ns('dl_alpha_original'), 
+                                      list(icon('file-image'), "Original plot"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_alpha_html'), 
+                                      list(icon('file-code'), "Interactive plot"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_alpha_data'), 
+                                      list(icon('file-alt'), "Plot data"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_alpha_rds'), 
+                                      list(icon('file-prescription'), "RDS"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_alpha_all'), 
+                                      list(icon('file-archive'), "All"),
+                                      size = 'xs', style = 'minimal')
+                       ),
                        shinyjqui::jqui_resizable(
-                         plotlyOutput(ns('alpha_plot'))
+                         plotlyOutput(ns('alpha_plot'), width = '100%')
                        )),
                 column(width = 12,
                        DT::dataTableOutput(ns('alpha_test')))
@@ -262,10 +427,11 @@ mod_overview_ui <- function(id){
             # heatmap body------------------------------------------------------
             tabItem(
               tabName = 'hmap_tab',
+              h1('Heirarchical Clustering'),
+              tags$div("Heirarchical clustering is influenced by the linkage method used to measure the distance between clusters of observations. The linkage methods differ in the criteria that is used to determine the distance of sets of observations. The criteria are based on the distance between individual observations within a set. Choice in distance method also affects the clustering outcome, which measures the distance between a pair of observations. Distance metrics fall into three categories: agglomerative, divisive, and dissimilarity."),
               hidden(div(id = ns('hmap_body_div'),
-                h1('Heirarchical Clustering'),
                 column(width = 12,
-                  column(width = 3,
+                  column(width = 3, br(), br(),
                     wellPanel(
                       numericInput(ns('hmap_samp_k'), "Number of clusters, k",
                                    value = 1, min = 1, step = 1),
@@ -276,10 +442,33 @@ mod_overview_ui <- function(id){
                         plotOutput(ns('sample_dendro_leg'))),
                   column(width = 7,
                          h3('Sample dendrogram'),
+                         dropdown(
+                           size = 'xs', icon = icon('save'), inline = TRUE, 
+                           style = 'material-circle',
+                           animate = animateOptions(
+                             enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                             exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                           
+                           downloadBttn(ns('dl_dend_samp_original'), 
+                                        list(icon('file-image'), "Original plot"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_dend_samp_html'), 
+                                        list(icon('file-code'), "Interactive plot"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_dend_samp_data'), 
+                                        list(icon('file-alt'), "Plot data"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_dend_samp_rds'), 
+                                        list(icon('file-prescription'), "RDS"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_dend_samp_all'), 
+                                        list(icon('file-archive'), "All"),
+                                        size = 'xs', style = 'minimal')
+                         ),
                          shinyjqui::jqui_resizable(
-                           plotlyOutput(ns('sample_dendro_plot'))))),
+                           plotlyOutput(ns('sample_dendro_plot'), width = '100%')))),
                 column(width = 12,
-                  column(width = 3,
+                  column(width = 3, br(), br(),
                     wellPanel(
                       numericInput(ns('hmap_asv_k'), "Number of clusters, k", 
                                    value = 1, min = 1, step = 1),
@@ -290,10 +479,33 @@ mod_overview_ui <- function(id){
                          plotOutput(ns('asv_dendro_leg'))),
                   column(width = 7,
                     h3('Taxonomy dendrogram'),
+                    dropdown(
+                      size = 'xs', icon = icon('save'), inline = TRUE, 
+                      style = 'material-circle',
+                      animate = animateOptions(
+                        enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                        exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                      
+                      downloadBttn(ns('dl_dend_asv_original'), 
+                                   list(icon('file-image'), "Original plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_dend_asv_html'), 
+                                   list(icon('file-code'), "Interactive plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_dend_asv_data'), 
+                                   list(icon('file-alt'), "Plot data"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_dend_asv_rds'), 
+                                   list(icon('file-prescription'), "RDS"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_dend_asv_all'), 
+                                   list(icon('file-archive'), "All"),
+                                   size = 'xs', style = 'minimal')
+                    ),
                     shinyjqui::jqui_resizable(
-                      plotlyOutput(ns('asv_dendro_plot'))))),
+                      plotlyOutput(ns('asv_dendro_plot'), width = '100%')))),
                 
-                h2('Heat map'),
+                h2('Heat map'), br(), br(),
                 wellPanel(  
                   fluidRow(
                     column(width = 3,
@@ -311,9 +523,30 @@ mod_overview_ui <- function(id){
                                   choices = c('ASV','Taxon','Species')))
                   )),
                 column(width = 12,
-                       shinyjqui::jqui_resizable(
-                         plotlyOutput(ns('hmap_plot'), 
-                                      width = '100%', height = 'auto')))
+                       column(width = 1, style = 'padding:0px;', dropdown(
+                         size = 'xs', icon = icon('save'), inline = TRUE, 
+                         style = 'material-circle', width = 160,
+                         animate = animateOptions(
+                           enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                           exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                         
+                         downloadBttn(ns('dl_hmap_html'), 
+                                      list(icon('file-code'), "Interactive plot"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_hmap_data'), 
+                                      list(icon('file-alt'), "Plot data"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_hmap_rds'), 
+                                      list(icon('file-prescription'), "RDS"),
+                                      size = 'xs', style = 'minimal'), br(),
+                         downloadBttn(ns('dl_hmap_all'), 
+                                      list(icon('file-archive'), "All"),
+                                      size = 'xs', style = 'minimal')
+                       )),
+                       column(width = 11, style = 'padding:0px;',
+                         shinyjqui::jqui_resizable(
+                           plotlyOutput(ns('hmap_plot'), 
+                                        width = '100%', height = 'auto'))))
                 ))
               )
             # end of dashboard body---------------------------------------------
@@ -363,12 +596,23 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   # toggle div for input controls-----------------------------------------------
+  observeEvent(input$pca_calcualte, {
+    show('pca_summary_div')
+  })
   observeEvent(input$pca_calculate, {
-    show('mva_param_div')
+    show('pca_body_div')
   })
 
   observeEvent(input$show_loading, {
     toggle('loading_div')
+  })
+  
+  observeEvent(input$pcoa_calculate, {
+    show('pcoa_body_div')
+  })
+  
+  observeEvent(input$pcoa_ellipse, {
+    toggle('pcoa_ell_div')
   })
   
   observeEvent(input$alpha_calculate, {
@@ -384,7 +628,7 @@ mod_overview_server <- function(input, output, session, improxy){
                 selected = 'sampleID')
   })
   
-  ## render controls - multivariate analysis------------------------------------
+  ## render controls - PCA------------------------------------
   ### choose PCs to plot
   output$xPC_ui <- renderUI({
     numericInput(ns('xPC'), 'x-axis PC', value = 1, 
@@ -437,6 +681,50 @@ mod_overview_server <- function(input, output, session, improxy){
                 choices = c('none', colnames(tax())), selected = 'none')
   })
 
+  ## render controls - PCoA-----------------------------------------------------
+  output$pcoa_nclust_ui <- renderUI({
+    numericInput(ns('pcoa_nclust'), "Number of clusters, k", 
+                 value = 2, min = 2, max = nrow(met())-1)
+  })
+  output$xPCo_ui <- renderUI({
+    numericInput(ns('xPCo'), "Principal Coordinate, x-axis", min = 1, max = length(met()$sampleID), step = 2,
+                 value = 1)
+  })
+  output$yPCo_ui <- renderUI({
+    numericInput(ns('yPCo'), "Principal Coordinate, y-axis", min = 1, max = length(met()$sampleID), step = 2,
+                 value = 2)
+  })
+  
+  ### pcoa point aesthetics
+  output$pcoa_pt_colour_ui <- renderUI({
+    selectInput(ns('pcoa_pt_colour'), 'Point colour:', 
+                choices = c('none', 'cluster', colnames(met())), selected = 'none')
+  })
+  output$pcoa_pt_shape_ui <- renderUI({
+    selectInput(ns('pcoa_pt_shape'), 'Point shape:', 
+                choices = c('none', colnames(met())), selected = 'none')
+  })
+  
+  ### pcoa label aethetics
+  output$pcoa_label_ui <- renderUI({
+    selectInput(ns('pcoa_label'), 'Label by:', 
+                choices = c('none', colnames(met())), selected = 'none')
+  })
+  output$pcoa_lab_colour_ui <- renderUI({
+    selectInput(ns('pcoa_lab_colour'), 'Label colour:', 
+                choices = c('none', 'cluster', colnames(met())), selected = 'none')
+  })
+  
+  # ### pca loaing points aesthetics
+  # output$pcoa_pt_colour_ui <- renderUI({
+  #   selectInput(ns('pcoa_pt_colour'), 'Point colour:', 
+  #               choices = c('none', colnames(tax())), selected = 'none')
+  # })
+  # output$pcoa_pt_shape_ui <- renderUI({
+  #   selectInput(ns('pcoa_pt_shape'), 'Point shape:', 
+  #               choices = c('none', colnames(tax())), selected = 'none')
+  # })
+  
   ## render controls - alpha diversity------------------------------------------
   output$alpha_grp_ui <- renderUI({
     radioButtons(ns('alpha_grp'), "Compare Sample Groups",
@@ -505,27 +793,31 @@ mod_overview_server <- function(input, output, session, improxy){
         spread(.data[[input$bar_x]], .data[[input$bar_y]])
         
       if(input$bar_y == 'rel_abund') {
-        DT::datatable(out, options = list(scrollX = TRUE)) %>%
+        DT::datatable(out,  extensions = 'Buttons', 
+                      options = list(scrollX = TRUE, 
+                                     dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
           DT::formatRound(column = met()[,input$bar_x], digits = 3)
       }
       else {
-        DT::datatable(out, options = list(scrollX = TRUE))
+        DT::datatable(out, extensions = 'Buttons', 
+                      options = list(scrollX = TRUE, 
+                                     dom = 'Blfrtip', buttons = c('copy','csv')))
       }
       
     })
     
-    output$bar_plot <- renderPlotly({
+    p_bar <- reactive({
       p <- ggplot(bar_data() %>%
                     distinct(.data[[input$bar_x]], .data[[input$bar_tax]], 
                              cnt_abund, rel_abund),
-                  aes_string(x = input$bar_x, y = input$bar_y, 
+                  aes_string(x = input$bar_x, y = input$bar_y,
                              fill = input$bar_tax)) +
         geom_bar(stat = 'identity') +
         xlab(input$bar_x) +
         scale_fill_discrete(name = input$bar_tax) +
         theme_bw(12) +
         theme(axis.text.x = element_text(angle = 90))
-      
+    
       if(input$bar_y == 'rel_abund') {
         p <- p +
           ylab(sprintf('Mean Relative Abundance (%%), %s', input$bar_tax))
@@ -534,14 +826,61 @@ mod_overview_server <- function(input, output, session, improxy){
         p <- p +
           ylab(sprintf('Mean Read Count, %s', input$bar_tax))
       }
-      ggplotly(p)
+      p
+    })
+    
+    output$bar_plot <- renderPlotly({
+      ggplotly(p_bar())
     })  
 
+    output$dl_bar_original <- downloadHandler(
+      fname <- function() {"ov_bar.png"}, 
+      content <- function(file) {ggsave(file, plot=p_bar())}
+    )
+    
+    output$dl_bar_html <- downloadHandler(
+      fname <- function() {"ov_bar.html"},
+      content <- function(file) {
+        htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), file)
+      }
+    )
+    
+    output$dl_bar_data <- downloadHandler(
+      fname <- function() {"ov_bar.csv"}, 
+      content <- function(file) {
+        readr::write_csv(bar_data(), file)
+      }
+    )
+    
+    output$dl_bar_rds <- downloadHandler(
+      fname <- function() {"ov_bar.rds"},
+      content <- function(file) {
+        saveRDS(p_bar(), file)
+      }
+    )
+    
+    output$dl_bar_all <- downloadHandler(
+      fname <- function() {"ov_bar.zip"},
+      content <- function(file) {
+        # save current directory
+        mydir <- getwd()
+        # create temporary directory
+        tmpdir <- tempdir()
+        setwd(tempdir())
+        to_zip <- c("ov_bar.png", "ov_bar.html","ov_bar.csv", "ov_bar.rds")
+        ggsave(to_zip[1], plot=p_bar())
+        htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), to_zip[2])
+        write.csv(pdata_bar(), to_zip[3])
+        saveRDS(p_bar(), to_zip[4])
+        
+        #create the zip file
+        zip(file, to_zip)
+        setwd(mydir)
+      }
+    )
 
-  # calculate multivariate analysis---------------------------------------------
-    output$check <- renderPrint({
+  # calculate pca---------------------------------------------------------------
 
-    })
   # centre and scale
   asv_scale <- eventReactive(input$pca_calculate, {
     if(input$pca_scale == 'UV') {
@@ -604,7 +943,9 @@ mod_overview_server <- function(input, output, session, improxy){
   
   output$summary_pca <- DT::renderDataTable({
     pcx_summary() %>%
-      DT::datatable(options = list(scrollX = TRUE)) %>%
+      DT::datatable(extensions = 'Buttons', 
+                    options = list(scrollX = TRUE, 
+                                  dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
   
@@ -709,7 +1050,7 @@ mod_overview_server <- function(input, output, session, improxy){
     input$load_lab_alpha
   })
     
-  output$plot_pca <- renderPlotly({
+  p_biplot <- reactive({
     req(input$pca_calculate)
     
     p_biplot <- OCMSExplorer:::cms_biplot(
@@ -740,9 +1081,337 @@ mod_overview_server <- function(input, output, session, improxy){
       ylab(sprintf("PC%s (%s%%)", 
                    input$yPC, 
                    round(pcx_summary()['Variance Explained', input$yPC]), 2))
-    ggplotly(p_biplot)
+    
+    p_biplot
   })
   
+  output$plot_pca <- renderPlotly({
+    ggplotly(p_biplot())
+  })
+  
+  output$dl_pca_original <- downloadHandler(
+    fname <- function() {"ov_pca.png"}, 
+    content <- function(file) {ggsave(file, plot=p_biplot())}
+  )
+  
+  output$dl_pca_html <- downloadHandler(
+    fname <- function() {"ov_pca.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), file)
+    }
+  )
+  
+  output$dl_pca_data <- downloadHandler(
+    fname <- function() {"ov_pcadata.zip"}, 
+    content <- function(file) {
+      # put together pca data to write to file
+      to_save <- d_pcx()
+      to_save[['pca_score']] <- score_data()
+      to_save[['pca_load']] <- load_data()
+      
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- sprintf("ov_pca-%s.csv", names(to_save))
+      for(i in 1:length(to_zip)) {
+        write.csv(to_save, to_zip[i])  
+      }
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+    
+  )
+  
+  output$dl_pca_rds <- downloadHandler(
+    fname <- function() {"ov_pca.rds"},
+    content <- function(file) {
+      saveRDS(p_biplot(), file)
+    }
+  )
+  
+  output$dl_pca_all <- downloadHandler(
+    fname <- function() {"ov_pca.zip"},
+    content <- function(file) {
+      
+      # put together pca data to write to file
+      to_save <- d_pcx()
+      to_save[['pca_score']] <- score_data()
+      to_save[['pca_load']] <- load_data()
+      
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("ov_pca.png", "ov_pca.html","ov_pca.rds", 
+                  sprintf("ov_pca-%s.csv", names(to_save)))
+      ggsave(to_zip[1], plot=p_biplot())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), to_zip[2])
+      saveRDS(p_biplot(), to_zip[3])
+      for(i in 1:length(to_save)) {
+        write.csv(to_save, to_zip[i+3])  
+      }
+
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
+  # calculate pcoa--------------------------------------------------------------
+  # sample clustering
+  output$check <- renderPrint({
+    pcoa_data()
+  })
+  
+  ## samples as rows
+  pcoa_dist <- eventReactive(input$pcoa_calculate, {
+    vegan::vegdist(t(asv_transform()), method = input$pcoa_dist)
+  })
+  
+  output$pcoa_dist_table <- DT::renderDataTable({
+    DT::datatable(as.data.frame(as.matrix(pcoa_dist())), 
+                  extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+  
+  # identify clusters based on distances
+  cluster_result <- eventReactive(input$pcoa_calculate, {
+    data.frame(sampleID = rownames(as.matrix(pcoa_dist())),
+               pam_cluster = as.vector(cluster::pam(pcoa_dist(), 
+                                                input$pcoa_nclust)$cluster))
+    
+  })
+  
+  ## determine the optimal number of clusters for the dataset using the mediod
+  ## as a midpoint
+  pcoa_optk <- eventReactive(input$pcoa_calculate, {
+    out <- 0
+    
+    # cluster of 1 returns NaN
+    for (k in 2:(nrow(met())-1)) {
+      # find mediod clusters and return a vector of clusters
+      
+      # calculate Calisnki-Harabasz index to determine the fit to the cluster
+      out[k] <- clusterSim::index.G1(t(asv_transform()), cluster_result()$pam_cluster, 
+                                     d = pcoa_dist(), centrotypes = "medoids")
+    }
+    
+    out
+  })
+  
+  # # plot CH index
+  # output$CH_plot <- renderPlotly({
+  #   
+  #   pdata <- data.frame(x=1:length(pcoa_optk()), y=0, yend=pcoa_optk())
+  #   pdata$xend <- pdata$x
+  #   
+  #   k <- nrow(met())-1
+  #   # plot number of clusters and respective CH index
+  #   p <- ggplot(pdata) +
+  #     geom_segment(ggplot2::aes(x=x, y=y, xend=xend, yend=yend)) +
+  #     scale_x_continuous(breaks=2:k, limits=c(2,k)) +
+  #     xlab('k clusters') +
+  #     ylab('Calinski-Harabasz Index') +
+  #     theme_bw() +
+  #     theme(panel.grid.minor = element_blank(),
+  #           panel.grid.major.x=element_blank())
+  #   
+  #   ggplotly(p)
+  # })
+  # 
+  # calculate principal coordinates
+  pcoa_data <- eventReactive(input$pcoa_calculate, {
+    ape::pcoa(pcoa_dist(), correction = 'cailliez')
+  })
+  
+  # summary of pcoa
+  pcoa_summary <- eventReactive(input$pcoa_calculate, {
+    out <- as.matrix(pcoa_data()$values)
+    out <- out[,c('Eigenvalues', 'Relative_eig','Cumul_eig')]
+    rownames(out) <- paste0('PC', 1:nrow(out))
+    colnames(out) <- c('Eigenvalues','Variance Explained', 'Cumulative Variance Explained')
+    t(out)
+  })
+  
+  output$pcoa_summary <- DT::renderDataTable({
+    DT::datatable(pcoa_summary(), 
+                  extensions = 'Buttons',
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
+      DT::formatRound(column = colnames(pcoa_summary()), digits = 3)
+      
+  })
+  
+  # setting pcoa plot parameters
+  pcoa_pt_colour <- reactive({
+    if(input$pcoa_pt_colour == 'none')  'black'
+    else if(input$pcoa_pt_colour == 'cluster') 'pam_cluster'
+    else input$pcoa_pt_colour
+  })
+
+  pcoa_pt_shape <- reactive({
+    if(input$pcoa_pt_shape == 'none') 1
+    else pcoa_pt_shape <- input$pcoa_pt_shape
+  })
+  
+  pcoa_pt_size <- reactive(input$pcoa_pt_size)
+  pcoa_pt_alpha <- reactive(input$pcoa_pt_alpha)
+  
+  pcoa_label <- reactive({
+    if(input$pcoa_label == 'none') FALSE
+    else TRUE
+  })
+  
+  pcoa_label_by <- reactive({
+    if(input$pcoa_label == 'none') NULL
+    else input$pcoa_label
+  })
+  
+  pcoa_lab_colour <- reactive({
+    if(input$pcoa_lab_colour == 'none') NULL
+    else if(input$pcoa_lab_colour == 'cluster') 'pam_cluster'
+    else input$pcoa_lab_colour
+  })
+  
+  pcoa_lab_size <- reactive(input$pcoa_lab_size)
+  pcoa_lab_alpha <- reactive(input$pcoa_lab_alpha)
+  
+  pcoa_ell_colour <- reactive({
+    if(input$pcoa_ell_colour) 'pam_cluster'
+    else 'black'
+  })
+  
+  # plot pcoa plot
+  pdata_pcoa <- reactive({
+    req(input$pcoa_calculate)
+    pdata <- data.frame(pcoa_data()$vectors)
+    pdata$sampleID <- rownames(pcoa_data()$vectors)
+    pdata <- pdata %>%
+      inner_join(cluster_result() %>%
+                   mutate(pam_cluster = as.character(pam_cluster)), 
+                 'sampleID') %>%
+      inner_join(met(), 'sampleID')
+    pdata
+  })
+  
+  p_pcoa <- reactive({
+    xPCo <- paste('Axis', input$xPCo, sep = ".")
+    yPCo <- paste('Axis', input$yPCo, sep = ".")
+    
+    p <- ggplot(pdata_pcoa(), aes_string(x = xPCo, y = yPCo))
+    
+    p <- p +
+      ggfortify:::geom_factory(ggplot2::geom_point, pdata_pcoa(), 
+                               colour = pcoa_pt_colour(), size = pcoa_pt_size(), 
+                               alpha = pcoa_pt_alpha(), shape = pcoa_pt_shape())
+    
+    if(input$pcoa_ellipse) {
+      p <- p +
+        ggfortify:::geom_factory(ggplot2::stat_ellipse, pdata_pcoa(),
+                                 group = 'pam_cluster',
+                                 colour = pcoa_ell_colour(),
+                                 linetype = input$pcoa_ell_line,
+                                 type = input$pcoa_ell_type,
+                                 level = input$pcoa_ell_ci)
+    }
+    
+    p <- ggfortify:::plot_label(p = p, data = pdata_pcoa(), label = pcoa_label(), 
+                                label.label = pcoa_label_by(), 
+                                label.colour = pcoa_lab_colour(), 
+                                label.alpha = pcoa_lab_alpha(), 
+                                label.size = pcoa_lab_size())
+    
+    xvar <- round(pcoa_data()$values$Broken_stick[input$xPCo]*100, 2)
+    yvar <- round(pcoa_data()$values$Broken_stick[input$yPCo]*100, 2)
+    p <- p + 
+      theme_bw(12) +
+      xlab(sprintf('PCo %s (%s%%)', input$xPCo, xvar)) +
+      ylab(sprintf("PCo %s (%s%%)", input$yPCo, yvar))
+    
+    p
+  })
+  
+  output$pcoa_plot <- renderPlotly({
+    ggplotly(p_pcoa())
+  })
+
+  output$dl_pcoa_original <- downloadHandler(
+    fname <- function() {"ov_pcoa.png"}, 
+    content <- function(file) {ggsave(file, plot=p_pcoa())}
+  )
+  
+  output$dl_pcoa_html <- downloadHandler(
+    fname <- function() {"ov_pcoa.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_pcoa())), file)
+    }
+  )
+  
+  output$dl_pcoa_data <- downloadHandler(
+    fname <- function() {"ov_pcoadata.zip"}, 
+    content <- function(file) {
+      # put together pcoa data to write to file
+      to_save <- pcoa_data()
+      to_save[['pcoa_plotdata']] <- pdata_pcoa()
+
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      
+      to_zip <- sprintf('ov_pcoa%s.csv',names(to_save))
+      for(i in 1:length(to_zip)) {
+        write.csv(to_save, to_zip[i])  
+      }
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
+  
+  output$dl_pcoa_rds <- downloadHandler(
+    fname <- function() {"ov_pcoa.rds"},
+    content <- function(file) {
+      saveRDS(p_pcoa(), file)
+    }
+  )
+  
+  output$dl_pcoa_all <- downloadHandler(
+    fname <- function() {"ov_pcoa.zip"},
+    content <- function(file) {
+      # put together pcoa data to write to file
+      to_save <- pcoa_data()
+      to_save[['pcoa_plotdata']] <- pdata_pcoa()
+      
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      
+      to_zip <- c("ov_pcoa.png", "ov_pcoa.html","ov_pcoa.rds",
+                  sprintf('ov_pcoa%s.csv',names(to_save)))
+      
+      # writing temp files
+      ggsave(to_zip[1], plot=p_pcoa())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_pcoa())), to_zip[2])
+      saveRDS(p_pcoa(), to_zip[3])
+      for(i in 1:length(to_save)) {
+        write.csv(to_save, to_zip[i+3])  
+      }
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   # calculate alpha diversity---------------------------------------------------
 
   div_result <- eventReactive(input$alpha_calculate, {
@@ -771,7 +1440,21 @@ mod_overview_server <- function(input, output, session, improxy){
     }
   })
   
-  pdata <- eventReactive(input$alpha_calculate, {
+  # perform statistical tests on alpha values ********PICK UP HERE**********
+  alpha_stat_validate <- function(input) {
+    if(any(input == 'anova')) {
+      
+    }
+  }
+  alpha_stat <- eventReactive(input$alpha_calculate, {
+    
+    # validate selected tests
+
+  })
+  
+  
+  # plot alpha diversity
+  pdata_alpha <- eventReactive(input$alpha_calculate, {
     met() %>%
       arrange(sampleID) %>%
       mutate_all(as.character) %>%
@@ -779,20 +1462,22 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   output$alpha_table <- DT::renderDataTable({
-    DT::datatable(pdata() %>% rename(!!input$alpha_method := alpha_value),
-                  options = list(scrollX = TRUE))
+    DT::datatable(pdata_alpha() %>% rename(!!input$alpha_method := alpha_value),
+                  extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
   })
   
-  output$alpha_plot <- renderPlotly({
+  p_alpha <- reactive({
     req(input$alpha_grp)
-    xorder <- pdata() %>%
+    xorder <- pdata_alpha() %>%
       group_by(.data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value)) %>%
       distinct(.data[[input$alpha_grp]], alpha_avg) %>%
       ungroup() %>%
       mutate(x = forcats::fct_reorder(.data[[input$alpha_grp]], desc(alpha_avg)))
     
-    pdata_ordered <- pdata() %>%
+    pdata_ordered <- pdata_alpha() %>%
       group_by(.data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value),
              x = factor(.data[[input$alpha_grp]], levels = levels(xorder$x))) %>%
@@ -806,7 +1491,7 @@ mod_overview_server <- function(input, output, session, improxy){
     if(min(n_grp) > 5) {
       p <- p +
         geom_point(aes(group = .data[[input$alpha_grp]]), alpha = 0.8) +
-        stat_boxplot(aes(group = .data[[input$alpha_grp]]))
+        geom_violin(aes(group = .data[[input$alpha_grp]]), fill = NA)
     }
     else {
       p <- p +
@@ -814,25 +1499,73 @@ mod_overview_server <- function(input, output, session, improxy){
     }
     
     ytitle <- c("Shannon-Weaver Index (H)"="shannon",
-              "Simpson Index (D1)" = "simpson",
-              "Shannon (H'), q = 1" = "shannon_d",
-              "Inverse Simpson (D2), q = 2" = "invsimpson",
-              "Species Richness (S), q = 0" = "richness",
-              "Species Evenness (J)" = "evenness")
+                "Simpson Index (D1)" = "simpson",
+                "Shannon (H'), q = 1" = "shannon_d",
+                "Inverse Simpson (D2), q = 2" = "invsimpson",
+                "Species Richness (S), q = 0" = "richness",
+                "Species Evenness (J)" = "evenness")
     p <- p +
       theme_bw() +
       xlab(input$alpha_grp) +
       ylab(names(ytitle[ytitle == input$alpha_method])) +
       theme(axis.text.x = element_text(angle = 90))
     
-    ggplotly(p)
+    p
+  })
+  output$alpha_plot <- renderPlotly({
+    ggplotly(p_alpha())
   })
   
+  output$dl_alpha_original <- downloadHandler(
+    fname <- function() {"ov_alpha.png"}, 
+    content <- function(file) {ggsave(file, plot=p_alpha())}
+  )
+  
+  output$dl_alpha_html <- downloadHandler(
+    fname <- function() {"ov_alpha.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_alpha())), file)
+    }
+  )
+  
+  output$dl_alpha_data <- downloadHandler(
+    fname <- function() {"ov_alpha.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_alpha(), file)
+    }
+  )
+  
+  output$dl_alpha_rds <- downloadHandler(
+    fname <- function() {"ov_alpha.rds"},
+    content <- function(file) {
+      saveRDS(p_alpha(), file)
+    }
+  )
+  
+  output$dl_alpha_all <- downloadHandler(
+    fname <- function() {"ov_alpha.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("ov_alpha.png", "ov_alpha.html","ov_alpha.csv", "ov_alpha.rds")
+      ggsave(to_zip[1], plot=p_alpha())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_alpha())), to_zip[2])
+      write.csv(pdata_alpha(), to_zip[3])
+      saveRDS(p_alpha(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   # calculate heatmap-----------------------------------------------------------
   # calculate sample clustering
   samp_hclust <- reactive({
     req(input$hmap_calculate)
-    hclust(dist(t(asv_transform()), method = input$dist_method), 
+    hclust(vegan::vegdist(t(asv_transform()), method = input$dist_method), 
            method = input$hclust_method)
   })
   
@@ -842,7 +1575,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   # sample dendrogram
-  observe({
+  p_dend_samp <- reactive({
     req(input$hmap_samp_k, input$hmap_samp_colour)
     if(input$hmap_samp_colour == 'none') category <- NULL
     else category <- input$hmap_samp_colour
@@ -854,27 +1587,73 @@ mod_overview_server <- function(input, output, session, improxy){
       category = category,
       label.category = input$hmap_samp_label,
       id = 'sampleID')
+    p
+  })
+
+  output$sample_dendro_plot <- renderPlotly({
+    label_data <- ggplot_build(p_dend_samp())$data[[2]]
     
-    p_legend <- cowplot::get_legend(p)
-    
-    output$sample_dendro_plot <- renderPlotly({
-      label_data <- ggplot_build(p)$data[[2]]
-      
-      ggplotly(p + theme(legend.position = 'none')) %>% 
-        style(text = label_data$label, textposition = "middle right")
-    })
-    
-    output$sample_dendro_leg <- renderPlot({
-      grid::grid.draw(p_legend)
-    })
+    ggplotly(p_dend_samp() + theme(legend.position = 'none')) %>% 
+      style(text = label_data$label, textposition = "middle right")
   })
   
+  output$sample_dendro_leg <- renderPlot({
+    p_legend <- cowplot::get_legend(p_dend_samp())
+    grid::grid.draw(p_legend)
+  })
+
+  output$dl_dend_samp_original <- downloadHandler(
+    fname <- function() {"ov_dend_samp.png"}, 
+    content <- function(file) {ggsave(file, plot=p_dend_samp())}
+  )
+  
+  output$dl_dend_samp_html <- downloadHandler(
+    fname <- function() {"ov_dend_samp.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_samp())), file)
+    }
+  )
+  
+  output$dl_dend_samp_data <- downloadHandler(
+    fname <- function() {"ov_dend_samp.csv"}, 
+    content <- function(file) {
+      readr::write_csv(samp_ddata(), file)
+    }
+  )
+  
+  output$dl_dend_samp_rds <- downloadHandler(
+    fname <- function() {"ov_dend_samp.rds"},
+    content <- function(file) {
+      saveRDS(p_dend_samp(), file)
+    }
+  )
+  
+  output$dl_dend_samp_all <- downloadHandler(
+    fname <- function() {"ov_dend_samp.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("ov_dend_samp.png", "ov_dend_samp.html",
+                  "ov_dend_samp.csv", "ov_dend_samp.rds")
+      ggsave(to_zip[1], plot=p_dend_samp())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_samp())), to_zip[2])
+      write.csv(samp_ddata(), to_zip[3])
+      saveRDS(p_dend_samp(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   
   # calculate asv clustering
   
   asv_hclust <- reactive({
     req(input$hmap_calculate)
-    hclust(dist(asv_transform(), method = input$dist_method),
+    hclust(vegan::vegdist(asv_transform(), method = input$dist_method),
            method = input$hclust_method)
   })
   
@@ -884,7 +1663,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   # asv dendrogram
-  observe({
+  p_dend_asv <- reactive({
     req(input$hmap_asv_k, input$hmap_asv_colour)
     if(input$hmap_asv_colour == 'none') category <- NULL
     else category <- input$hmap_asv_colour
@@ -897,19 +1676,66 @@ mod_overview_server <- function(input, output, session, improxy){
       label.category = input$hmap_asv_label,
       category = category,
       id = 'Taxon')
-    
-    p_legend <- cowplot::get_legend(p)
-    
-    output$asv_dendro_plot <- renderPlotly({
-      label_data <- ggplot_build(p)$data[[2]]
-      ggplotly(p + theme(legend.position = 'none')) %>% 
-        style(text = label_data$label, textposition = "middle right")
-    })
-    
-    output$asv_dendro_leg <- renderPlot({
-      grid::grid.draw(p_legend)
-    })
   })
+
+  output$asv_dendro_plot <- renderPlotly({
+    label_data <- ggplot_build(p_dend_asv())$data[[2]]
+    ggplotly(p_dend_asv() + theme(legend.position = 'none')) %>% 
+      style(text = label_data$label, textposition = "middle right")
+  })
+  
+  output$asv_dendro_leg <- renderPlot({
+    p_legend <- cowplot::get_legend(p_dend_asv())
+    grid::grid.draw(p_legend)
+  })
+  
+  
+  output$dl_dend_asv_original <- downloadHandler(
+    fname <- function() {"ov_dend_asv.png"}, 
+    content <- function(file) {ggsave(file, plot=p_dend_asv())}
+  )
+  
+  output$dl_dend_asv_html <- downloadHandler(
+    fname <- function() {"ov_dend_asv.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_asv())), file)
+    }
+  )
+  
+  output$dl_dend_asv_data <- downloadHandler(
+    fname <- function() {"ov_dend_asv.csv"}, 
+    content <- function(file) {
+      readr::write_csv(asv_ddata(), file)
+    }
+  )
+  
+  output$dl_dend_asv_rds <- downloadHandler(
+    fname <- function() {"ov_dend_asv.rds"},
+    content <- function(file) {
+      saveRDS(p_dend_asv(), file)
+    }
+  )
+  
+  output$dl_dend_asv_all <- downloadHandler(
+    fname <- function() {"ov_dend_asv.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("ov_dend_asv.png", "ov_dend_asv.html",
+                  "ov_dend_asv.csv", "ov_dend_asv.rds")
+      ggsave(to_zip[1], plot=p_dend_asv())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_asv())), to_zip[2])
+      write.csv(asv_ddata(), to_zip[3])
+      saveRDS(p_dend_asv(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   
   # set heatmap orientation
   hmap_data <- reactive({
@@ -929,6 +1755,7 @@ mod_overview_server <- function(input, output, session, improxy){
   hmap <- reactive({
     heatmapr(
       x = hmap_data(), 
+      distfun = vegan::vegdist,
       dist_method = input$dist_method,
       hclust_method = input$hclust_method,
       dendrogram = 'both',
@@ -945,6 +1772,49 @@ mod_overview_server <- function(input, output, session, improxy){
     heatmaply(hmap(), node_type = 'heatmap', colors = 'RdYlBu',
               key.title = 'Normalized\nRelative Abundance') 
   })
+  
+  output$dl_hmap_html <- downloadHandler(
+    fname <- function() {"ov_hmap.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(heatmaply(hmap(), 
+                                        node_type = 'heatmap', colors = 'RdYlBu',
+                                        key.title = 'Normalized\nRelative Abundance'), 
+                              file)
+    }
+  )
+  
+  output$dl_hmap_data <- downloadHandler(
+    fname <- function() {"ov_hmap.csv"}, 
+    content <- function(file) {
+      readr::write_csv(hmap_data(), file)
+    }
+  )
+  
+  output$dl_hmap_rds <- downloadHandler(
+    fname <- function() {"ov_hmap.rds"},
+    content <- function(file) {
+      saveRDS(hmap(), file)
+    }
+  )
+  
+  output$dl_hmap_all <- downloadHandler(
+    fname <- function() {"ov_hmap.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("ov_hmap.html","ov_hmap.csv", "ov_hmap.rds")
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_hmap())), to_zip[2])
+      write.csv(asv_ddata(), to_zip[3])
+      saveRDS(p_hmap(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
 }
 
 ## To be copied in the UI

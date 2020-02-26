@@ -17,6 +17,8 @@
 #' @import dplyr
 #' @import tidyr
 #' @import shinyFiles
+#' @import shinyWidgets
+#' @import shinyjqui
 #' 
 mod_qc_ui <- function(id){
   ns <- NS(id)
@@ -50,7 +52,7 @@ mod_qc_ui <- function(id){
       )),
       # dashboard---------------------------------------------------------------
       dashboardBody(
-        box(width = '100%', br(),br(), br(),
+        box(width = '100%', height = 'auto', br(),br(), br(),
           
           # fluidRow(
           #   box(width = 12, h3('Check'),
@@ -69,8 +71,33 @@ mod_qc_ui <- function(id){
                 column(width = 12,
                       h1("dada2 filtering reads"),
                       tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
-                      shinyjqui::jqui_resizable(plotlyOutput(ns('plot_filt')))
-                      ))
+                      column(width = 1, style = 'padding:0px;', dropdown(
+                        size = 'xs', icon = icon('save'), inline = TRUE, 
+                        style = 'material-circle', width = 160,
+                        animate = animateOptions(
+                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                        
+                        downloadBttn(ns('dl_filt_original'), 
+                                     list(icon('file-image'), "Original plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_filt_html'), 
+                                     list(icon('file-code'), "Interactive plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_filt_data'), 
+                                     list(icon('file-alt'), "Plot data"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_filt_rds'), 
+                                     list(icon('file-prescription'), "RDS"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_filt_all'), 
+                                     list(icon('file-archive'), "All"),
+                                     size = 'xs', style = 'minimal')
+                      )),
+                      column(width = 11, style = 'padding:0px;', 
+                             jqui_resizable(
+                               plotlyOutput(ns('plot_filt'), width = '100%', height = 'auto'))
+                      )))
               ),
             # denoising-----------------------------------------------------------
             tabItem(
@@ -80,8 +107,33 @@ mod_qc_ui <- function(id){
                       h1("De-replication, sample inference, merging and chimera removal"),
                       tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
                       br(),
-                      shinyjqui::jqui_resizable(plotlyOutput(ns('plot_nochim')))
-                      ))
+                      column(width = 1, style = 'padding:0px;', dropdown(
+                        size = 'xs', icon = icon('save'), inline = TRUE, 
+                        style = 'material-circle', width = 160,
+                        animate = animateOptions(
+                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                        
+                        downloadBttn(ns('dl_nochim_original'), 
+                                     list(icon('file-image'), "Original plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nochim_html'), 
+                                     list(icon('file-code'), "Interactive plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nochim_data'), 
+                                     list(icon('file-alt'), "Plot data"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nochim_rds'), 
+                                     list(icon('file-prescription'), "RDS"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nochim_all'), 
+                                     list(icon('file-archive'), "All"),
+                                     size = 'xs', style = 'minimal')
+                      )),
+                      column(width = 11, style = 'padding:0px;', 
+                             jqui_resizable(
+                               plotlyOutput(ns('plot_nochim'), width = '100%', height = 'auto'))
+                      )))
               ),
             
             # ASV Prevalence------------------------------------------------------
@@ -91,15 +143,94 @@ mod_qc_ui <- function(id){
                 column(width = 12,
                       h1("Number of ASVs called per sample and their prevalence"),
                       tags$div("A useful metric is the number of ASVs that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of ASVs per sample we also plot the prevalence of these ASVs i.e. the proportion of samples that each ASV is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of suprious ASVs i.e. low prevalence and low abundance."),
-                      shinyjqui::jqui_resizable(plotlyOutput(ns('plot_nasv'))),
+                      column(width = 1, style = 'padding:0px;', dropdown(
+                        size = 'xs', icon = icon('save'), inline = TRUE, 
+                        style = 'material-circle', width = 160,
+                        animate = animateOptions(
+                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                        
+                        downloadBttn(ns('dl_nasv_original'), 
+                                     list(icon('file-image'), "Original plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nasv_html'), 
+                                     list(icon('file-code'), "Interactive plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nasv_data'), 
+                                     list(icon('file-alt'), "Plot data"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nasv_rds'), 
+                                     list(icon('file-prescription'), "RDS"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_nasv_all'), 
+                                     list(icon('file-archive'), "All"),
+                                     size = 'xs', style = 'minimal')
+                      )),
+                      column(width = 11, style = 'padding:0px;',
+                             jqui_resizable(
+                               plotlyOutput(ns('plot_nasv'), width = '100%', height = 'auto'))),
                       br(),
+                      column(width = 6, style = 'padding:0px;', 
+                        h4('Distribution of ASV Prevalence'),
+                        column(width = 1, style = 'padding:0px;', 
+                          dropdown(
+                            size = 'xs', icon = icon('save'), inline = TRUE, 
+                            style = 'material-circle', width = 160,
+                           animate = animateOptions(
+                             enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                             exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                           
+                           downloadBttn(ns('dl_preval_original'), 
+                                        list(icon('file-image'), "Original plot"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_preval_html'), 
+                                        list(icon('file-code'), "Interactive plot"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_preval_data'), 
+                                        list(icon('file-alt'), "Plot data"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_preval_rds'), 
+                                        list(icon('file-prescription'), "RDS"),
+                                        size = 'xs', style = 'minimal'), br(),
+                           downloadBttn(ns('dl_preval_all'), 
+                                        list(icon('file-archive'), "All"),
+                                        size = 'xs', style = 'minimal'))
+                        ),
+                        column(width = 10, style = 'padding:0px;', 
+                          jqui_resizable(
+                            plotlyOutput(
+                              ns('plot_prevalence'), width = '100%', height = 'auto'))
+                        )
+                      ),
                       column(width = 6, 
-                             tags$b('Distribution of ASV Prevalence'),
-                             shinyjqui::jqui_resizable(
-                               plotlyOutput(ns('plot_prevalence')))),
-                      column(width = 6, 
-                             tags$b('Prevalence of ASV with respects to Relative Abundance'),
-                             shinyjqui::jqui_resizable(plotlyOutput(ns('plot_spurious'))))
+                             h4('Prevalence of ASV with respects to Relative Abundance'),
+                             column(width = 1, style = 'padding:0px;', dropdown(
+                               size = 'xs', icon = icon('save'), inline = TRUE, 
+                               style = 'material-circle', width = 160,
+                               animate = animateOptions(
+                                 enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                                 exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                               
+                               downloadBttn(ns('dl_spur_original'), 
+                                            list(icon('file-image'), "Original plot"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_spur_html'), 
+                                            list(icon('file-code'), "Interactive plot"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_spur_data'), 
+                                            list(icon('file-alt'), "Plot data"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_spur_rds'), 
+                                            list(icon('file-prescription'), "RDS"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_spur_all'), 
+                                            list(icon('file-archive'), "All"),
+                                            size = 'xs', style = 'minimal')
+                             )),
+                             column(width=10, style = 'padding:0px;',
+                                    jqui_resizable(
+                                      plotlyOutput(ns('plot_spurious'), 
+                                                   width = '100%', height = 'auto'))))
                       ))
               ),
             
@@ -135,11 +266,37 @@ mod_qc_ui <- function(id){
                              DT::dataTableOutput(ns('tax_distrib_table'))),
                       column(width = 12,
                              h2('Distribution of Taxa'),
-                             shinyjqui::jqui_resizable(
-                               plotlyOutput(ns('tax_distribution')))),
+                             column(width = 1, style = 'padding:0px;', dropdown(
+                               size = 'xs', icon = icon('save'), inline = TRUE, 
+                               style = 'material-circle', width = 160,
+                               animate = animateOptions(
+                                 enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                                 exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                               
+                               downloadBttn(ns('dl_taxdistr_original'), 
+                                            list(icon('file-image'), "Original plot"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_taxdistr_html'), 
+                                            list(icon('file-code'), "Interactive plot"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_taxdistr_data'), 
+                                            list(icon('file-alt'), "Plot data"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_taxdistr_rds'), 
+                                            list(icon('file-prescription'), "RDS"),
+                                            size = 'xs', style = 'minimal'), br(),
+                               downloadBttn(ns('dl_taxdistr_all'), 
+                                            list(icon('file-archive'), "All"),
+                                            size = 'xs', style = 'minimal')
+                             )),
+                             column(width = 11, style = 'padding:0px;',
+                                    jqui_resizable(
+                                      plotlyOutput(ns('tax_distribution'), 
+                                                   width = '100%', height = 'auto')))),
                       column(width = 12,
                              h2('Percent assigned:'),
-                             shinyjqui::jqui_resizable(plotlyOutput(ns('perc_assigned')))))
+                             jqui_resizable(
+                               plotlyOutput(ns('perc_assigned'), width = '100%', height = 'auto'))))
                       
               )),
             
@@ -152,12 +309,63 @@ mod_qc_ui <- function(id){
                       tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
                       br(),
                       tags$b('Total read counts across sample or sample groups'),
-                      shinyjqui::jqui_resizable(plotlyOutput(ns('group_distribution'))),
+                      column(width = 1, style = 'padding:0px;', dropdown(
+                        size = 'xs', icon = icon('save'), inline = TRUE, 
+                        style = 'material-circle', width = 160,
+                        animate = animateOptions(
+                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                        
+                        downloadBttn(ns('dl_grpdistr_original'), 
+                                     list(icon('file-image'), "Original plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_grpdistr_html'), 
+                                     list(icon('file-code'), "Interactive plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_grpdistr_data'), 
+                                     list(icon('file-alt'), "Plot data"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_grpdistr_rds'), 
+                                     list(icon('file-prescription'), "RDS"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_grpdistr_all'), 
+                                     list(icon('file-archive'), "All"),
+                                     size = 'xs', style = 'minimal')
+                      )),
+                      column(width = 11, style = 'padding:0px;',
+                             jqui_resizable(
+                               plotlyOutput(ns('group_distribution'), width = '100%', height = 'auto'))),
                       br(),
                       tags$div("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
                       br(),
                       tags$b("Distribution of average read counts across sample groups"),
-                      shinyjqui::jqui_resizable(plotlyOutput(ns('sample_distribution'))))
+                      column(width = 1, style = 'padding:0px;', dropdown(
+                        size = 'xs', icon = icon('save'), inline = TRUE, 
+                        style = 'material-circle', width = 160,
+                        animate = animateOptions(
+                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                        
+                        downloadBttn(ns('dl_samdistr_original'), 
+                                     list(icon('file-image'), "Original plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_samdistr_html'), 
+                                     list(icon('file-code'), "Interactive plot"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_samdistr_data'), 
+                                     list(icon('file-alt'), "Plot data"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_samdistr_rds'), 
+                                     list(icon('file-prescription'), "RDS"),
+                                     size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_samdistr_all'), 
+                                     list(icon('file-archive'), "All"),
+                                     size = 'xs', style = 'minimal')
+                      )),
+                      column(width = 11, style = 'padding:0px;',
+                             jqui_resizable(
+                               plotlyOutput(ns('sample_distribution'), 
+                                            width = '100%', height = 'auto'))))
               ))
           )
         )
@@ -227,66 +435,217 @@ mod_qc_server <- function(input, output, session, improxy){
   # Filtering-------------------------------------------------------------------
   # define reads.in as the difference between the starting number and the finishing number. This enables visualisation in a stacked bar chart
   
-  output$plot_filt <- renderPlotly({
-    pdata <- qc_filtered() %>%
+  pdata_filt <- reactive({
+    qc_filtered() %>%
       gather(key = 'variable', value = 'value', -sample) %>%
       group_by(variable) %>%
       mutate(sample = forcats::fct_reorder(sample, -value))
-
-    p <- ggplot(pdata, aes(x=reorder(sample, as.numeric(sample)),
-                            y=value, fill=variable)) +
-         geom_bar(stat="identity") +
-         scale_fill_manual(name = NULL, values=c("red4", "blue4")) +
-         theme_bw(12) +
-         theme(axis.text.x=element_text(angle=90)) +
-         xlab("Sample") + 
-         ylab("Number of reads")
+  })
+  p_filt <- reactive({
+    p <- ggplot(pdata_filt(), aes(x=reorder(sample, as.numeric(sample)),
+                           y=value, fill=variable)) +
+      geom_bar(stat="identity") +
+      scale_fill_manual(name = NULL, values=c("red4", "blue4")) +
+      theme_bw(12) +
+      theme(axis.text.x=element_text(angle=90)) +
+      xlab("Sample") + 
+      ylab("Number of reads")
+    p
+  })
+  output$plot_filt <- renderPlotly({
     
-    ggplotly(p) %>%
+    ggplotly(p_filt()) %>%
       layout(legend = list(orientation = 'h', x = 0.5, y = -0.5))
   })
   
+  output$dl_filt_original <- downloadHandler(
+    fname <- function() {"qc_filtered.png"}, 
+    content <- function(file) {ggsave(file, plot=p_filt())}
+  )
+  
+  output$dl_filt_html <- downloadHandler(
+    fname <- function() {"qc_filtered.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_filt())), file)
+    }
+  )
+  
+  output$dl_filt_data <- downloadHandler(
+    fname <- function() {"qc_filtered.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_filt(), file)
+    }
+  )
+  
+  output$dl_filt_rds <- downloadHandler(
+    fname <- function() {"qc_filtered.rds"},
+    content <- function(file) {
+      saveRDS(p_filt(), file)
+    }
+  )
+
+  output$dl_filt_all <- downloadHandler(
+    fname <- function() {"qc_filtered.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_filtered.png", "qc_filtered.html",
+                  "qc_filtered.csv", "qc_filtered.rds")
+      ggsave(to_zip[1], plot=p_filt())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_filt())), to_zip[2])
+      write.csv(pdata_filt(), to_zip[3])
+      saveRDS(p_filt(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+      }
+  )
+  
   # Chimera removal-------------------------------------------------------------
-  output$plot_nochim <- renderPlotly({
-    
-    pdata <- qc_nochim() %>% 
+  pdata_nochim <- reactive({
+    qc_nochim() %>% 
       gather(key = 'variable', value = 'value', -sample) %>%
       group_by(variable) %>%
       mutate(sample = forcats::fct_reorder(sample, -value))
-    
-    p <- ggplot(pdata, aes(x=sample, y=value, colour = variable)) +
+  })
+  p_nochim <- reactive({
+    p <- ggplot(pdata_nochim(), aes(x=sample, y=value, colour = variable)) +
       geom_point(alpha = 0.6) +
       theme_bw(12) +
       scale_colour_discrete(name = NULL) +
       theme(axis.text.x = element_text(angle=90)) +
       xlab("Sample") + 
       ylab("Number of reads")
+    p
+  })
+  
+  output$plot_nochim <- renderPlotly({
     
-    ggplotly(p) %>%
+    ggplotly(p_nochim()) %>%
       layout(legend = list(orientation = 'h', x = 0.5, y = -0.5))
   })
   
+  output$dl_nochim_original <- downloadHandler(
+    fname <- function() {"qc_nochim.png"}, 
+    content <- function(file) {ggsave(file, plot=p_nochim())}
+  )
+  
+  output$dl_nochim_html <- downloadHandler(
+    fname <- function() {"qc_nochim.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_nochim())), file)
+    }
+  )
+  
+  output$dl_nochim_data <- downloadHandler(
+    fname <- function() {"qc_nochim.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_nochim(), file)
+    }
+  )
+  
+  output$dl_nochim_rds <- downloadHandler(
+    fname <- function() {"qc_nochim.rds"},
+    content <- function(file) {
+      saveRDS(p_nochim(), file)
+    }
+  )
+  
+  output$dl_nochim_all <- downloadHandler(
+    fname <- function() {"qc_nochim.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_nochim.png", "qc_nochim.html",
+                  "qc_nochim.csv", "qc_nochim.rds")
+      ggsave(to_zip[1], plot=p_nochim())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_nochim())), to_zip[2])
+      write.csv(pdata_nochim(), to_zip[3])
+      saveRDS(p_nochim(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   
   # prevalence of ASVs across samples-----------------------------------------
-  output$plot_nasv <- renderPlotly({
-    pdata <- work() %>%
+  pdata_nasv <- reactive({
+    work() %>%
       group_by(sampleID) %>%
       distinct(sampleID, ASV) %>%
       summarize(n_asv = n()) %>%
       ungroup() %>%
       mutate(sampleID = fct_reorder(sampleID, -n_asv))
-      
-
-    y_breaks <- seq(0, max(pdata$n_asv), 10)
-    p <- ggplot(pdata, aes(x = sampleID, y = n_asv)) +
+  })
+  
+  p_nasv <- reactive({
+    ggplot(pdata_nasv(), aes(x = sampleID, y = n_asv)) +
       geom_bar(stat = 'identity') +
       xlab('sampleID') +
       ylab('Number of ASVs') +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
-    
-    ggplotly(p)
   })
+  
+  output$plot_nasv <- renderPlotly({
+    ggplotly(p_nasv())
+  })
+  
+  
+  output$dl_nasv_original <- downloadHandler(
+    fname <- function() {"qc_nasv.png"}, 
+    content <- function(file) {ggsave(file, plot=p_nasv())}
+  )
+  
+  output$dl_nasv_html <- downloadHandler(
+    fname <- function() {"qc_nasv.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_nasv())), file)
+    }
+  )
+  
+  output$dl_nasv_data <- downloadHandler(
+    fname <- function() {"qc_nasv.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_nasv(), file)
+    }
+  )
+  
+  output$dl_nasv_rds <- downloadHandler(
+    fname <- function() {"qc_nasv.rds"},
+    content <- function(file) {
+      saveRDS(p_nasv(), file)
+    }
+  )
+  
+  output$dl_nasv_all <- downloadHandler(
+    fname <- function() {"qc_nasv.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_nasv.png", "qc_nasv.html",
+                  "qc_nasv.csv", "qc_nasv.rds")
+      ggsave(to_zip[1], plot=p_nasv())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_nasv())), to_zip[2])
+      write.csv(pdata_nasv(), to_zip[3])
+      saveRDS(p_nasv(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   
   # calculate prevalence
   pprev <- function(d){
@@ -308,25 +667,77 @@ mod_qc_server <- function(input, output, session, improxy){
       do(pprev(.))
   })
   
-  output$plot_prevalence <- renderPlotly({
-    
-    # tally frequency of prevalence values
+  # tally frequency of prevalence values
+  pdata_preval <- reactive({
     pdata <- as.data.frame(table(prevalence()$Prevalence))
     pdata$Var1 <- as.numeric(as.character(pdata$Var1))
- 
-    p <- ggplot(pdata, aes(x = Var1, y = Freq)) +
+    pdata
+  })
+  
+  p_preval <- reactive({
+    p <- ggplot(pdata_preval(), aes(x = Var1, y = Freq)) +
       geom_bar(stat = 'identity') +
       xlab('Prevalence of ASV across Samples (%)') +
       ylab('Number of ASVs') +
       scale_x_continuous(breaks = seq(0,100, 10), labels = seq(0, 100, 10),
                          limits = c(-2,102)) +
       theme_bw(12)
-    ggplotly(p)
+    p
   })
+  
+  output$plot_prevalence <- renderPlotly({
+    ggplotly(p_preval())
+  })
+  
+  output$dl_preval_original <- downloadHandler(
+    fname <- function() {"qc_preval.png"}, 
+    content <- function(file) {ggsave(file, plot=p_preval())}
+  )
+  
+  output$dl_preval_html <- downloadHandler(
+    fname <- function() {"qc_preval.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_preval())), file)
+    }
+  )
+  
+  output$dl_preval_data <- downloadHandler(
+    fname <- function() {"qc_preval.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_preval(), file)
+    }
+  )
+  
+  output$dl_preval_rds <- downloadHandler(
+    fname <- function() {"qc_preval.rds"},
+    content <- function(file) {
+      saveRDS(p_preval(), file)
+    }
+  )
+  
+  output$dl_preval_all <- downloadHandler(
+    fname <- function() {"qc_preval.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_preval.png", "qc_preval.html",
+                  "qc_preval.csv", "qc_preval.rds")
+      ggsave(to_zip[1], plot=p_preval())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_preval())), to_zip[2])
+      write.csv(pdata_preval(), to_zip[3])
+      saveRDS(p_preval(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
 
-  output$plot_spurious <- renderPlotly({
-    
-    pdata <- work() %>%
+  pdata_spur <- reactive({
+    work() %>%
       group_by(sampleID) %>%
       mutate(tot_count = sum(read_count),
              rel_abund = read_count / tot_count * 100) %>%
@@ -335,16 +746,67 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(avg_abund = mean(rel_abund)) %>%
       left_join(prevalence(), 'ASV') %>%
       distinct(avg_abund, Prevalence)
-    
-    p <- ggplot(pdata, aes(x = avg_abund, y = Prevalence)) +
+  })
+  
+  p_spur <- reactive({
+    p <- ggplot(pdata_spur(), aes(x = avg_abund, y = Prevalence)) +
       geom_point(size = 3, alpha = 0.6) +
       scale_y_continuous(limits=c(0,100)) +
       xlab('Mean Relative Abundance (%)') +
       ylab('Prevalence of ASV across Samples (%)') +
       theme_bw(12)
-    ggplotly(p)
+    p
+  })
+  output$plot_spurious <- renderPlotly({
+    ggplotly(p_spur())
   })
 
+  output$dl_spur_original <- downloadHandler(
+    fname <- function() {"qc_spur.png"}, 
+    content <- function(file) {ggsave(file, plot=p_spur())}
+  )
+  
+  output$dl_spur_html <- downloadHandler(
+    fname <- function() {"qc_spur.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_spur())), file)
+    }
+  )
+  
+  output$dl_spur_data <- downloadHandler(
+    fname <- function() {"qc_spur.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_spur(), file)
+    }
+  )
+  
+  output$dl_spur_rds <- downloadHandler(
+    fname <- function() {"qc_spur.rds"},
+    content <- function(file) {
+      saveRDS(p_spur(), file)
+    }
+  )
+  
+  output$dl_spur_all <- downloadHandler(
+    fname <- function() {"qc_spur.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_nochim.png", "qc_nochim.html",
+                  "qc_nochim.csv", "qc_nochim.rds")
+      ggsave(to_zip[1], plot=p_nochim())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_nochim())), to_zip[2])
+      write.csv(pdata_nochim(), to_zip[3])
+      saveRDS(p_nochim(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   # read count distribution of taxa---------------------------------------------
   # customize count data based on selected taxonomic level
 
@@ -372,12 +834,13 @@ mod_qc_server <- function(input, output, session, improxy){
   output$tax_distrib_table <- DT::renderDataTable({
     out <- tax_distrb_df()
     colnames(out) <- c(input$tax_level, "Read Count", "Relative Abundance")
-    DT::datatable(out, options = list(scrollX = TRUE))
+    DT::datatable(out,  extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
   })
   
-  output$tax_distribution <- renderPlotly({
-    
-    p <- ggplot(tax_distrb_df(), 
+  p_taxdistr <- reactive({
+    ggplot(tax_distrb_df(), 
                 aes(x = 1, y = agg_perc, fill = !!as.symbol(input$tax_level),
                     colour = !!as.symbol(input$tax_level))) +
       geom_bar(stat = 'identity') +
@@ -388,11 +851,59 @@ mod_qc_server <- function(input, output, session, improxy){
       theme(axis.text.x = element_blank(),
             axis.title.x = element_blank(),
             axis.ticks.x = element_blank())
-    
-    ggplotly(p) 
+  })
+  
+  output$tax_distribution <- renderPlotly({
+    ggplotly(p_taxdistr()) 
   })
   
   
+  output$dl_taxdistr_original <- downloadHandler(
+    fname <- function() {"qc_taxdistr.png"}, 
+    content <- function(file) {ggsave(file, plot=p_taxdistr())}
+  )
+  
+  output$dl_taxdistr_html <- downloadHandler(
+    fname <- function() {"qc_taxdistr.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_taxdistr())), file)
+    }
+  )
+  
+  output$dl_taxdistr_data <- downloadHandler(
+    fname <- function() {"qc_taxdistr.csv"}, 
+    content <- function(file) {
+      readr::write_csv(tax_distrb_df(), file)
+    }
+  )
+  
+  output$dl_taxdistr_rds <- downloadHandler(
+    fname <- function() {"qc_taxdistr.rds"},
+    content <- function(file) {
+      saveRDS(p_taxdistr(), file)
+    }
+  )
+  
+  output$dl_taxdistr_all <- downloadHandler(
+    fname <- function() {"qc_taxdistr.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_taxdistr.png", "qc_taxdistr.html",
+                  "qc_taxdistr.csv", "qc_taxdistr.rds")
+      ggsave(to_zip[1], plot=p_taxdistr())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_taxdistr())), to_zip[2])
+      write.csv(pdata_taxdistr(), to_zip[3])
+      saveRDS(p_taxdistr(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
   # evaluate number ASVs assigned to taxonomy level
   n_assigned <- reactive({
     
@@ -423,27 +934,77 @@ mod_qc_server <- function(input, output, session, improxy){
   
   # read count distribution of samples------------------------------------------
 
-  output$group_distribution <- renderPlotly({
-    
-    pdata <- work() %>%
+  pdata_grpdistr <- reactive({
+    work() %>%
       inner_join(met(), 'sampleID') %>%
       group_by(.data[[input$sample_select]]) %>%
-      summarize(group_tot = sum(read_count)) 
-
-    p <- ggplot(pdata, aes(x = .data[[input$sample_select]], y = group_tot)) +
+      summarize(group_tot = sum(read_count))
+  })
+  
+  p_grpdistr <- reactive({
+    p <- ggplot(pdata_grpdistr(), aes(x = .data[[input$sample_select]], y = group_tot)) +
       geom_bar(stat = 'identity') +
       xlab(input$sample_select) +
       ylab('Total read count within group') +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
+  })
+  
+  output$group_distribution <- renderPlotly({
     
-    ggplotly(p)
+    ggplotly(p_grpdistr())
       
   })
   
-  output$sample_distribution <- renderPlotly({
-    
-    pdata <- work() %>%
+  output$dl_grpdistr_original <- downloadHandler(
+    fname <- function() {"qc_grpdistr.png"}, 
+    content <- function(file) {ggsave(file, plot=p_grpdistr())}
+  )
+  
+  output$dl_grpdistr_html <- downloadHandler(
+    fname <- function() {"qc_grpdistr.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_grpdistr())), file)
+    }
+  )
+  
+  output$dl_grpdistr_data <- downloadHandler(
+    fname <- function() {"qc_grpdistr.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_grpdistr(), file)
+    }
+  )
+  
+  output$dl_grpdistr_rds <- downloadHandler(
+    fname <- function() {"qc_grpdistr.rds"},
+    content <- function(file) {
+      saveRDS(p_grpdistr(), file)
+    }
+  )
+  
+  output$dl_grpdistr_all <- downloadHandler(
+    fname <- function() {"qc_grpdistr.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_grpdistr.png", "qc_grpdistr.html",
+                  "qc_grpdistr.csv", "qc_grpdistr.rds")
+      ggsave(to_zip[1], plot=p_grpdistr())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_grpdistr())), to_zip[2])
+      write.csv(pdata_grpdistr(), to_zip[3])
+      saveRDS(p_grpdistr(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
+  
+  pdata_samdistr <- reactive({
+    work() %>%
       inner_join(met() %>% mutate_all(as.factor), 'sampleID') %>%
       mutate(sampleID = as.factor(sampleID)) %>%
       group_by(sampleID) %>%
@@ -455,19 +1016,72 @@ mod_qc_server <- function(input, output, session, improxy){
              x = as.numeric(selected_var), xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
       select(-Taxon, -sequence, -(Kingdom:Species), -ASV, -read_count) %>%
       distinct()
-    
-    p <- ggplot(pdata, aes(x = x, y = sample_tot)) +
+  })
+  
+  
+  p_samdistr <- reactive({
+    ggplot(pdata_samdistr(), aes(x = x, y = sample_tot)) +
       geom_segment(aes(x = xavg1, xend = xavg2, y = avg, yend = avg)) +
       geom_point(alpha = 0.6) +
-      scale_x_continuous(breaks = seq(1, length(levels(pdata$selected_var))),
-                         labels = levels(pdata$selected_var)) +
+      scale_x_continuous(breaks = seq(1, length(levels(pdata_samdistr()$selected_var))),
+                         labels = levels(pdata_samdistr()$selected_var)) +
       xlab(input$sample_select) +
       ylab('Mean read count within group') +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
-    
-    ggplotly(p)
   })
+  
+  output$sample_distribution <- renderPlotly({
+    ggplotly(p_samdistr())
+  })
+  
+  
+  output$dl_samdistr_original <- downloadHandler(
+    fname <- function() {"qc_samdistr.png"}, 
+    content <- function(file) {ggsave(file, plot=p_samdistr())}
+  )
+  
+  output$dl_samdistr_html <- downloadHandler(
+    fname <- function() {"qc_samdistr.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_samdistr())), file)
+    }
+  )
+  
+  output$dl_samdistr_data <- downloadHandler(
+    fname <- function() {"qc_samdistr.csv"}, 
+    content <- function(file) {
+      readr::write_csv(pdata_samdistr(), file)
+    }
+  )
+  
+  output$dl_samdistr_rds <- downloadHandler(
+    fname <- function() {"qc_samdistr.rds"},
+    content <- function(file) {
+      saveRDS(p_samdistr(), file)
+    }
+  )
+  
+  output$dl_samdistr_all <- downloadHandler(
+    fname <- function() {"qc_samdistr.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("qc_samdistr.png", "qc_samdistr.html",
+                  "qc_samdistr.csv", "qc_samdistr.rds")
+      ggsave(to_zip[1], plot=p_samdistr())
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_samdistr())), to_zip[2])
+      write.csv(pdata_samdistr(), to_zip[3])
+      saveRDS(p_samdistr(), to_zip[4])
+      
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
 }
     
 ## To be copied in the UI

@@ -143,7 +143,7 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
     if(loadings.arrow) {
       p <- p + ggplot2::geom_segment(data = loadings.data, mapping = loadings.mapping, 
                             arrow = grid::arrow(length = grid::unit(8, "points")), 
-                            colour = 'grey50')  
+                            colour = 'grey50', alpha = loadings.alpha)
     }
     
     

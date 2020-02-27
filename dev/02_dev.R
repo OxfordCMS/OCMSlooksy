@@ -16,6 +16,12 @@ golem::add_module( name = "explore" ) # Exploratory analysis
 ## 2.2 Add dependencies
 
 usethis::use_package( "thinkr" ) # To call each time you need a new package
+# golem:use_recommended_deps(recommended = c("shiny", "DT", "htmltools", "golem",
+#                                            "dplyr", "tidyr", "ggfortify",
+#                                            "plotly", "ggdendro", "heatmaply",
+#                                            "shinyWidgets", "shinyjs", "shinyjqui",
+#                                            "shinydashboard", "stringr", "forcats",
+#                                            "RSQLite", "shinyFiles"))
 
 ## 2.3 Add tests
 

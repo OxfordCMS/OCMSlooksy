@@ -27,55 +27,66 @@ mod_import_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(id = 'menu',
                     br(),
-        menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, 
-                 startExpanded = TRUE,
-                 # Use sample dataset?
-                 shinyWidgets::materialSwitch(
-                   ns("example"), "Example dataset",
-                   inline = TRUE, value = TRUE,
-                   status = 'success'),
-                 br(),
-                 conditionalPanel(
-                   condition = paste0("input['", ns('example'), "'] == false"),
-                   # Upload sqlite database file
-                   fileInput(ns("db_file"), "Database file", accept = '.db')),
-                 br(),
-                 
-                 # Launch data
-                 actionButton(ns('launch'), 'Launch Dataset'),
-                 br(), hr()),
-        
-        menuItemOutput(ns('toc1')),
-        menuItemOutput(ns('toc2')),
-        conditionalPanel(
-          condition = "input.menu === 'tax_preview'",
-          br(), hr(),
-          div(style="text-align: center",
-              tags$b('Input controls')),
-          fixedPanel(
-            radioButtons(ns('tax_level'), 'Taxonomic level',
-                         c('ASV'='Taxon','Phylum'='Phylum','Class'='Class',
-                           'Order'='Order','Family'='Family','Genus'='Genus',
-                           'Species'='Species'),
-                         selected = 'Taxon')))
+          menuItem('Task Info', tabName = 'info_tab_import', 
+                   icon = icon('info-circle'), selected = TRUE),
+          menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, 
+                   startExpanded = TRUE,
+                   # Use sample dataset?
+                   shinyWidgets::materialSwitch(
+                     ns("example"), "Example dataset",
+                     inline = TRUE, value = TRUE, status = 'success'),
+                   br(),
+                   conditionalPanel(
+                     condition = paste0("input['", ns('example'), "'] == false"),
+                     # Upload sqlite database file
+                     fileInput(ns("db_file"), "Database file", accept = '.db')),
+                   br(),
+                   
+                   # Launch data
+                   actionButton(ns('launch'), 'Launch Dataset'),
+                   br(), hr()),
+          
+          menuItemOutput(ns('toc1')),
+          menuItemOutput(ns('toc2')),
+          conditionalPanel(
+            condition = "input.menu === 'tax_preview'",
+            br(), hr(),
+            div(style="text-align: center",
+                tags$b('Input controls')),
+            fixedPanel(
+              radioButtons(ns('tax_level'), 'Taxonomic level',
+                           c('ASV'='Taxon','Phylum'='Phylum','Class'='Class',
+                             'Order'='Order','Family'='Family','Genus'='Genus',
+                             'Species'='Species'),
+                           selected = 'Taxon')))
         )),
       
       dashboardBody(
         box(width = "100%",
             br(),br(), br(),
-        # Dataset at a glance---------------------------------------------------
-        h1('Dataset at a glance'),
+          
         # fluidRow(
         #   box(width = 12, h3('Check'),
         #       verbatimTextOutput(ns('check')))),
         tabItems(
           
+          # info tab------------------------------------------------------------
+          tabItem(
+            tabName = 'info_tab_import',
+            column(width = 12,
+              h1('Import Data'),
+              tags$div("Importing the 16S rRNA gene sequences and associated data tables is the first step in the analysis. This is done be uploading the database file produced by the OCMS 16S analysis pipeline. If your data has not been processed through this pipeline, a helper tool is available to help you format your data accordingly (see below for details).", br(),
+              h2('Additional Resources'),
+              "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
+              a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", br(),
+              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"))
+          ),
           # Preview of metadata-------------------------------------------------
           tabItem(
             tabName = 'metadata',
             fluidRow(
               column(width = 12,
-                     h2('Preview of metadata'),
+                     h1('Preview of metadata'),
                      DT::DTOutput(ns('metadata_preview'))))),
           
           # Preview of read count-----------------------------------------------
@@ -83,7 +94,7 @@ mod_import_ui <- function(id){
             tabName = 'tax_preview',
             fluidRow(
               column(width = 12,
-                     h2('Preview of read counts'),
+                     h1('Preview of read counts'),
                      DT::DTOutput(ns('read_preview')))),
             )
           )
@@ -178,17 +189,19 @@ mod_import_server <- function(input, output, session, parent_session) {
     })
     
     # Summary of metadata-------------------------------------------------------
-    output$metadata_summary <- renderPrint({
-      out <- apply(met, 2, as.factor)
-      summary(out, maxsum = nrow(met))
-      })
-    output$metadata_preview <- DT::renderDT(met)
+    output$metadata_preview <- DT::renderDT({
+      DT::datatable(met, extensions = 'Buttons', 
+                    options = list(scrollX = TRUE, 
+                                   dom = 'Blfrtip', buttons = c('copy','csv')))
+    })
 
     # preview of count table----------------------------------------------------
     output$read_preview <- DT::renderDT({
       out <- wip() %>%
         spread(sampleID, agg_count)
-      DT::datatable(out, options = list(scrollX = TRUE))
+      DT::datatable(out, extensions = 'Buttons', 
+                    options = list(scrollX = TRUE, 
+                                   dom = 'Blfrtip', buttons = c('copy','csv')))
     })
  
   })

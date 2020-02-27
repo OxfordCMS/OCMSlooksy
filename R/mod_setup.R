@@ -46,8 +46,6 @@ mod_setup_ui <- function(id){
                                        'Include select samples' = 'include',
                                        'Exclude select samples' = 'exclude'), 
                            selected = 'all'),
-              
-              br(), br(), br(),
               actionButton(ns('submit_sample'), "Filter samples")
             )),
           
@@ -74,7 +72,6 @@ mod_setup_ui <- function(id){
                                   'selection' = 'asv_by_select'),
                       selected = character(0))
                     )),
-              br(), br(), br(),
               actionButton(ns('submit_asv'), "Filter ASVs"))),
             
           # transform counts----------------------------------------------------
@@ -90,7 +87,6 @@ mod_setup_ui <- function(id){
                                              'centre log-ratio' = 'clr',
                                              'additive log-ratio' = 'alr'),
                                  selected = 'clr'),
-              br(),br(),br(),
               actionButton(ns('submit_transform'), "Transform Counts")
             )
            
@@ -193,6 +189,9 @@ mod_setup_ui <- function(id){
                 tabName = 'transform_asv',
                 column(width = 12,
                        h1('Transform Read Counts'),
+                       tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link].", 
+                                br(), 
+                                "Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data. Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."),
                        DT::dataTableOutput(ns('preview_transform')))
               )
             )
@@ -244,7 +243,7 @@ mod_setup_server <- function(input, output, session, improxy){
   
   output$sample_options_ui <- DT::renderDataTable({
     out <- met()
-    DT::datatable(out, options = list(scrollX = TRUE))
+    DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
   })
   
   all_sample <- reactive(met()$sampleID)
@@ -288,7 +287,9 @@ mod_setup_server <- function(input, output, session, improxy){
     })
     
     output$preview_sample <- DT::renderDataTable({
-      working_meta()
+      DT::datatable(working_meta(), extensions = 'Buttons', 
+                    options = list(scrollX = TRUE, 
+                                   dom = 'Blfrtip', buttons = c('copy','csv')))
     })
   })
   
@@ -376,7 +377,7 @@ mod_setup_server <- function(input, output, session, improxy){
       select(-Taxon, -sequence) %>%
       arrange(Kingdom, Phylum)
     
-    DT::datatable(out, options = list(scrollX = TRUE))
+    DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
   })
   
 
@@ -460,7 +461,9 @@ mod_setup_server <- function(input, output, session, improxy){
         select(-Taxon, -sequence) %>%
         arrange(Kingdom, Phylum)
       
-      DT::datatable(out, options = list(scrollX = TRUE))
+      DT::datatable(out, extensions = 'Buttons', 
+                    options = list(scrollX = TRUE, 
+                                   dom = 'Blfrtip', buttons = c('copy','csv')))
     })
   })
   
@@ -499,7 +502,9 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   
   output$preview_transform <- DT::renderDataTable({
-    DT::datatable(asv_transform(), options = list(scrollX = TRUE))
+    DT::datatable(asv_transform(), extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
   })
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({

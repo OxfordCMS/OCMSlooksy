@@ -43,6 +43,7 @@ app_ui <- function() {
 #' @import shiny
 golem_add_external_resources <- function(){
   
+  # tags$link(rel="stylesheet", type="text/css", href="www/custom.css")
   addResourcePath(
     'www', system.file('app/www', package = 'OCMSExplorer')
   )

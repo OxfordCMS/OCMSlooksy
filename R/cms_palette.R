@@ -3,7 +3,7 @@
 #'
 #' @param n  numeric; default 1. number of colours; cannot exceed 335
 #' @param preview logic; default FALSE; when set, gives preview of colour
-#' @param full logic; default FALSE; when set, returns all 74 colours
+#' @param full logic; default FALSE; when set, returns all 355 colours
 #' @import RColorBrewer
 #' @return vector of HEX colours, if full set to TRUE, gives all 335 colours, else gives n numbers
 

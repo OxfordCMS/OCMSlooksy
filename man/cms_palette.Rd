@@ -12,7 +12,7 @@ cms_palette(n = 1, preview = FALSE, full = FALSE)
 
 \item{preview}{logic; default FALSE; when set, gives preview of colour}
 
-\item{full}{logic; default FALSE; when set, returns all 74 colours}
+\item{full}{logic; default FALSE; when set, returns all 355 colours}
 }
 \value{
 vector of HEX colours, if full set to TRUE, gives all 335 colours, else gives n numbers

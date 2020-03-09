@@ -157,35 +157,33 @@ mod_import_server <- function(input, output, session, parent_session) {
       menuItem('Taxonomic Distribution', tabName = 'tax_preview')
     })
     
-    asv <- data_set()$species_abundance
+    asv <- data_set()$merged_abundance
     met <- data_set()$metadata
     tax <- data_set()$merged_taxonomy
     
-    # format taxonomy table
-    tax_format <- tax %>% 
-      dplyr::mutate(Taxon = paste(Phylum, Class, Order, Family, 
-                           Genus, Species, sep=";"))
-    tax_format$Taxon <- stringr::str_replace_all(tax_format$Taxon, "_", "__")
+    # change id in asv from sequence to featureID
+    asv <- asv %>%
+      left_join(tax %>% select(featureID, sequence), 'sequence') %>%
+      select(-sequence)
     
     # combine tables into working dataframe
     work <- asv %>%
-      gather('sampleID','read_count', -Taxon) %>%
-      inner_join(tax_format, by = 'Taxon') %>%
-      mutate(read_count = as.numeric(read_count))
-     
+      gather('sampleID','read_count', -featureID) %>%
+      inner_join(tax, by = 'featureID') %>%
+      select(-sequence) %>%
+      mutate(read_count = as.numeric(read_count)) %>%
+      ungroup()
     
     # customize count data based on selected taxonomic level--------------------
+    # keep featureid of most abundant taxon being aggregated
     wip <- reactive({
       work %>%
-        group_by(.data[[input$tax_level]], sampleID) %>%
         select(.data[[input$tax_level]], sampleID, read_count) %>%
-        summarise(agg_count = sum(read_count)) %>%
-        ungroup() %>%
-        group_by(sampleID) %>%
-        # adding arbitrary ASV number to use as sequence ID
-        mutate(ASV = paste('ASV', stringr::str_pad(1:n(), 3, pad = '0'), 
-                           sep = '')) %>% 
-        ungroup() 
+        group_by(.data[[input$tax_level]], sampleID) %>%
+        summarise(keepID = featureID[max(read_count)], 
+                  agg_count = sum(read_count)) %>%
+        rename('featureID' = keepID) %>%
+        ungroup()
     })
     
     # Summary of metadata-------------------------------------------------------

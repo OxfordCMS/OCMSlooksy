@@ -223,18 +223,6 @@ mod_setup_server <- function(input, output, session, improxy){
       gather('sampleID', 'read_count', -Taxon)
   })
   
-  format_tax <-  reactive({
-    tax() %>% 
-      mutate(Taxon = paste(Phylum, Class, Order, Family, 
-                         Genus, Species, sep=";"),
-             Taxon = stringr::str_replace_all(Taxon, "_", "__"),
-             # adding arbitrary ASV number to use as sequence ID
-             ASV = paste('ASV', stringr::str_pad(1:n(), 3, pad = '0'),
-                         sep = ''))
-  })
-  
- 
-  
   # subset samples--------------------------------------------------------------
   # show sample table
   observeEvent(input$sample_select_prompt, {
@@ -372,8 +360,8 @@ mod_setup_server <- function(input, output, session, improxy){
 
   # by selecting ASVs
   output$asv_table_select <- DT::renderDataTable({
-    out <- format_tax() %>%
-      left_join(asv(), 'Taxon') %>%
+    out <- tax() %>%
+      left_join(asv(), 'featureID') %>%
       select(-Taxon, -sequence) %>%
       arrange(Kingdom, Phylum)
     
@@ -419,14 +407,15 @@ mod_setup_server <- function(input, output, session, improxy){
     if(input$asv_filter_options == 'asv_by_select') {
       req(input$asv_table_select_rows_selected)
       
-      out <- format_tax() %>%
-        left_join(asv(), 'Taxon') %>%
+      out <- tax() %>%
+        left_join(asv(), 'featureID') %>%
+        select(-sequence) %>%
         arrange(Kingdom, Phylum) %>%
         slice(c(input$asv_table_select_rows_selected)) %>%
-        gather('sampleID', 'read_count', -Taxon)
+        gather('sampleID', 'read_count', -featureID)
     }
 
-    unique(out$Taxon)
+    unique(out$featureID)
   })
   
 
@@ -442,7 +431,7 @@ mod_setup_server <- function(input, output, session, improxy){
     if(input$asv_select_prompt == 'some') {
       req(input$asv_filter_options)
       asv_filt_samp() %>%
-        filter(!Taxon %in% to_remove())  
+        filter(!featureID %in% to_remove())  
     }
     else {
       asv_filt_samp()
@@ -455,7 +444,7 @@ mod_setup_server <- function(input, output, session, improxy){
     })
     
     output$preview_asv <- DT::renderDataTable({
-      out <- format_tax() %>%
+      out <- tax() %>%
         right_join(working_asv(), 'Taxon') %>%
         spread(sampleID, read_count) %>%
         select(-Taxon, -sequence) %>%
@@ -475,9 +464,12 @@ mod_setup_server <- function(input, output, session, improxy){
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)
     
-    asv_df <- as.data.frame(working_asv() %>% spread(sampleID, read_count))
-    rownames(asv_df) <- asv_df$Taxon
-    asv_df <- asv_df[,colnames(asv_df) != 'Taxon']
+    asv_df <- working_asv() %>% 
+      select(-Taxon, -sequence) %>% 
+      spread(sampleID, read_count, -featureID) %>%
+      as.data.frame()
+    rownames(asv_df) <- working_asv$featureID
+    asv_df <- asv_df[,colnames(asv_df) != 'featureID']
     
     if(input$transform_method == 'clr') {
       ## generate Monte Carlo samples from Dirichlet distribution
@@ -514,7 +506,7 @@ mod_setup_server <- function(input, output, session, improxy){
     list(metadata = working_meta(),
          asv = working_asv() %>% spread(sampleID, read_count),
          t_asv = asv_transform(),
-         tax = format_tax() %>% 
+         tax = tax() %>% 
            filter(Taxon %in% working_asv()$Taxon)
          )
   })

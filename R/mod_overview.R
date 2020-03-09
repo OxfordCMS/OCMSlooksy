@@ -43,9 +43,9 @@ mod_overview_ui <- function(id){
                 tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
                 uiOutput(ns('bar_x_ui')),
                 selectInput(ns('bar_tax'), 'Taxonomic level:',
-                            choices = c('ASV','Taxon','Phylum','Class','Order',
+                            choices = c('featureID','Taxon','Phylum','Class','Order',
                                         'Family','Genus','Species'),
-                            selected = 'ASV'),
+                            selected = 'featureID'),
                 radioButtons(ns('bar_y'), 'Response measure:',
                              c('Relative abundance' = 'rel_abund',
                                'Read count' = 'cnt_abund')))
@@ -520,7 +520,7 @@ mod_overview_ui <- function(id){
                                        selected = c('show_dendro_x', 'show_dendro_y'))),
                     column(width = 3,
                       selectInput(ns('hmap_tax_label'), 'Label taxa by:',
-                                  choices = c('ASV','Taxon','Species')))
+                                  choices = c('featureID','Taxon','Species')))
                   )),
                 column(width = 12,
                        column(width = 1, style = 'padding:0px;', dropdown(
@@ -582,17 +582,17 @@ mod_overview_server <- function(input, output, session, improxy){
   # putting data into one dataframe---------------------------------------------
   work <- reactive({
     clr_gather <- asv_transform()
-    clr_gather$Taxon <- rownames(clr_gather)
+    clr_gather$featureID <- rownames(clr_gather)
     clr_gather <- clr_gather %>%
       gather('sampleID', 'clr_count')
     
     asv_gather <- asv() %>% 
-      gather('sampleID','read_count', -Taxon) %>%
+      gather('sampleID','read_count', -featureID) %>%
       inner_join(clr_gather, 'sampleID')
     
     met() %>%
       inner_join(asv_gather, 'sampleID') %>%
-      inner_join(tax(), 'Taxon')
+      inner_join(tax(), 'featureID')
   })
   
   # toggle div for input controls-----------------------------------------------
@@ -743,12 +743,12 @@ mod_overview_server <- function(input, output, session, improxy){
   
   output$hmap_asv_label_ui <- renderUI({
     selectInput(ns('hmap_asv_label'), "Label:",
-                choices = colnames(tax()), selected = 'Taxon')
+                choices = colnames(tax()), selected = 'featureID')
   })
   
   output$hmap_asv_colour_ui <- renderUI({
     choices <- c('none', colnames(tax()))
-    choices <- choices[!choices %in% c('sequence','ASV','Taxon')]
+    choices <- choices[!choices %in% c('sequence','featureID','Taxon')]
     radioButtons(ns('hmap_asv_colour'), "Show taxonomy level:",
                  choices = choices, selected = 'none')
   })
@@ -834,7 +834,7 @@ mod_overview_server <- function(input, output, session, improxy){
     })  
 
     output$dl_bar_original <- downloadHandler(
-      fname <- function() {"ov_bar.png"}, 
+      fname <- function() {"ov_bar.tiff"}, 
       content <- function(file) {ggsave(file, plot=p_bar())}
     )
     
@@ -867,7 +867,7 @@ mod_overview_server <- function(input, output, session, improxy){
         # create temporary directory
         tmpdir <- tempdir()
         setwd(tempdir())
-        to_zip <- c("ov_bar.png", "ov_bar.html","ov_bar.csv", "ov_bar.rds")
+        to_zip <- c("ov_bar.tiff", "ov_bar.html","ov_bar.csv", "ov_bar.rds")
         ggsave(to_zip[1], plot=p_bar())
         htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), to_zip[2])
         write.csv(pdata_bar(), to_zip[3])
@@ -919,9 +919,9 @@ mod_overview_server <- function(input, output, session, improxy){
 
   load_data <- reactive({
     out <- as.data.frame(d_pcx()$rotation)
-    out$Taxon <- rownames(out)
-    out <- out %>% select('Taxon', xPC(), yPC()) %>%
-      left_join(tax(), 'Taxon')
+    out$featureID <- rownames(out)
+    out <- out %>% select('featureID', xPC(), yPC()) %>%
+      left_join(tax(), 'featureID')
     out <- out[, c(xPC(), yPC(), colnames(tax()))]
     out
   })
@@ -1090,7 +1090,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   output$dl_pca_original <- downloadHandler(
-    fname <- function() {"ov_pca.png"}, 
+    fname <- function() {"ov_pca.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_biplot())}
   )
   
@@ -1147,7 +1147,7 @@ mod_overview_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("ov_pca.png", "ov_pca.html","ov_pca.rds", 
+      to_zip <- c("ov_pca.tiff", "ov_pca.html","ov_pca.rds", 
                   sprintf("ov_pca-%s.csv", names(to_save)))
       ggsave(to_zip[1], plot=p_biplot())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), to_zip[2])
@@ -1341,7 +1341,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
 
   output$dl_pcoa_original <- downloadHandler(
-    fname <- function() {"ov_pcoa.png"}, 
+    fname <- function() {"ov_pcoa.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_pcoa())}
   )
   
@@ -1396,7 +1396,7 @@ mod_overview_server <- function(input, output, session, improxy){
       tmpdir <- tempdir()
       setwd(tempdir())
       
-      to_zip <- c("ov_pcoa.png", "ov_pcoa.html","ov_pcoa.rds",
+      to_zip <- c("ov_pcoa.tiff", "ov_pcoa.html","ov_pcoa.rds",
                   sprintf('ov_pcoa%s.csv',names(to_save)))
       
       # writing temp files
@@ -1416,9 +1416,9 @@ mod_overview_server <- function(input, output, session, improxy){
 
   div_result <- eventReactive(input$alpha_calculate, {
 
-    alpha_data <- asv() %>% select(-Taxon)
+    alpha_data <- asv() %>% select(-featureID)
     alpha_data <- as.data.frame(alpha_data)
-    rownames(alpha_data) <- asv()$Taxon
+    rownames(alpha_data) <- asv()$featureID
     
     if(input$alpha_method == 'shannon_d') {
       H <- vegan::diversity(alpha_data,index = 'shannon',
@@ -1517,7 +1517,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   output$dl_alpha_original <- downloadHandler(
-    fname <- function() {"ov_alpha.png"}, 
+    fname <- function() {"ov_alpha.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_alpha())}
   )
   
@@ -1550,7 +1550,7 @@ mod_overview_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("ov_alpha.png", "ov_alpha.html","ov_alpha.csv", "ov_alpha.rds")
+      to_zip <- c("ov_alpha.tiff", "ov_alpha.html","ov_alpha.csv", "ov_alpha.rds")
       ggsave(to_zip[1], plot=p_alpha())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_alpha())), to_zip[2])
       write.csv(pdata_alpha(), to_zip[3])
@@ -1603,7 +1603,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
 
   output$dl_dend_samp_original <- downloadHandler(
-    fname <- function() {"ov_dend_samp.png"}, 
+    fname <- function() {"ov_dend_samp.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_dend_samp())}
   )
   
@@ -1636,7 +1636,7 @@ mod_overview_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("ov_dend_samp.png", "ov_dend_samp.html",
+      to_zip <- c("ov_dend_samp.tiff", "ov_dend_samp.html",
                   "ov_dend_samp.csv", "ov_dend_samp.rds")
       ggsave(to_zip[1], plot=p_dend_samp())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_samp())), to_zip[2])
@@ -1675,7 +1675,7 @@ mod_overview_server <- function(input, output, session, improxy){
       metadata = tax(),
       label.category = input$hmap_asv_label,
       category = category,
-      id = 'Taxon')
+      id = 'featureID')
   })
 
   output$asv_dendro_plot <- renderPlotly({
@@ -1691,7 +1691,7 @@ mod_overview_server <- function(input, output, session, improxy){
   
   
   output$dl_dend_asv_original <- downloadHandler(
-    fname <- function() {"ov_dend_asv.png"}, 
+    fname <- function() {"ov_dend_asv.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_dend_asv())}
   )
   
@@ -1724,7 +1724,7 @@ mod_overview_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("ov_dend_asv.png", "ov_dend_asv.html",
+      to_zip <- c("ov_dend_asv.tiff", "ov_dend_asv.html",
                   "ov_dend_asv.csv", "ov_dend_asv.rds")
       ggsave(to_zip[1], plot=p_dend_asv())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_asv())), to_zip[2])

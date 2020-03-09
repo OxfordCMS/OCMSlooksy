@@ -808,6 +808,7 @@ mod_qc_server <- function(input, output, session, improxy){
   # rarefaction curve-----------------------------------------------------------
   # Check
   output$check <- renderPrint({
+    rare_df()
   })
   
   rare_df <- reactive({
@@ -818,7 +819,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
   output$plot_rarefaction <- renderPlotly({
-    p <- ggplot(rare_df, aes(x = agg_count, y = ))
+    # p <- ggplot(rare_df, aes(x = agg_count, y = ))
   })
   # read count distribution of taxa---------------------------------------------
   # customize count data based on selected taxonomic level

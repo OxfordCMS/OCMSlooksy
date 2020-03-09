@@ -34,7 +34,8 @@ mod_qc_ui <- function(id){
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
-          menuItem('ASV Prevalence', tabName = 'asv_prevalence'),
+          menuItem('featureID Prevalence', tabName = 'asv_prevalence'),
+          menuItem('featureID Rarefaction', tabName = 'rarefaction_tab'),
           menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
           menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
       
@@ -54,9 +55,9 @@ mod_qc_ui <- function(id){
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
           
-          # fluidRow(
-          #   box(width = 12, h3('Check'),
-          #       verbatimTextOutput(ns('check')))),
+          fluidRow(
+            box(width = 12, h3('Check'),
+                verbatimTextOutput(ns('check')))),
           tabItems(
               # main page---------------------------------------------------------
               tabItem(
@@ -136,13 +137,13 @@ mod_qc_ui <- function(id){
                       )))
               ),
             
-            # ASV Prevalence------------------------------------------------------
+            # featureID Prevalence------------------------------------------------------
             tabItem(
               tabName = 'asv_prevalence',
               fluidRow(
                 column(width = 12,
                       h1("Number of ASVs called per sample and their prevalence"),
-                      tags$div("A useful metric is the number of ASVs that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of ASVs per sample we also plot the prevalence of these ASVs i.e. the proportion of samples that each ASV is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of suprious ASVs i.e. low prevalence and low abundance."),
+                      tags$div("A useful metric is the number of ASVs that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of ASVs per sample we also plot the prevalence of these ASVs i.e. the proportion of samples that each featureID is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of suprious ASVs i.e. low prevalence and low abundance."),
                       column(width = 1, style = 'padding:0px;', dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
                         style = 'material-circle', width = 160,
@@ -171,7 +172,7 @@ mod_qc_ui <- function(id){
                                plotlyOutput(ns('plot_nasv'), width = '100%', height = 'auto'))),
                       br(),
                       column(width = 6, style = 'padding:0px;', 
-                        h4('Distribution of ASV Prevalence'),
+                        h4('Distribution of featureID Prevalence'),
                         column(width = 1, style = 'padding:0px;', 
                           dropdown(
                             size = 'xs', icon = icon('save'), inline = TRUE, 
@@ -203,7 +204,7 @@ mod_qc_ui <- function(id){
                         )
                       ),
                       column(width = 6, 
-                             h4('Prevalence of ASV with respects to Relative Abundance'),
+                             h4('Prevalence of featureID with respects to Relative Abundance'),
                              column(width = 1, style = 'padding:0px;', dropdown(
                                size = 'xs', icon = icon('save'), inline = TRUE, 
                                style = 'material-circle', width = 160,
@@ -233,25 +234,36 @@ mod_qc_ui <- function(id){
                                                    width = '100%', height = 'auto'))))
                       ))
               ),
-            
-            # taxonomy overview---------------------------------------------------
+            # rarefaction curve of number seq vs number of asv------------------
+            tabItem(
+              tabName = 'rarefaction_tab',
+              column(width = 12,
+                h1("featureID Rarefaction"),
+                tags$div("The number of sequence clusters identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
+                
+                jqui_resizable(
+                  plotlyOutput(ns('plot_rarefaction'),
+                               width = '100%', height = 'auto') %>% 
+                    shinycssloaders::withSpinner())
+              )
+            ),
+            # taxonomy overview-------------------------------------------------
             tabItem(
               tabName = 'tax_distribution_tab',
               fluidRow(
                 column(width = 12,
                       h1("Taxonomic Distribution"),
-                      tags$div("The next stage is to assign each of the amplicon sequence variants (ASV) to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
+                      tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
                     
                       column(width = 4,
                              br(), br(),
                              wellPanel(
                                # taxonomy level
                                radioButtons(ns('tax_level'), 'Taxonomic level',
-                                            c('ASV'='Taxon','Phylum'='Phylum',
-                                              'Class'='Class', 'Order'='Order',
-                                              'Family'='Family','Genus'='Genus',
-                                              'Species'='Species'),
-                                            selected = 'Taxon')),
+                                            c('featureID','Phylum', 'Class', 
+                                              'Order', 'Family', 'Genus', 
+                                              'Species'),
+                                            selected = 'featureID')),
                              br(),
                              tags$b('Number of samples:'),
                              textOutput(ns('n_sample'), inline = TRUE),
@@ -383,10 +395,7 @@ mod_qc_ui <- function(id){
 mod_qc_server <- function(input, output, session, improxy){
   ns <- session$ns 
   
-  # Check
-  output$check <- renderPrint({
-    
-  })
+
   
   # Render reactive widgets
   output$sample_select_ui <- renderUI({
@@ -406,29 +415,17 @@ mod_qc_server <- function(input, output, session, improxy){
   
   qc_nochim <- reactive({data_set()$qc_nochim})
   
-  asv <- reactive({data_set()$species_abundance})
+  asv <- reactive({data_set()$merged_abundance})
   met <- reactive({data_set()$metadata})
   tax <- reactive({data_set()$merged_taxonomy})
 
-  # format taxonomy table
-  tax_format <- reactive({
-    tax() %>% 
-      mutate(Taxon = paste(Phylum, Class, Order, Family, 
-                                Genus, Species, sep=";"),
-             Taxon = stringr::str_replace_all(Taxon, "_", "__"))
-  })
-  
   # combine tables into working dataframe
   work <- reactive({
     asv() %>%
-      gather('sampleID','read_count', -Taxon) %>%
-      inner_join(tax_format(), by = 'Taxon') %>%
-      mutate(read_count = as.numeric(read_count)) %>%
-      # adding arbitrary ASV number to use as sequence ID
-      group_by(sampleID) %>%
-      mutate(ASV = paste('ASV', stringr::str_pad(1:n(), 3, pad = '0'), 
-                         sep = '')) %>%
-      ungroup()
+      gather('sampleID','read_count', -featureID) %>%
+      inner_join(tax(), by = 'featureID') %>%
+      select(-sequence) %>%
+      mutate(read_count = as.numeric(read_count))
   })
   
 
@@ -459,7 +456,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   output$dl_filt_original <- downloadHandler(
-    fname <- function() {"qc_filtered.png"}, 
+    fname <- function() {"qc_filtered.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_filt())}
   )
   
@@ -492,7 +489,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_filtered.png", "qc_filtered.html",
+      to_zip <- c("qc_filtered.tiff", "qc_filtered.html",
                   "qc_filtered.csv", "qc_filtered.rds")
       ggsave(to_zip[1], plot=p_filt())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_filt())), to_zip[2])
@@ -530,7 +527,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   output$dl_nochim_original <- downloadHandler(
-    fname <- function() {"qc_nochim.png"}, 
+    fname <- function() {"qc_nochim.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_nochim())}
   )
   
@@ -563,7 +560,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_nochim.png", "qc_nochim.html",
+      to_zip <- c("qc_nochim.tiff", "qc_nochim.html",
                   "qc_nochim.csv", "qc_nochim.rds")
       ggsave(to_zip[1], plot=p_nochim())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_nochim())), to_zip[2])
@@ -580,7 +577,7 @@ mod_qc_server <- function(input, output, session, improxy){
   pdata_nasv <- reactive({
     work() %>%
       group_by(sampleID) %>%
-      distinct(sampleID, ASV) %>%
+      distinct(sampleID, featureID) %>%
       summarize(n_asv = n()) %>%
       ungroup() %>%
       mutate(sampleID = fct_reorder(sampleID, -n_asv))
@@ -601,7 +598,7 @@ mod_qc_server <- function(input, output, session, improxy){
   
   
   output$dl_nasv_original <- downloadHandler(
-    fname <- function() {"qc_nasv.png"}, 
+    fname <- function() {"qc_nasv.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_nasv())}
   )
   
@@ -634,7 +631,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_nasv.png", "qc_nasv.html",
+      to_zip <- c("qc_nasv.tiff", "qc_nasv.html",
                   "qc_nasv.csv", "qc_nasv.rds")
       ggsave(to_zip[1], plot=p_nasv())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_nasv())), to_zip[2])
@@ -657,13 +654,13 @@ mod_qc_server <- function(input, output, session, improxy){
     df <- d %>%
       filter(read_count > 0) 
     prev <- (nrow(df)/nsamples)*100
-    prev.df <- data.frame(ASV=unique(d$ASV), Prevalence=prev)
+    prev.df <- data.frame(featureID=unique(d$featureID), Prevalence=prev)
     return(prev.df)
   }
   
   prevalence <- reactive({
     work() %>%
-      group_by(ASV) %>%
+      group_by(featureID) %>%
       do(pprev(.))
   })
   
@@ -677,7 +674,7 @@ mod_qc_server <- function(input, output, session, improxy){
   p_preval <- reactive({
     p <- ggplot(pdata_preval(), aes(x = Var1, y = Freq)) +
       geom_bar(stat = 'identity') +
-      xlab('Prevalence of ASV across Samples (%)') +
+      xlab('Prevalence of featureID across Samples (%)') +
       ylab('Number of ASVs') +
       scale_x_continuous(breaks = seq(0,100, 10), labels = seq(0, 100, 10),
                          limits = c(-2,102)) +
@@ -690,7 +687,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   output$dl_preval_original <- downloadHandler(
-    fname <- function() {"qc_preval.png"}, 
+    fname <- function() {"qc_preval.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_preval())}
   )
   
@@ -723,7 +720,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_preval.png", "qc_preval.html",
+      to_zip <- c("qc_preval.tiff", "qc_preval.html",
                   "qc_preval.csv", "qc_preval.rds")
       ggsave(to_zip[1], plot=p_preval())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_preval())), to_zip[2])
@@ -742,9 +739,9 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(tot_count = sum(read_count),
              rel_abund = read_count / tot_count * 100) %>%
       ungroup() %>%
-      group_by(ASV) %>%
+      group_by(featureID) %>%
       mutate(avg_abund = mean(rel_abund)) %>%
-      left_join(prevalence(), 'ASV') %>%
+      left_join(prevalence(), 'featureID') %>%
       distinct(avg_abund, Prevalence)
   })
   
@@ -753,7 +750,7 @@ mod_qc_server <- function(input, output, session, improxy){
       geom_point(size = 3, alpha = 0.6) +
       scale_y_continuous(limits=c(0,100)) +
       xlab('Mean Relative Abundance (%)') +
-      ylab('Prevalence of ASV across Samples (%)') +
+      ylab('Prevalence of featureID across Samples (%)') +
       theme_bw(12)
     p
   })
@@ -762,7 +759,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
   output$dl_spur_original <- downloadHandler(
-    fname <- function() {"qc_spur.png"}, 
+    fname <- function() {"qc_spur.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_spur())}
   )
   
@@ -795,7 +792,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_nochim.png", "qc_nochim.html",
+      to_zip <- c("qc_nochim.tiff", "qc_nochim.html",
                   "qc_nochim.csv", "qc_nochim.rds")
       ggsave(to_zip[1], plot=p_nochim())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_nochim())), to_zip[2])
@@ -807,6 +804,22 @@ mod_qc_server <- function(input, output, session, improxy){
       setwd(mydir)
     }
   )
+  
+  # rarefaction curve-----------------------------------------------------------
+  # Check
+  output$check <- renderPrint({
+  })
+  
+  rare_df <- reactive({
+    mat <- asv() %>% select(-featureID)
+    rownames(mat) <- asv()$featureID
+    mat <- as.matrix(mat)
+    OCMSExplorer:::cms_rarefy(t(mat))
+  })
+
+  output$plot_rarefaction <- renderPlotly({
+    p <- ggplot(rare_df, aes(x = agg_count, y = ))
+  })
   # read count distribution of taxa---------------------------------------------
   # customize count data based on selected taxonomic level
 
@@ -859,7 +872,7 @@ mod_qc_server <- function(input, output, session, improxy){
   
   
   output$dl_taxdistr_original <- downloadHandler(
-    fname <- function() {"qc_taxdistr.png"}, 
+    fname <- function() {"qc_taxdistr.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_taxdistr())}
   )
   
@@ -892,7 +905,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_taxdistr.png", "qc_taxdistr.html",
+      to_zip <- c("qc_taxdistr.tiff", "qc_taxdistr.html",
                   "qc_taxdistr.csv", "qc_taxdistr.rds")
       ggsave(to_zip[1], plot=p_taxdistr())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_taxdistr())), to_zip[2])
@@ -957,7 +970,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   output$dl_grpdistr_original <- downloadHandler(
-    fname <- function() {"qc_grpdistr.png"}, 
+    fname <- function() {"qc_grpdistr.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_grpdistr())}
   )
   
@@ -990,7 +1003,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_grpdistr.png", "qc_grpdistr.html",
+      to_zip <- c("qc_grpdistr.tiff", "qc_grpdistr.html",
                   "qc_grpdistr.csv", "qc_grpdistr.rds")
       ggsave(to_zip[1], plot=p_grpdistr())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_grpdistr())), to_zip[2])
@@ -1014,7 +1027,7 @@ mod_qc_server <- function(input, output, session, improxy){
       group_by(.data[[input$sample_select]]) %>%
       mutate(group_tot = sum(read_count), avg = mean(sample_tot),
              x = as.numeric(selected_var), xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
-      select(-Taxon, -sequence, -(Kingdom:Species), -ASV, -read_count) %>%
+      select(-Taxon, -sequence, -(Kingdom:Species), -featureID, -read_count) %>%
       distinct()
   })
   
@@ -1037,7 +1050,7 @@ mod_qc_server <- function(input, output, session, improxy){
   
   
   output$dl_samdistr_original <- downloadHandler(
-    fname <- function() {"qc_samdistr.png"}, 
+    fname <- function() {"qc_samdistr.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_samdistr())}
   )
   
@@ -1070,7 +1083,7 @@ mod_qc_server <- function(input, output, session, improxy){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_samdistr.png", "qc_samdistr.html",
+      to_zip <- c("qc_samdistr.tiff", "qc_samdistr.html",
                   "qc_samdistr.csv", "qc_samdistr.rds")
       ggsave(to_zip[1], plot=p_samdistr())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_samdistr())), to_zip[2])

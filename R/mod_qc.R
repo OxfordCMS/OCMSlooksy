@@ -34,8 +34,8 @@ mod_qc_ui <- function(id){
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
-          menuItem('featureID Prevalence', tabName = 'asv_prevalence'),
-          menuItem('featureID Rarefaction', tabName = 'rarefaction_tab'),
+          menuItem('Sequence Prevalence', tabName = 'asv_prevalence'),
+          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab'),
           menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
           menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
       
@@ -142,8 +142,8 @@ mod_qc_ui <- function(id){
               tabName = 'asv_prevalence',
               fluidRow(
                 column(width = 12,
-                      h1("Number of ASVs called per sample and their prevalence"),
-                      tags$div("A useful metric is the number of ASVs that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of ASVs per sample we also plot the prevalence of these ASVs i.e. the proportion of samples that each featureID is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of suprious ASVs i.e. low prevalence and low abundance."),
+                      h1("Number of features called per sample and their prevalence"),
+                      tags$div("A useful metric is the number of features that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of features per sample we also plot the prevalence of these features i.e. the proportion of samples that each feature is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of spurious features i.e. low prevalence and low abundance."),
                       column(width = 1, style = 'padding:0px;', dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
                         style = 'material-circle', width = 160,
@@ -172,7 +172,7 @@ mod_qc_ui <- function(id){
                                plotlyOutput(ns('plot_nasv'), width = '100%', height = 'auto'))),
                       br(),
                       column(width = 6, style = 'padding:0px;', 
-                        h4('Distribution of featureID Prevalence'),
+                        h4('Distribution of Feature Prevalence'),
                         column(width = 1, style = 'padding:0px;', 
                           dropdown(
                             size = 'xs', icon = icon('save'), inline = TRUE, 
@@ -204,7 +204,7 @@ mod_qc_ui <- function(id){
                         )
                       ),
                       column(width = 6, 
-                             h4('Prevalence of featureID with respects to Relative Abundance'),
+                             h4('Prevalence of features with respects to Relative Abundance'),
                              column(width = 1, style = 'padding:0px;', dropdown(
                                size = 'xs', icon = icon('save'), inline = TRUE, 
                                style = 'material-circle', width = 160,
@@ -239,7 +239,7 @@ mod_qc_ui <- function(id){
               tabName = 'rarefaction_tab',
               column(width = 12,
                 h1("featureID Rarefaction"),
-                tags$div("The number of sequence clusters identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
+                tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
                 
                 jqui_resizable(
                   plotlyOutput(ns('plot_rarefaction'),
@@ -260,15 +260,15 @@ mod_qc_ui <- function(id){
                              wellPanel(
                                # taxonomy level
                                radioButtons(ns('tax_level'), 'Taxonomic level',
-                                            c('featureID','Phylum', 'Class', 
-                                              'Order', 'Family', 'Genus', 
-                                              'Species'),
+                                            c('featureID','Kingdom','Phylum',
+                                              'Class', 'Order', 'Family', 
+                                              'Genus','Species', 'Taxon'),
                                             selected = 'featureID')),
                              br(),
                              tags$b('Number of samples:'),
                              textOutput(ns('n_sample'), inline = TRUE),
                              br(),
-                             tags$b('Number of ASVs:'), 
+                             tags$b('Number of Features:'), 
                              textOutput(ns('n_asv'), inline = TRUE),
                              br(),
                              tags$b('Reference database:'), 
@@ -415,7 +415,7 @@ mod_qc_server <- function(input, output, session, improxy){
   
   qc_nochim <- reactive({data_set()$qc_nochim})
   
-  asv <- reactive({data_set()$merged_abundance})
+  asv <- reactive({data_set()$merged_abundance_id})
   met <- reactive({data_set()$metadata})
   tax <- reactive({data_set()$merged_taxonomy})
 
@@ -587,7 +587,7 @@ mod_qc_server <- function(input, output, session, improxy){
     ggplot(pdata_nasv(), aes(x = sampleID, y = n_asv)) +
       geom_bar(stat = 'identity') +
       xlab('sampleID') +
-      ylab('Number of ASVs') +
+      ylab('Number of Features') +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
   })
@@ -598,41 +598,41 @@ mod_qc_server <- function(input, output, session, improxy){
   
   
   output$dl_nasv_original <- downloadHandler(
-    fname <- function() {"qc_nasv.tiff"}, 
+    fname <- function() {"qc_nfeature.tiff"}, 
     content <- function(file) {ggsave(file, plot=p_nasv())}
   )
   
   output$dl_nasv_html <- downloadHandler(
-    fname <- function() {"qc_nasv.html"},
+    fname <- function() {"qc_nfeature.html"},
     content <- function(file) {
       htmlwidgets::saveWidget(as_widget(ggplotly(p_nasv())), file)
     }
   )
   
   output$dl_nasv_data <- downloadHandler(
-    fname <- function() {"qc_nasv.csv"}, 
+    fname <- function() {"qc_nfeature.csv"}, 
     content <- function(file) {
       readr::write_csv(pdata_nasv(), file)
     }
   )
   
   output$dl_nasv_rds <- downloadHandler(
-    fname <- function() {"qc_nasv.rds"},
+    fname <- function() {"qc_nfeature.rds"},
     content <- function(file) {
       saveRDS(p_nasv(), file)
     }
   )
   
   output$dl_nasv_all <- downloadHandler(
-    fname <- function() {"qc_nasv.zip"},
+    fname <- function() {"qc_nfeature.zip"},
     content <- function(file) {
       # save current directory
       mydir <- getwd()
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("qc_nasv.tiff", "qc_nasv.html",
-                  "qc_nasv.csv", "qc_nasv.rds")
+      to_zip <- c("qc_nfeature.tiff", "qc_nfeature.html",
+                  "qc_nfeature.csv", "qc_nfeature.rds")
       ggsave(to_zip[1], plot=p_nasv())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_nasv())), to_zip[2])
       write.csv(pdata_nasv(), to_zip[3])
@@ -750,7 +750,7 @@ mod_qc_server <- function(input, output, session, improxy){
       geom_point(size = 3, alpha = 0.6) +
       scale_y_continuous(limits=c(0,100)) +
       xlab('Mean Relative Abundance (%)') +
-      ylab('Prevalence of featureID across Samples (%)') +
+      ylab('Prevalence of features across Samples (%)') +
       theme_bw(12)
     p
   })
@@ -806,11 +806,7 @@ mod_qc_server <- function(input, output, session, improxy){
   )
   
   # rarefaction curve-----------------------------------------------------------
-  # Check
-  output$check <- renderPrint({
-    rare_df()
-  })
-  
+
   rare_df <- reactive({
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
@@ -921,13 +917,12 @@ mod_qc_server <- function(input, output, session, improxy){
   # evaluate number ASVs assigned to taxonomy level
   n_assigned <- reactive({
     
-    df <- select(tax(), -sequence)
+    df <- select(tax(), -sequence, -featureID, -Taxon)
     out <- data.frame(tax_class = colnames(df),
                       n_NA = apply(df, 2, function(x) sum(is.na(unique(x)))),
                       n_ass = apply(df, 2, function(x) sum(!is.na(unique(x)))))
     out
   })
-  
   
   output$perc_assigned <- renderPlotly({
     pdata <- n_assigned() %>%
@@ -939,8 +934,8 @@ mod_qc_server <- function(input, output, session, improxy){
     
     p <- ggplot(pdata, aes(x = tax_class, y = perc_assigned)) +
       geom_bar(stat = 'identity') +
-      xlab('Taxonomic level') +
-      ylab('Percent of ASVs classified') +
+      xlab('Taxonomic Level') +
+      ylab('Percent of Features Classified') +
       theme_bw(12)
     
     ggplotly(p)
@@ -1017,8 +1012,13 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+  # Check
+  output$check <- renderPrint({
+ 
+  })
   pdata_samdistr <- reactive({
-    work() %>%
+    asv() %>%
+      gather('sampleID', 'read_count', -featureID) %>%
       inner_join(met() %>% mutate_all(as.factor), 'sampleID') %>%
       mutate(sampleID = as.factor(sampleID)) %>%
       group_by(sampleID) %>%
@@ -1028,8 +1028,8 @@ mod_qc_server <- function(input, output, session, improxy){
       group_by(.data[[input$sample_select]]) %>%
       mutate(group_tot = sum(read_count), avg = mean(sample_tot),
              x = as.numeric(selected_var), xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
-      select(-Taxon, -sequence, -(Kingdom:Species), -featureID, -read_count) %>%
-      distinct()
+      select(-read_count, -featureID) %>%
+      distinct() 
   })
   
   

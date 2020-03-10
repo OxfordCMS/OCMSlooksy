@@ -55,19 +55,18 @@ mod_import_ui <- function(id){
                 tags$b('Input controls')),
             fixedPanel(
               radioButtons(ns('tax_level'), 'Taxonomic level',
-                           c('ASV'='Taxon','Phylum'='Phylum','Class'='Class',
-                             'Order'='Order','Family'='Family','Genus'='Genus',
-                             'Species'='Species'),
-                           selected = 'Taxon')))
+                           c('featureID', 'Kingdom','Phylum', 'Class',
+                             'Order', 'Family','Genus', 'Species', 'Taxon'),
+                           selected = 'featureID')))
         )),
       
       dashboardBody(
         box(width = "100%",
             br(),br(), br(),
           
-        # fluidRow(
-        #   box(width = 12, h3('Check'),
-        #       verbatimTextOutput(ns('check')))),
+        fluidRow(
+          box(width = 12, h3('Check'),
+              verbatimTextOutput(ns('check')))),
         tabItems(
           
           # info tab------------------------------------------------------------
@@ -113,11 +112,6 @@ mod_import_ui <- function(id){
 mod_import_server <- function(input, output, session, parent_session) {
   ns <- session$ns
   
-  # Check
-  output$check <- renderPrint({
-  
-  })
-  
   data_set <- eventReactive(input$example, {
     # read in database file-----------------------------------------------------
     if(input$example == FALSE) {
@@ -144,7 +138,9 @@ mod_import_server <- function(input, output, session, parent_session) {
       switch(input$example, OCMSExplorer::example_data)  }
   })
   
-  
+  # Check
+  output$check <- renderPrint({
+  })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
     
@@ -157,14 +153,9 @@ mod_import_server <- function(input, output, session, parent_session) {
       menuItem('Taxonomic Distribution', tabName = 'tax_preview')
     })
     
-    asv <- data_set()$merged_abundance
+    asv <- data_set()$merged_abundance_id
     met <- data_set()$metadata
     tax <- data_set()$merged_taxonomy
-    
-    # change id in asv from sequence to featureID
-    asv <- asv %>%
-      left_join(tax %>% select(featureID, sequence), 'sequence') %>%
-      select(-sequence)
     
     # combine tables into working dataframe
     work <- asv %>%
@@ -175,14 +166,12 @@ mod_import_server <- function(input, output, session, parent_session) {
       ungroup()
     
     # customize count data based on selected taxonomic level--------------------
-    # keep featureid of most abundant taxon being aggregated
+    # keep featureid and seqeuence of most abundant taxon being aggregated
     wip <- reactive({
       work %>%
         select(.data[[input$tax_level]], sampleID, read_count) %>%
         group_by(.data[[input$tax_level]], sampleID) %>%
-        summarise(keepID = featureID[max(read_count)], 
-                  agg_count = sum(read_count)) %>%
-        rename('featureID' = keepID) %>%
+        summarise(agg_count = sum(read_count)) %>%
         ungroup()
     })
     

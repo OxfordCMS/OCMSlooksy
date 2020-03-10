@@ -3,17 +3,18 @@
 usethis::use_data("example_data")
 
 save_dir <- "/gfs/devel/syen/OCMSExplorer/data-raw/"
+save_dir <- "~/OCMSExplorer/data-raw/"
 # create database
 con <- dbConnect(RSQLite::SQLite(), file.path(save_dir, "example_database.db"))
 
 # read in example data from csv files
 example_tables <- list.files(save_dir, ".csv")
-
+example_tables <- example_tables[1:2]
 for(i in 1:length(example_tables)) {
   
   entry <- read.csv(file.path(save_dir, example_tables[i]),
                     header = TRUE)
-  dbWriteTable(con, str_extract(example_tables[i], '.*(?=.csv)'), entry)
+  dbWriteTable(con, str_extract(example_tables[i], '.*(?=.csv)'), entry, overwrite = TRUE)
 }
 
 # read in data on filtering and removing chimeras and save as one table

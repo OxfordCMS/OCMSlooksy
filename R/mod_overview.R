@@ -43,8 +43,9 @@ mod_overview_ui <- function(id){
                 tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
                 uiOutput(ns('bar_x_ui')),
                 selectInput(ns('bar_tax'), 'Taxonomic level:',
-                            choices = c('featureID','Taxon','Phylum','Class','Order',
-                                        'Family','Genus','Species'),
+                            choices = c('featureID','Kingdom','Phylum',
+                                        'Class', 'Order', 'Family','Genus',
+                                        'Species', 'Taxon'),
                             selected = 'featureID'),
                 radioButtons(ns('bar_y'), 'Response measure:',
                              c('Relative abundance' = 'rel_abund',
@@ -58,7 +59,8 @@ mod_overview_ui <- function(id){
               width = 225,
               tags$div(style = "text-align: center", tags$b('PCA Parameters')),
               radioButtons(ns('pca_scale'), "Scale",
-                           choices = c("unit-variance scaling" = 'UV',
+                           choices = c("none" = "none",
+                                       "unit-variance scaling" = 'UV',
                                        "pareto scaling" = 'pareto',
                                        "vast scaling" = 'vast'),
                            selected = 'UV'),
@@ -337,7 +339,7 @@ mod_overview_ui <- function(id){
                       column(width = 3,
                         h4("Cluster aesthetics"),
                         uiOutput(ns('pcoa_nclust_ui')),
-                        checkboxInput(ns('pcoa_ell_colour'),"Colour by cluster",
+                        checkboxInput(ns('pcoa_ell_colour'),"Colour cluster ellipses",
                                       value = TRUE),
                         selectInput(ns('pcoa_ell_type'), "Type of ellipse",
                                     choices = c('t-distribution' = 't',
@@ -684,14 +686,14 @@ mod_overview_server <- function(input, output, session, improxy){
   ## render controls - PCoA-----------------------------------------------------
   output$pcoa_nclust_ui <- renderUI({
     numericInput(ns('pcoa_nclust'), "Number of clusters, k", 
-                 value = 2, min = 2, max = nrow(met())-1)
+                 value = 2, min = 2, max = nrow(met())-1, step = 1)
   })
   output$xPCo_ui <- renderUI({
-    numericInput(ns('xPCo'), "Principal Coordinate, x-axis", min = 1, max = length(met()$sampleID), step = 2,
+    numericInput(ns('xPCo'), "Principal Coordinate, x-axis", min = 1, max = length(met()$sampleID), step = 1,
                  value = 1)
   })
   output$yPCo_ui <- renderUI({
-    numericInput(ns('yPCo'), "Principal Coordinate, y-axis", min = 1, max = length(met()$sampleID), step = 2,
+    numericInput(ns('yPCo'), "Principal Coordinate, y-axis", min = 1, max = length(met()$sampleID), step = 1,
                  value = 2)
   })
   
@@ -886,10 +888,10 @@ mod_overview_server <- function(input, output, session, improxy){
     if(input$pca_scale == 'UV') {
       apply(asv_transform(), 2, function(x) (x - mean(x)) / sd(x))
     }
-    if(input$pca_scale == 'pareto') {
+    else if(input$pca_scale == 'pareto') {
       apply(asv_transform(), 2, function(x) (x - mean(x)) / sqrt(x))
     }
-    if(input$pca_scale == 'vast') {
+    else if(input$pca_scale == 'vast') {
       apply(asv_transform(), 2, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
@@ -1163,12 +1165,9 @@ mod_overview_server <- function(input, output, session, improxy){
   )
   # calculate pcoa--------------------------------------------------------------
   # sample clustering
-  output$check <- renderPrint({
-    pcoa_data()
-  })
-  
+
   ## samples as rows
-  pcoa_dist <- eventReactive(input$pcoa_calculate, {
+  pcoa_dist <- reactive({
     vegan::vegdist(t(asv_transform()), method = input$pcoa_dist)
   })
   
@@ -1180,7 +1179,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   # identify clusters based on distances
-  cluster_result <- eventReactive(input$pcoa_calculate, {
+  cluster_result <- reactive({
     data.frame(sampleID = rownames(as.matrix(pcoa_dist())),
                pam_cluster = as.vector(cluster::pam(pcoa_dist(), 
                                                 input$pcoa_nclust)$cluster))
@@ -1189,7 +1188,7 @@ mod_overview_server <- function(input, output, session, improxy){
   
   ## determine the optimal number of clusters for the dataset using the mediod
   ## as a midpoint
-  pcoa_optk <- eventReactive(input$pcoa_calculate, {
+  pcoa_optk <- reactive({
     out <- 0
     
     # cluster of 1 returns NaN
@@ -1230,7 +1229,7 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   
   # summary of pcoa
-  pcoa_summary <- eventReactive(input$pcoa_calculate, {
+  pcoa_summary <- reactive({
     out <- as.matrix(pcoa_data()$values)
     out <- out[,c('Eigenvalues', 'Relative_eig','Cumul_eig')]
     rownames(out) <- paste0('PC', 1:nrow(out))
@@ -1288,7 +1287,6 @@ mod_overview_server <- function(input, output, session, improxy){
   
   # plot pcoa plot
   pdata_pcoa <- reactive({
-    req(input$pcoa_calculate)
     pdata <- data.frame(pcoa_data()$vectors)
     pdata$sampleID <- rownames(pcoa_data()$vectors)
     pdata <- pdata %>%
@@ -1751,6 +1749,9 @@ mod_overview_server <- function(input, output, session, improxy){
     hmap_data
   })
   
+  output$check <- renderPrint({
+
+  })
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(

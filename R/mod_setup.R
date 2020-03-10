@@ -28,7 +28,7 @@ mod_setup_ui <- function(id){
           menuItem('Task Info', tabName = 'info_tab_setup', 
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('Filter Samples', tabName = 'filter_sample'),
-          menuItem('Filter ASVs', tabName = 'filter_asv'),
+          menuItem('Filter Features', tabName = 'filter_asv'),
           menuItem('Read Count Transformation', tabName = "transform_asv"),
           
           # filter samples------------------------------------------------------
@@ -59,20 +59,20 @@ mod_setup_ui <- function(id){
             
             fixedPanel(
               radioButtons(ns('asv_select_prompt'), 
-                           "ASVs to exclude from analysis:",
-                           choices = c('Use all ASVs' = 'all', 
-                                       'Filter ASVs' = 'some'),
+                           "Features to exclude from analysis:",
+                           choices = c('Use all features' = 'all', 
+                                       'Filter features' = 'some'),
                            selected = 'all'),
               
               hidden(
                 div(id = ns('asv_filter_options_ui'),
                     radioButtons(
-                      ns('asv_filter_options'), 'Filter ASVs by:',
+                      ns('asv_filter_options'), 'Filter features by:',
                       choices = c('read count' = 'asv_by_count',
                                   'selection' = 'asv_by_select'),
                       selected = character(0))
                     )),
-              actionButton(ns('submit_asv'), "Filter ASVs"))),
+              actionButton(ns('submit_asv'), "Filter features"))),
             
           # transform counts----------------------------------------------------
           conditionalPanel(
@@ -107,7 +107,7 @@ mod_setup_ui <- function(id){
                 tabName = 'info_tab_setup',
                 column(width = 12, 
                   h1('Prepare Data for Analysis'),
-                  tags$div("Before starting data exploration, it may be desirable to specify which samples and ASVs should be included in all subsequent analyses. This ensures that the analysis is performed on a dataset that is relevant to the current research question.
+                  tags$div("Before starting data exploration, it may be desirable to specify which samples and features should be included in all subsequent analyses. This ensures that the analysis is performed on a dataset that is relevant to the current research question.
                   
                   Read counts also need to be normalized to compensate for the fact the marker gene sequencing produces compositional data, rather than absolute counts. Please see [link] for more information on compositional data."))
               ),
@@ -133,12 +133,12 @@ mod_setup_ui <- function(id){
               tabItem(
                 tabName = 'filter_asv',
                 column(width = 12,
-                  h1('Filter ASVs'),
+                  h1('Filter Features'),
                   tags$div(
-                    "It may be desirable to perform analysis on a subset of ASVs if certain taxa are considered contamination, or are no longer relevant to the current research question.",
+                    "It may be desirable to perform analysis on a subset of features if certain taxa are considered contamination, or are no longer relevant to the current research question.",
                     br(),br(),
                     tags$em(
-                      tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering ASVs at this stage should only be done if you have additional reasoning for omitting certain sequences or ASVs"),
+                      tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering features at this stage should only be done if you have additional reasoning for omitting certain sequences or features"),
                     br()),
                 
                 div(id = ns('asv_filter_div'),
@@ -147,7 +147,7 @@ mod_setup_ui <- function(id){
                    div(id = ns('asv_option_count'),
                        column(width = 5, br(),
                               wellPanel(
-                                h3('Filter ASVs based on read count threshold'),
+                                h3('Filter features based on read count threshold'),
                                 radioButtons(
                                   ns('cutoff_method'), 'Set filter cutoff by:',
                                   c('Read count' = 'abs_count',
@@ -169,14 +169,14 @@ mod_setup_ui <- function(id){
                  div(id = ns('asv_option_select'),
                      column(
                        width = 12,
-                          h3('Filter ASVs based on selection'),
+                          h3('Filter features based on selection'),
                           DT::dataTableOutput(ns('asv_table_select'))
                      ))))),
                        
                 column(width = 12, br(),
                        hidden(
                          div(id = ns('asv_remove_div'),
-                             wellPanel(tags$b('ASVs to be removed:'),
+                             wellPanel(tags$b('features to be removed:'),
                                 htmlOutput(ns('asv_remove')))
                             ))),
                 column(width = 12,
@@ -214,13 +214,13 @@ mod_setup_server <- function(input, output, session, improxy){
   data_set <- reactive({improxy$data_db})
   
   met <- reactive(data_set()$metadata)
-  asv <- reactive(data_set()$species_abundance)
+  asv <- reactive(data_set()$merged_abundance_id)
   tax <- reactive(data_set()$merged_taxonomy)
   
   # format data tables tidy coding----------------------------------------------
   format_asv <- reactive({
     asv() %>%
-      gather('sampleID', 'read_count', -Taxon)
+      gather('sampleID', 'read_count', -featureID)
   })
   
   # subset samples--------------------------------------------------------------
@@ -363,7 +363,7 @@ mod_setup_server <- function(input, output, session, improxy){
     out <- tax() %>%
       left_join(asv(), 'featureID') %>%
       select(-Taxon, -sequence) %>%
-      arrange(Kingdom, Phylum)
+      arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
     
     DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
   })
@@ -409,8 +409,8 @@ mod_setup_server <- function(input, output, session, improxy){
       
       out <- tax() %>%
         left_join(asv(), 'featureID') %>%
-        select(-sequence) %>%
-        arrange(Kingdom, Phylum) %>%
+        select(-sequence, -Taxon) %>%
+        arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
         slice(c(input$asv_table_select_rows_selected)) %>%
         gather('sampleID', 'read_count', -featureID)
     }
@@ -418,15 +418,12 @@ mod_setup_server <- function(input, output, session, improxy){
     unique(out$featureID)
   })
   
-
-
   # show ASVs removed-----------------------------------------------------------
   output$asv_remove <- renderText({
     HTML(paste(to_remove(), collapse = "<br/>"))
   })
   
   # filter ASVs based on set cutoff---------------------------------------------
-
   working_asv <- eventReactive(input$submit_asv, {
     if(input$asv_select_prompt == 'some') {
       req(input$asv_filter_options)
@@ -440,15 +437,15 @@ mod_setup_server <- function(input, output, session, improxy){
     
   observeEvent(input$submit_asv, {
     output$preview_asv_title <- renderText({
-      'ASVs included in analysis'
+      'Features included in analysis'
     })
     
     output$preview_asv <- DT::renderDataTable({
       out <- tax() %>%
-        right_join(working_asv(), 'Taxon') %>%
-        spread(sampleID, read_count) %>%
+        left_join(working_asv() %>% spread(sampleID, read_count), 
+                  'featureID') %>%
         select(-Taxon, -sequence) %>%
-        arrange(Kingdom, Phylum)
+        arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
       
       DT::datatable(out, extensions = 'Buttons', 
                     options = list(scrollX = TRUE, 
@@ -465,11 +462,10 @@ mod_setup_server <- function(input, output, session, improxy){
     req(input$transform_method)
     
     asv_df <- working_asv() %>% 
-      select(-Taxon, -sequence) %>% 
-      spread(sampleID, read_count, -featureID) %>%
+      spread(sampleID, read_count) %>% 
       as.data.frame()
-    rownames(asv_df) <- working_asv$featureID
-    asv_df <- asv_df[,colnames(asv_df) != 'featureID']
+    rownames(asv_df) <- asv_df$featureID
+    asv_df <- asv_df[, colnames(asv_df) != 'featureID']
     
     if(input$transform_method == 'clr') {
       ## generate Monte Carlo samples from Dirichlet distribution
@@ -507,7 +503,7 @@ mod_setup_server <- function(input, output, session, improxy){
          asv = working_asv() %>% spread(sampleID, read_count),
          t_asv = asv_transform(),
          tax = tax() %>% 
-           filter(Taxon %in% working_asv()$Taxon)
+           filter(featureID %in% working_asv()$featureID)
          )
   })
   # jump to next tab

@@ -240,7 +240,8 @@ mod_qc_ui <- function(id){
               column(width = 12,
                 h1("featureID Rarefaction"),
                 tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
-                
+                uiOutput(ns('rare_colour_ui')),
+                checkboxInput(ns('rare_se'), 'Show standard error', value = FALSE),
                 jqui_resizable(
                   plotlyOutput(ns('plot_rarefaction'),
                                width = '100%', height = 'auto') %>% 
@@ -404,6 +405,12 @@ mod_qc_server <- function(input, output, session, improxy){
                  choices = choices, selected = 'sampleID')
   })
   
+  # render rarefaction ui-------------------------------------------------------
+  output$rare_colour_ui <- renderUI({
+    selectInput(ns('rare_colour'), "Colour curves by:",
+                choices = c('none', colnames(met())),
+                selected = 'none')
+  })
   # reading in tables ----------------------------------------------------------
   data_set <- reactive({improxy$data_db})
   
@@ -805,8 +812,11 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+  # Check
+  output$check <- renderPrint({
+    head(rare_df())
+  })
   # rarefaction curve-----------------------------------------------------------
-
   rare_df <- reactive({
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
@@ -815,7 +825,41 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
   output$plot_rarefaction <- renderPlotly({
-    # p <- ggplot(rare_df, aes(x = agg_count, y = ))
+    
+    pdata <- rare_df() %>%
+      inner_join(met(), 'sampleID')
+    
+    p <- ggplot(pdata, aes_string(x = 'sample_size', y = 'species_richness'))
+    
+    if(input$rare_colour == 'none') {
+      p <- p + geom_line(colour = 'black') 
+      
+      if(input$rare_se) {
+        p <- p + 
+          geom_ribbon(aes_string(ymin = "species_richness - std_error", 
+                                 ymax = "species_ricnhess + std_error"), 
+                                 color = NULL, fill = 'grey50', alpha = 0.2)
+      }
+    }
+    else {
+      p <- p + geom_line(aes_string(colour = input$rare_colour))
+      
+      if(input$rare_se) {
+        p <- p + 
+          geom_ribbon(aes_string(ymin = "species_richness - std_error", 
+                                 ymax = "species_ricnhess + std_error", 
+                                 color = NULL, fill = input$rare_color), 
+                      alpha = 0.2)
+      }
+    }
+    
+    p <- p +
+      theme_bw(12) +
+      xlab('Number of sequences') +
+      ylab('Number of features')
+      
+    ggplotly(p)
+    
   })
   # read count distribution of taxa---------------------------------------------
   # customize count data based on selected taxonomic level
@@ -1012,10 +1056,7 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
-  # Check
-  output$check <- renderPrint({
- 
-  })
+
   pdata_samdistr <- reactive({
     asv() %>%
       gather('sampleID', 'read_count', -featureID) %>%

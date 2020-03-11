@@ -16,12 +16,16 @@ cms_rarefy <- function(x) {
     if (n[length(n)] != tot[i]) {
       n <- c(n, tot[i])
     }
+    
     y <- vegan::rarefy(x[i, ,drop = FALSE], n, se = se)
+    
     if (nrow(y) != 1) {
-      rownames(y) <- c(".S", ".se")
-      return(data.frame(t(y), Size = n, Sample = rownames(x)[i]))
-    } else {
-      return(data.frame(.S = y[1, ], Size = n, Sample = rownames(x)[i]))
+      rownames(y) <- c("species_richness", "std_error")
+      return(data.frame(t(y), sample_size = n, sampleID = rownames(x)[i]))
+    } 
+    else {
+      return(data.frame(species_richness = y[1, ], sample_size = n, 
+                        sampleID = rownames(x)[i]))
     }
   }
   
@@ -38,6 +42,4 @@ cms_rarefy <- function(x) {
   
   df <- do.call(rbind, out)
   return(df)
- 
- 
 }

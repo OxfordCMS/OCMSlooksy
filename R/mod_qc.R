@@ -35,7 +35,8 @@ mod_qc_ui <- function(id){
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('Sequence Prevalence', tabName = 'asv_prevalence'),
-          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab'),
+          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab',
+                   actionButton(ns('rare_calculate'), "Calculate")),
           menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
           menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
       
@@ -398,19 +399,6 @@ mod_qc_server <- function(input, output, session, improxy){
   
 
   
-  # Render reactive widgets
-  output$sample_select_ui <- renderUI({
-    choices <- colnames(met())
-    radioButtons(ns('sample_select'), label = "Group samples by:",
-                 choices = choices, selected = 'sampleID')
-  })
-  
-  # render rarefaction ui-------------------------------------------------------
-  output$rare_colour_ui <- renderUI({
-    selectInput(ns('rare_colour'), "Colour curves by:",
-                choices = c('none', colnames(met())),
-                selected = 'none')
-  })
   # reading in tables ----------------------------------------------------------
   data_set <- reactive({improxy$data_db})
   
@@ -435,7 +423,20 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(read_count = as.numeric(read_count))
   })
   
-
+  
+  # Render reactive widgets
+  output$sample_select_ui <- renderUI({
+    choices <- colnames(met())
+    radioButtons(ns('sample_select'), label = "Group samples by:",
+                 choices = choices, selected = 'sampleID')
+  })
+  
+  # render rarefaction ui-------------------------------------------------------
+  output$rare_colour_ui <- renderUI({
+    selectInput(ns('rare_colour'), "Colour curves by:",
+                choices = c('none', colnames(met())),
+                selected = 'none')
+  })
   # Filtering-------------------------------------------------------------------
   # define reads.in as the difference between the starting number and the finishing number. This enables visualisation in a stacked bar chart
   
@@ -814,10 +815,10 @@ mod_qc_server <- function(input, output, session, improxy){
   
   # Check
   output$check <- renderPrint({
-    head(rare_df())
+
   })
   # rarefaction curve-----------------------------------------------------------
-  rare_df <- reactive({
+  rare_df <- eventReactive(input$rare_calculate, {
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
     mat <- as.matrix(mat)

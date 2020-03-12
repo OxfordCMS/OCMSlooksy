@@ -189,73 +189,73 @@ mod_import_server <- function(input, output, session, parent_session) {
       menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
     })
   })  
-  # 
-  # asv <- reactive({
-  #   req(input$launch)
-  #   data_set()$merged_abundance_id
-  # })
-  # met <- reactive({
-  #   req(input$launch)
-  #   data_set()$metadata
-  # })
-  # tax <- reactive({
-  #   req(input$launch)
-  #   data_set()$merged_taxonomy
-  # })
-  #   
-  # # combine tables into working dataframe
-  # work <- reactive({
-  #   asv() %>%
-  #     gather('sampleID','read_count', -featureID) %>%
-  #     inner_join(tax(), by = 'featureID') %>%
-  #     select(-sequence) %>%
-  #     mutate(read_count = as.numeric(read_count)) %>%
-  #     ungroup()
-  # })
-  # 
-  # # customize count data based on selected taxonomic level--------------------
-  # # keep featureid and seqeuence of most abundant taxon being aggregated
-  # wip <- reactive({
-  #   work() %>%
-  #     select(.data[[input$tax_level]], sampleID, read_count) %>%
-  #     group_by(.data[[input$tax_level]], sampleID) %>%
-  #     summarise(agg_count = sum(read_count)) %>%
-  #     ungroup()
-  # })
-  # 
-  # # Summary of metadata-------------------------------------------------------
-  # output$metadata_preview <- DT::renderDT({
-  #   DT::datatable(met(), extensions = 'Buttons', 
-  #                 options = list(scrollX = TRUE, 
-  #                                dom = 'Blfrtip', buttons = c('copy','csv')))
-  # })
-  # 
-  # # preview of count table----------------------------------------------------
-  # output$asv_preview <- DT::renderDT({
-  #   out <- wip() %>%
-  #     spread(sampleID, agg_count)
-  #   DT::datatable(out, extensions = 'Buttons', 
-  #                 options = list(scrollX = TRUE, 
-  #                                dom = 'Blfrtip', buttons = c('copy','csv')))
-  # })
-  # 
-  # output$tax_preview <- DT::renderDT({
-  #   DT::datatable(tax(), extensions = "Buttons",
-  #                 options = list(scrollX = TRUE,
-  #                                dom = 'Blfrtip', buttons = c('copy','csv')))
-  # })
-  # 
-  # # jump to next tab------------------------------------------------------------
-  # observeEvent(input$next_tab, {
-  #   updateTabsetPanel(session, "tabs", selected = "prepare")
-  # })
-  # 
-  # # return dataset
-  # cross_module = reactiveValues()
-  # observe({
-  #   cross_module$data_db <- data_set()
-  # })
-  # return(cross_module)
+
+  asv <- reactive({
+    req(input$launch)
+    data_set()$merged_abundance_id
+  })
+  met <- reactive({
+    req(input$launch)
+    data_set()$metadata
+  })
+  tax <- reactive({
+    req(input$launch)
+    data_set()$merged_taxonomy
+  })
+
+  # combine tables into working dataframe
+  work <- reactive({
+    asv() %>%
+      gather('sampleID','read_count', -featureID) %>%
+      inner_join(tax(), by = 'featureID') %>%
+      select(-sequence) %>%
+      mutate(read_count = as.numeric(read_count)) %>%
+      ungroup()
+  })
+
+  # customize count data based on selected taxonomic level--------------------
+  # keep featureid and seqeuence of most abundant taxon being aggregated
+  wip <- reactive({
+    work() %>%
+      select(.data[[input$tax_level]], sampleID, read_count) %>%
+      group_by(.data[[input$tax_level]], sampleID) %>%
+      summarise(agg_count = sum(read_count)) %>%
+      ungroup()
+  })
+
+  # Summary of metadata-------------------------------------------------------
+  output$metadata_preview <- DT::renderDT({
+    DT::datatable(met(), extensions = 'Buttons',
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+
+  # preview of count table----------------------------------------------------
+  output$asv_preview <- DT::renderDT({
+    out <- wip() %>%
+      spread(sampleID, agg_count)
+    DT::datatable(out, extensions = 'Buttons',
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+
+  output$tax_preview <- DT::renderDT({
+    DT::datatable(tax(), extensions = "Buttons",
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+
+  # jump to next tab------------------------------------------------------------
+  observeEvent(input$next_tab, {
+    updateTabsetPanel(session, "tabs", selected = "prepare")
+  })
+
+  # return dataset
+  cross_module = reactiveValues()
+  observe({
+    cross_module$data_db <- data_set()
+  })
+  return(cross_module)
 
 }
 ## To be copied in the UI

@@ -155,39 +155,8 @@ mod_overview_ui <- function(id){
             # bar plot body--------------------------------------------------------
             tabItem(
               tabName = 'bar_tab',
-                h1('Relative Distribution of Taxa'),
-                column(width = 12,
-                  h3(textOutput(ns('bar_title'))),
-                  DT::dataTableOutput(ns('bar_table'))),
-                column(width = 12,
-                   column(width = 1, style = 'padding:0px;', dropdown(
-                     size = 'xs', icon = icon('save'), inline = TRUE, 
-                     style = 'material-circle', width = 160,
-                   animate = animateOptions(
-                     enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                     exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                   
-                   downloadBttn(ns('dl_bar_original'), 
-                                list(icon('file-image'), "Original plot"),
-                                size = 'xs', style = 'minimal'), br(),
-                   downloadBttn(ns('dl_bar_html'), 
-                                list(icon('file-code'), "Interactive plot"),
-                                size = 'xs', style = 'minimal'), br(),
-                   downloadBttn(ns('dl_bar_data'), 
-                                list(icon('file-alt'), "Plot data"),
-                                size = 'xs', style = 'minimal'), br(),
-                   downloadBttn(ns('dl_bar_rds'), 
-                                list(icon('file-prescription'), "RDS"),
-                                size = 'xs', style = 'minimal'), br(),
-                   downloadBttn(ns('dl_bar_all'), 
-                                list(icon('file-archive'), "All"),
-                                size = 'xs', style = 'minimal')
-                  )),
-                  column(width = 11, style = 'padding:0px;',
-                         shinyjqui::jqui_resizable(
-                    plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')))
-                  )
-              ),
+              mod_ov_bar_ui(ns("ov_bar_ui_1"))
+            ),
             
             # PCA body----------------------------------------------------------    
             tabItem(
@@ -568,7 +537,7 @@ mod_overview_ui <- function(id){
 mod_overview_server <- function(input, output, session, improxy){
   ns <- session$ns
   
-  # import data into module
+  # import data into module-----------------------------------------------------
   working_set <- reactive(improxy$data_db)
   
   met <- reactive(working_set()$metadata)
@@ -580,25 +549,36 @@ mod_overview_server <- function(input, output, session, improxy){
     out <- colnames(met())
     out <- out[out != 'sampleID']
   })
-  
-  # putting data into one dataframe---------------------------------------------
-  work <- reactive({
-    clr_gather <- asv_transform()
-    clr_gather$featureID <- rownames(clr_gather)
-    clr_gather <- clr_gather %>%
-      gather('sampleID', 'clr_count')
-    
-    asv_gather <- asv() %>% 
-      gather('sampleID','read_count', -featureID) %>%
-      inner_join(clr_gather, 'sampleID')
-    
-    met() %>%
-      inner_join(asv_gather, 'sampleID') %>%
-      inner_join(tax(), 'featureID')
+
+  # store data in reactiveValues to pass onto submodule-------------------------
+  bridge <- reactiveValues()
+  observe({
+    bridge$met <- improxy$data_db$metadata
+    bridge$asv <- improxy$data_db$asv
+    bridge$asv_transform <- improxy$data_db$t_asv
+    bridge$tax <- improxy$data_db$tax
   })
   
+  # bar plot server-------------------------------------------------------------
+  # render controls bar plot
+  output$bar_x_ui <- renderUI({
+    selectInput(ns('bar_x'), "x-axis", choices = colnames(met()),
+                selected = 'sampleID')
+  })
+  
+   # pass reactive inputs to submodule
+  bridge$bar_input <- reactiveValues()
+  observe({
+    bridge$bar_input$bar_tax <- input$bar_tax
+    bridge$bar_input$bar_y <- input$bar_y
+    bridge$bar_input$bar_x <- input$bar_x
+  })
+
+  # call overview submodule for bar plot
+  callModule(mod_ov_bar_server, "ov_bar_ui_1", param = bridge)
+  
   # toggle div for input controls-----------------------------------------------
-  observeEvent(input$pca_calcualte, {
+  observeEvent(input$pca_calculate, {
     show('pca_summary_div')
   })
   observeEvent(input$pca_calculate, {
@@ -624,11 +604,7 @@ mod_overview_server <- function(input, output, session, improxy){
     show('hmap_body_div')
   })
   
-  ## render controls bar plot---------------------------------------------------
-  output$bar_x_ui <- renderUI({
-    selectInput(ns('bar_x'), "x-axis", choices = colnames(met()),
-                selected = 'sampleID')
-  })
+  
   
   ## render controls - PCA------------------------------------
   ### choose PCs to plot
@@ -754,133 +730,7 @@ mod_overview_server <- function(input, output, session, improxy){
     radioButtons(ns('hmap_asv_colour'), "Show taxonomy level:",
                  choices = choices, selected = 'none')
   })
-  # calculate output bar plot---------------------------------------------------
   
-  bar_data <- reactive({
-    req(input$bar_tax, input$bar_x, input$bar_y)
-    work() %>%
-      # sample total read count
-      group_by(sampleID) %>%
-      mutate(sample_total = sum(read_count)) %>%
-      # aggregate on taxon within each sample
-      group_by(sampleID, .data[[input$bar_tax]]) %>%
-      mutate(tax_cnt = sum(read_count), tax_rel = tax_cnt / sample_total) %>%
-      ungroup() %>%
-      distinct(.data[[input$bar_tax]], .data[[input$bar_x]], 
-               .data[[input$bar_y]], tax_cnt, tax_rel) %>%
-      # mean of aggregated counts within selected group
-      group_by(.data[[input$bar_x]], .data[[input$bar_tax]]) %>%
-      mutate(cnt_abund = mean(tax_cnt),
-             rel_abund = mean(tax_rel)) %>%
-      ungroup()
-    })
-  
-  output$bar_title  <- renderText({
-      
-    if(input$bar_y == 'rel_abund') {
-      req(input$bar_y)
-      sprintf('Mean Relative Abundance (%%), %s', input$bar_tax)
-    }
-    else {
-      req(input$bar_tax)
-      sprintf('Mean Cumulative Read Count, %s', input$bar_tax)
-    }
-  })
-    
-    output$bar_table <- DT::renderDataTable({
-      req(input$bar_y, input$bar_tax, input$bar_x)
-      
-      out <-  bar_data() %>%
-        distinct(.data[[input$bar_tax]], .data[[input$bar_x]], .data[[input$bar_y]]) %>%
-        spread(.data[[input$bar_x]], .data[[input$bar_y]])
-        
-      if(input$bar_y == 'rel_abund') {
-        DT::datatable(out,  extensions = 'Buttons', 
-                      options = list(scrollX = TRUE, 
-                                     dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
-          DT::formatRound(column = met()[,input$bar_x], digits = 3)
-      }
-      else {
-        DT::datatable(out, extensions = 'Buttons', 
-                      options = list(scrollX = TRUE, 
-                                     dom = 'Blfrtip', buttons = c('copy','csv')))
-      }
-      
-    })
-    
-    p_bar <- reactive({
-      p <- ggplot(bar_data() %>%
-                    distinct(.data[[input$bar_x]], .data[[input$bar_tax]], 
-                             cnt_abund, rel_abund),
-                  aes_string(x = input$bar_x, y = input$bar_y,
-                             fill = input$bar_tax)) +
-        geom_bar(stat = 'identity') +
-        xlab(input$bar_x) +
-        scale_fill_discrete(name = input$bar_tax) +
-        theme_bw(12) +
-        theme(axis.text.x = element_text(angle = 90))
-    
-      if(input$bar_y == 'rel_abund') {
-        p <- p +
-          ylab(sprintf('Mean Relative Abundance (%%), %s', input$bar_tax))
-      }
-      else {
-        p <- p +
-          ylab(sprintf('Mean Read Count, %s', input$bar_tax))
-      }
-      p
-    })
-    
-    output$bar_plot <- renderPlotly({
-      ggplotly(p_bar())
-    })  
-
-    output$dl_bar_original <- downloadHandler(
-      fname <- function() {"ov_bar.tiff"}, 
-      content <- function(file) {ggsave(file, plot=p_bar())}
-    )
-    
-    output$dl_bar_html <- downloadHandler(
-      fname <- function() {"ov_bar.html"},
-      content <- function(file) {
-        htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), file)
-      }
-    )
-    
-    output$dl_bar_data <- downloadHandler(
-      fname <- function() {"ov_bar.csv"}, 
-      content <- function(file) {
-        readr::write_csv(bar_data(), file)
-      }
-    )
-    
-    output$dl_bar_rds <- downloadHandler(
-      fname <- function() {"ov_bar.rds"},
-      content <- function(file) {
-        saveRDS(p_bar(), file)
-      }
-    )
-    
-    output$dl_bar_all <- downloadHandler(
-      fname <- function() {"ov_bar.zip"},
-      content <- function(file) {
-        # save current directory
-        mydir <- getwd()
-        # create temporary directory
-        tmpdir <- tempdir()
-        setwd(tempdir())
-        to_zip <- c("ov_bar.tiff", "ov_bar.html","ov_bar.csv", "ov_bar.rds")
-        ggsave(to_zip[1], plot=p_bar())
-        htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), to_zip[2])
-        write.csv(pdata_bar(), to_zip[3])
-        saveRDS(p_bar(), to_zip[4])
-        
-        #create the zip file
-        zip(file, to_zip)
-        setwd(mydir)
-      }
-    )
-
   # calculate pca---------------------------------------------------------------
 
   # centre and scale

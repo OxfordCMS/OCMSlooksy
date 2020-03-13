@@ -130,7 +130,8 @@ mod_ov_bar_server <- function(input, output, session, param){
     bar_data() %>%
       # rename columns for simplicity
       ## don't have to work with reactive variables in tidy verbs
-      rename('tax_column' = !!bar_tax(), 'x_column' = !!bar_x(), 'y_column' = !!bar_y()) %>%
+      rename('tax_column' = !!bar_tax(), 'x_column' = !!bar_x(), 
+             'y_column' = !!bar_y()) %>%
       distinct(tax_column, x_column, y_column)
   })
   

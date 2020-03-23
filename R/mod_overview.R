@@ -143,7 +143,7 @@ mod_overview_ui <- function(id){
         box(
           width = '100%', br(), br(), br(),
           
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           
           tabItems(
             # main page---------------------------------------------------------
@@ -596,7 +596,7 @@ mod_overview_server <- function(input, output, session, improxy){
       inner_join(asv_gather, 'sampleID') %>%
       inner_join(tax(), 'featureID')
   })
-  
+ 
   # toggle div for input controls-----------------------------------------------
   observeEvent(input$pca_calcualte, {
     show('pca_summary_div')
@@ -755,7 +755,13 @@ mod_overview_server <- function(input, output, session, improxy){
                  choices = choices, selected = 'none')
   })
   # calculate output bar plot---------------------------------------------------
-  
+  output$check <- renderPrint({
+    out <-  bar_data() %>%
+      distinct(.data[[input$bar_tax]], .data[[input$bar_x]], .data[[input$bar_y]]) %>%
+      spread(.data[[input$bar_x]], .data[[input$bar_y]])
+    
+    head(out)
+  })
   bar_data <- reactive({
     req(input$bar_tax, input$bar_x, input$bar_y)
     work() %>%
@@ -798,7 +804,7 @@ mod_overview_server <- function(input, output, session, improxy){
         DT::datatable(out,  extensions = 'Buttons', 
                       options = list(scrollX = TRUE, 
                                      dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
-          DT::formatRound(column = met()[,input$bar_x], digits = 3)
+          DT::formatRound(column = colnames(out)[2:ncol(out)], digits = 3)
       }
       else {
         DT::datatable(out, extensions = 'Buttons', 
@@ -1749,9 +1755,6 @@ mod_overview_server <- function(input, output, session, improxy){
     hmap_data
   })
   
-  output$check <- renderPrint({
-
-  })
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(

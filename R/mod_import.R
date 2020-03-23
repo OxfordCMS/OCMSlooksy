@@ -173,7 +173,7 @@ mod_import_server <- function(input, output, session, parent_session) {
 
   # Check
   output$check <- renderPrint({
-    head(data_set()$metadata)
+    names(data_set())
   })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {

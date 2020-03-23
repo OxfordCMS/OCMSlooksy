@@ -7,7 +7,7 @@
 \usage{
 mod_ov_pca_ui(id)
 
-mod_ov_pca_server(input, output, session, param, parent)
+mod_ov_pca_server(input, output, session, param)
 }
 \arguments{
 \item{id}{shiny id}

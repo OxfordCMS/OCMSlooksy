@@ -130,14 +130,14 @@ mod_ov_pca_ui <- function(id){
 #' @export
 #' @keywords internal
     
-mod_ov_pca_server <- function(input, output, session, param, parent){
+mod_ov_pca_server <- function(input, output, session, param){
   ns <- session$ns
   
   # toggle div for input controls-----------------------------------------------
-  observeEvent(input$pca_calculate, {
+  observeEvent(pca_calculate(), {
     show('pca_summary_div')
   })
-  observeEvent(input$pca_calculate, {
+  observeEvent(pca_calculate(), {
     show('pca_body_div')
   })
   
@@ -205,17 +205,17 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
   tax <- reactive(param$tax)
   asv_transform <- reactive(param$asv_transform)
   
-  # unpack bar plot inputs
-  pca_scale <- reactive(input$pca_input$pca_scale)
-  
+  # unpack pca inputs
+  pca_scale <- reactive(param$pca_input$pca_scale)
+  pca_calculate <- reactive(param$pca_input$pca_calculate)
   
   output$check <- renderPrint({
-    input$pca_calculate
+
   })
   # calculate pca---------------------------------------------------------------
-  
+
   # centre and scale
-  asv_scale <- eventReactive(input$pca_calculate, event.env = parent, {
+  asv_scale <- eventReactive(pca_calculate(), {
     if(pca_scale() == 'UV') {
       apply(asv_transform(), 2, function(x) (x - mean(x)) / sd(x))
     }
@@ -229,27 +229,27 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
       asv_transform()
     }
   })
-  
+
   # performing pca
-  d_pcx <- eventReactive(input$pca_calculate, event.env = parent, {
+  d_pcx <- eventReactive(pca_calculate(), {
     ## samples in rows
     ## centring and scaling done outside of prcomp
-    prcomp(t(asv_scale()), center = FALSE, scale. = FALSE) 
+    prcomp(t(asv_scale()), center = FALSE, scale. = FALSE)
   })
-  
+
   xPC <- reactive(paste0('PC', input$xPC))
   yPC <- reactive(paste0('PC', input$yPC))
-  
+
   score_data <- reactive({
     out <- as.data.frame(d_pcx()$x)
     out$sampleID <- rownames(out)
-    out <- out %>% 
+    out <- out %>%
       select(sampleID, xPC(), yPC()) %>%
       left_join(met(), 'sampleID')
     out <- out[,c(xPC(), yPC(), colnames(met()))]
     out
   })
-  
+
   load_data <- reactive({
     out <- as.data.frame(d_pcx()$rotation)
     out$featureID <- rownames(out)
@@ -258,30 +258,30 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
     out <- out[, c(xPC(), yPC(), colnames(tax()))]
     out
   })
-  
-  
+
+
   # summary of pca
-  pcx_summary <- eventReactive(input$pca_calculate, event.env = parent, {
+  pcx_summary <- eventReactive(pca_calculate(), {
     summary_pcx <- summary(d_pcx())
     summary_df <- unclass(summary_pcx)[['importance']]
-    
+
     # check variation explained by each PC
     variance_pc <- summary_pcx$sdev**2
     variance_pc <- variance_pc/sum(variance_pc)*100
-    
+
     summary_wip <- rbind(summary_df, variance_pc)
     rownames(summary_wip)[4] <- 'Variance Explained'
     summary_wip
   })
-  
+
   output$summary_pca <- DT::renderDataTable({
     pcx_summary() %>%
-      DT::datatable(extensions = 'Buttons', 
-                    options = list(scrollX = TRUE, 
+      DT::datatable(extensions = 'Buttons',
+                    options = list(scrollX = TRUE,
                                    dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
-  
+
   # pca plot parameters
   ## initiate parameters as objects
   load_pt_colour <- NULL
@@ -293,54 +293,54 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
   load_lab_colour <- NULL
   load_lab_size <- NULL
   load_lab_alpha <- NULL
-  
+
   ## score point parameters
   score_pt_colour <- eventReactive(input$score_pt_colour, {
     if(input$score_pt_colour == 'none') 'black'
-    else input$score_pt_colour 
+    else input$score_pt_colour
   })
-  
+
   score_pt_shape <- eventReactive(input$score_pt_shape, {
     if(input$score_pt_shape == 'none') 1
     else input$score_pt_shape
   })
-  
+
   score_pt_size <- reactive(input$score_pt_size)
   score_pt_alpha <- reactive(input$score_pt_alpha)
-  
+
   ## score label parameters
   score_label_by <- eventReactive(input$score_label_by, {
     if(input$score_label_by == 'none') NULL
     else  input$score_label_by
   })
-  
+
   score_label <- eventReactive(input$score_label_by, {
     if(input$score_label_by == 'none') FALSE
     else score_label <- TRUE
   })
-  
+
   score_lab_colour <- eventReactive(input$score_lab_colour, {
     if(input$score_lab_colour == 'none') 'black'
     else input$score_lab_colour
   })
-  
-  
+
+
   score_lab_size <- reactive(input$score_lab_size)
   score_lab_alpha <- reactive(input$score_lab_alpha)
-  
+
   ## loading point parameters
   load_pt_colour <- eventReactive(input$load_pt_colour, {
     req(input$show_loading)
     if(input$load_pt_colour == 'none') 'darkred'
     else input$load_pt_colour
   })
-  
+
   load_pt_shape <- eventReactive(input$load_pt_shape, {
     req(input$show_loading)
     if(input$load_pt_shape == 'none') 2
     else input$load_pt_shape
-  })  
-  
+  })
+
   load_pt_size <- reactive({
     req(input$show_loading)
     input$load_pt_size
@@ -353,39 +353,39 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
     req(input$show_loading)
     input$load_arrow
   })
-  
+
   ## loading label parameters
   load_label_by <- eventReactive(input$load_label_by, {
     req(input$show_loading)
     if(input$load_label_by == 'none') NULL
     else input$load_label_by
   })
-  
+
   show_load_label <- eventReactive(input$load_label_by, {
     req(input$show_loading)
     if(input$load_label_by == 'none') FALSE
     else show_load_label <- TRUE
   })
-  
+
   load_lab_colour <- eventReactive(input$load_lab_colour, {
     req(input$show_loading)
     if(input$load_lab_colour == 'none') 'darkred'
     else input$load_lab_colour
   })
-  
+
   load_lab_size <- reactive({
     req(input$show_loading)
     input$load_lab_size
   })
-  
+
   load_lab_alpha <- reactive({
     req(input$show_loading)
     input$load_lab_alpha
   })
-  
+
   p_biplot <- reactive({
-    req(input$pca_calculate)
-    
+    req(pca_calculate())
+
     p_biplot <- OCMSExplorer:::cms_biplot(
       score_data(), load_data(),
       xPC = input$xPC, yPC = input$yPC,
@@ -397,7 +397,7 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
       label.colour = score_lab_colour(), label.size = score_lab_size(),
       label.alpha = score_lab_alpha(), label.repel = FALSE,
       # loading point
-      loadings = input$show_loading, loadings.colour = load_pt_colour(), 
+      loadings = input$show_loading, loadings.colour = load_pt_colour(),
       loadings.shape = load_pt_shape(), loadings.arrow = load_arrow(),
       loadings.alpha = load_pt_alpha(), loadings.size = load_pt_size(),
       # loading label
@@ -405,43 +405,43 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
       loadings.label.colour = load_lab_colour(), loadings.label.repel = FALSE,
       loadings.label.size = load_lab_size(), loadings.label.alpha = load_lab_alpha()
     )
-    
+
     p_biplot <- p_biplot +
       theme_bw(12) +
-      xlab(sprintf("PC%s (%s%%)", 
-                   input$xPC, 
+      xlab(sprintf("PC%s (%s%%)",
+                   input$xPC,
                    round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
-      ylab(sprintf("PC%s (%s%%)", 
-                   input$yPC, 
+      ylab(sprintf("PC%s (%s%%)",
+                   input$yPC,
                    round(pcx_summary()['Variance Explained', input$yPC]), 2))
-    
+
     p_biplot
   })
-  
+
   output$plot_pca <- renderPlotly({
     ggplotly(p_biplot())
   })
-  
+
   output$dl_pca_original <- downloadHandler(
-    fname <- function() {"ov_pca.tiff"}, 
+    fname <- function() {"ov_pca.tiff"},
     content <- function(file) {ggsave(file, plot=p_biplot())}
   )
-  
+
   output$dl_pca_html <- downloadHandler(
     fname <- function() {"ov_pca.html"},
     content <- function(file) {
       htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), file)
     }
   )
-  
+
   output$dl_pca_data <- downloadHandler(
-    fname <- function() {"ov_pcadata.zip"}, 
+    fname <- function() {"ov_pcadata.zip"},
     content <- function(file) {
       # put together pca data to write to file
       to_save <- d_pcx()
       to_save[['pca_score']] <- score_data()
       to_save[['pca_load']] <- load_data()
-      
+
       # save current directory
       mydir <- getwd()
       # create temporary directory
@@ -449,46 +449,46 @@ mod_ov_pca_server <- function(input, output, session, param, parent){
       setwd(tempdir())
       to_zip <- sprintf("ov_pca-%s.csv", names(to_save))
       for(i in 1:length(to_zip)) {
-        write.csv(to_save, to_zip[i])  
+        write.csv(to_save, to_zip[i])
       }
-      
+
       #create the zip file
       zip(file, to_zip)
       setwd(mydir)
     }
-    
+
   )
-  
+
   output$dl_pca_rds <- downloadHandler(
     fname <- function() {"ov_pca.rds"},
     content <- function(file) {
       saveRDS(p_biplot(), file)
     }
   )
-  
+
   output$dl_pca_all <- downloadHandler(
     fname <- function() {"ov_pca.zip"},
     content <- function(file) {
-      
+
       # put together pca data to write to file
       to_save <- d_pcx()
       to_save[['pca_score']] <- score_data()
       to_save[['pca_load']] <- load_data()
-      
+
       # save current directory
       mydir <- getwd()
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("ov_pca.tiff", "ov_pca.html","ov_pca.rds", 
+      to_zip <- c("ov_pca.tiff", "ov_pca.html","ov_pca.rds",
                   sprintf("ov_pca-%s.csv", names(to_save)))
       ggsave(to_zip[1], plot=p_biplot())
       htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), to_zip[2])
       saveRDS(p_biplot(), to_zip[3])
       for(i in 1:length(to_save)) {
-        write.csv(to_save, to_zip[i+3])  
+        write.csv(to_save, to_zip[i+3])
       }
-      
+
       #create the zip file
       zip(file, to_zip)
       setwd(mydir)

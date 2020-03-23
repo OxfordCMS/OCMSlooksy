@@ -143,7 +143,7 @@ mod_overview_ui <- function(id){
         box(
           width = '100%', br(), br(), br(),
           
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           
           tabItems(
             # main page---------------------------------------------------------
@@ -204,6 +204,7 @@ mod_overview_server <- function(input, output, session, improxy){
   asv_transform <- reactive(working_set()$t_asv)
   tax <- reactive(working_set()$tax)
   
+
   # store data in reactiveValues to pass onto submodule-------------------------
   bridge <- reactiveValues()
   observe({

@@ -97,12 +97,12 @@ mod_setup_ui <- function(id){
       dashboardBody(
         box(width = '100%', br(),br(), br(),
             
-            # fluidRow(width = 12,
-            #         h3('Check Box'),
-            #         verbatimTextOutput(ns('check'))),
+            fluidRow(width = 12,
+                    h3('Check Box'),
+                    verbatimTextOutput(ns('check'))),
             
             tabItems(
-              # main page---------------------------------------------------------
+              # main page-------------------------------------------------------
               tabItem(
                 tabName = 'info_tab_setup',
                 column(width = 12, 
@@ -284,9 +284,11 @@ mod_setup_server <- function(input, output, session, improxy){
   # update ASV with filtered samples
   asv_filt_samp <- eventReactive(input$submit_sample, {
     format_asv() %>%
-      filter(sampleID %in% working_meta()$sampleID)
+      filter(sampleID %in% unique(working_meta()$sampleID))
   })
   
+  output$check <- renderPrint({
+  })
   # subset ASVs-----------------------------------------------------------------
   
   # control UI based on filter method--------------------------------------
@@ -326,7 +328,7 @@ mod_setup_server <- function(input, output, session, improxy){
     if(input$cutoff_method == 'percent_sample') {
       label <- 'Read count cut-off (% of sample total):'
       max_cutoff <- 100
-      step <- 1
+      step <- 0.01
       default_value = 0.01
 
       msg <- 'Removing all seqeunces with a read count that is less than REPLACE% of sample total read count'
@@ -334,7 +336,7 @@ mod_setup_server <- function(input, output, session, improxy){
     if(input$cutoff_method == 'percent_total') {
       label <- 'Read count cut-off (% of dataset total):'
       max_cutoff <- 100
-      step <- 1
+      step <- 0.01
       default_value = 0.01
 
       msg <- 'Removing all sequences with a read count that is less than REPLACE% of dataset total read count'
@@ -423,10 +425,12 @@ mod_setup_server <- function(input, output, session, improxy){
     HTML(paste(to_remove(), collapse = "<br/>"))
   })
   
+  
+
   # filter ASVs based on set cutoff---------------------------------------------
   working_asv <- eventReactive(input$submit_asv, {
+    req(input$asv_select_prompt)
     if(input$asv_select_prompt == 'some') {
-      req(input$asv_filter_options)
       asv_filt_samp() %>%
         filter(!featureID %in% to_remove())  
     }
@@ -442,7 +446,7 @@ mod_setup_server <- function(input, output, session, improxy){
     
     output$preview_asv <- DT::renderDataTable({
       out <- tax() %>%
-        left_join(working_asv() %>% spread(sampleID, read_count), 
+        right_join(working_asv() %>% spread(sampleID, read_count), 
                   'featureID') %>%
         select(-Taxon, -sequence) %>%
         arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
@@ -452,10 +456,7 @@ mod_setup_server <- function(input, output, session, improxy){
                                    dom = 'Blfrtip', buttons = c('copy','csv')))
     })
   })
-  
-  output$check <- renderPrint({
 
-  })
   
   # transform ASVs--------------------------------------------------------------
   asv_transform <- eventReactive(input$submit_transform, {

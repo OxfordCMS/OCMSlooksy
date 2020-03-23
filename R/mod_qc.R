@@ -241,6 +241,7 @@ mod_qc_ui <- function(id){
               column(width = 12,
                 h1("featureID Rarefaction"),
                 tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
+                actionButton(ns('rare_calculate'), 'Calculate'),
                 uiOutput(ns('rare_colour_ui')),
                 checkboxInput(ns('rare_se'), 'Show standard error', value = FALSE),
                 jqui_resizable(
@@ -399,16 +400,36 @@ mod_qc_server <- function(input, output, session, improxy){
   
 
   
+
+  # Render reactive widgets
+  output$sample_select_ui <- renderUI({
+    choices <- colnames(met())
+    radioButtons(ns('sample_select'), label = "Group samples by:",
+                 choices = choices, selected = 'sampleID')
+  })
+  
+  # render rarefaction ui-------------------------------------------------------
+  output$rare_colour_ui <- renderUI({
+    selectInput(ns('rare_colour'), "Colour curves by:",
+                choices = c('none', colnames(met())),
+                selected = 'none')
+  })
+  
+  # Check
+  output$check <- renderPrint({
+    data_set()$merged_filter_summary
+  })
+
   # reading in tables ----------------------------------------------------------
   data_set <- reactive({improxy$data_db})
   
   qc_filtered <- reactive({
-    df <- data_set()$qc_filtered
+    df <- data_set()$merged_filter_summary
     df$reads.in <- df$reads.in - df$reads.out
     df
   })
   
-  qc_nochim <- reactive({data_set()$qc_nochim})
+  qc_nochim <- reactive({data_set()$merged_qc_summary})
   
   asv <- reactive({data_set()$merged_abundance_id})
   met <- reactive({data_set()$metadata})
@@ -813,10 +834,12 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+
   # Check
   output$check <- renderPrint({
 
   })
+
   # rarefaction curve-----------------------------------------------------------
   rare_df <- eventReactive(input$rare_calculate, {
     mat <- asv() %>% select(-featureID)

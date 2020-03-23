@@ -44,8 +44,8 @@ for(i in infiles) {
 }
 
 # Add table to database
-dbWriteTable(con, 'qc_filtered', filtered)
-dbWriteTable(con, 'qc_nochim', nochim)
+dbWriteTable(con, 'merged_filter_summary', filtered)
+dbWriteTable(con, 'merged_qc_summary', nochim)
 
 
 # writing database table into list to save as RData file

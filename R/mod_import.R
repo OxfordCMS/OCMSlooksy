@@ -39,7 +39,7 @@ mod_import_ui <- function(id){
                    conditionalPanel(
                      condition = paste0("input['", ns('example'), "'] == false"),
                      # Upload sqlite database file
-                     fileInput(ns("db_file"), "Database file", accept = '.db'),
+                     fileInput(ns("db_file"), "Database file"),
                      fileInput(ns("metadata_file"), "Metadata file", 
                                accept = c('.csv','.tsv'))),
                    br(),
@@ -125,24 +125,24 @@ mod_import_server <- function(input, output, session, parent_session) {
     # read in database file-----------------------------------------------------
     if(input$example == FALSE) {
       req(input$db_file)
-      req(input$metadata_file)
+      
       
       # initialize list of dataframes
       data_ls <- list()
       
       # read in metadata
       metadata <- reactive({
-        req(input$file)
-        
-        ext <- tools::file_ext(input$file$name)
+        req(input$metadata_file)
+
+        ext <- tools::file_ext(input$metadata_file$name)
         switch(ext,
-               csv = vroom::vroom(input$file$datapath, delim = ","),
-               tsv = vroom::vroom(input$file$datapath, delim = "\t"),
+               csv = vroom::vroom(input$metadata_file$datapath, delim = ","),
+               tsv = vroom::vroom(input$metadata_file$datapath, delim = "\t"),
                validate("Invalid file; Please upload a .csv or .tsv file")
         )
       })
       
-      data_ls[['metadata']] <- metadata
+      data_ls[['metadata']] <- metadata()
       
       # read in database
       con <- RSQLite::dbConnect(RSQLite::SQLite(), input$db_file$datapath)
@@ -158,6 +158,8 @@ mod_import_server <- function(input, output, session, parent_session) {
       }
       # close connection
       RSQLite::dbDisconnect(con)
+      
+      # validate metadata matches sample id of database
       
       data_ls
     }

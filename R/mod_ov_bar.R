@@ -143,7 +143,7 @@ mod_ov_bar_server <- function(input, output, session, param){
                     options = list(scrollX = TRUE,
                                    dom = 'Blfrtip', 
                                    buttons = c('copy','csv'))) %>%
-        DT::formatRound(column = met()[,bar_x()], digits = 3)
+        DT::formatRound(column = colnames(met())[1:ncol(met()], digits = 3)
     }
     else {
       DT::datatable(out, extensions = 'Buttons',

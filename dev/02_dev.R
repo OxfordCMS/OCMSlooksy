@@ -11,7 +11,12 @@ golem::add_module( name = "intro" ) # Intro to app and OCMS
 golem::add_module( name = "import" ) # Import dataset
 golem::add_module( name = "qc" ) # Interactive QC report
 golem::add_module( name = "setup" ) # Prepare data for analysis
-golem::add_module( name = "explore" ) # Exploratory analysis
+golem::add_module( name = "overview" ) # Exploratory analysis
+golem::add_module( name = "ov_bar" ) # bar chart -- submodule of overview analysis
+golem::add_module( name = "ov_pca" ) # pca -- submodule of overview analysis
+golem::add_module( name = "ov_pcoa" ) # pcoa -- submodule of overview analysis
+golem::add_module( name = "ov_alpha" ) # alpha -- submodule of overview analysis
+golem::add_module( name = "ov_hmap" ) # heatmap -- submodule of overview analysis
 
 ## 2.2 Add dependencies
 

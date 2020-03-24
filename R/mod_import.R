@@ -19,6 +19,7 @@
 #' @import dplyr
 #' @import forcats
 #' @import DBI
+#' @import validate
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -34,7 +35,7 @@ mod_import_ui <- function(id){
                    # Use sample dataset?
                    shinyWidgets::materialSwitch(
                      ns("example"), "Example dataset",
-                     inline = TRUE, value = TRUE, status = 'success'),
+                     inline = TRUE, value = FALSE, status = 'success'),
                    br(),
                    conditionalPanel(
                      condition = paste0("input['", ns('example'), "'] == false"),
@@ -67,10 +68,10 @@ mod_import_ui <- function(id){
       dashboardBody(
         box(width = "100%",
             br(),br(), br(),
-          
-        fluidRow(
-          box(width = 12, h3('Check'),
-              verbatimTextOutput(ns('check')))),
+        #   
+        # fluidRow(
+        #   box(width = 12, h3('Check'),
+        #       verbatimTextOutput(ns('check')))),
         tabItems(
           
           # info tab------------------------------------------------------------
@@ -81,8 +82,14 @@ mod_import_ui <- function(id){
               tags$div("Importing the 16S rRNA gene sequences and associated data tables is the first step in the analysis. This is done be uploading the database file produced by the OCMS 16S analysis pipeline. If your data has not been processed through this pipeline, a helper tool is available to help you format your data accordingly (see below for details).", br(),
               h2('Additional Resources'),
               "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
-              a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", br(),
-              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"))
+              a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
+              br(),
+              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"),
+              br(),
+              div(style="font-weight: bold",
+                  textOutput(ns('import_status')))
+              ),
+           
           ),
           # Preview of metadata-------------------------------------------------
           tabItem(
@@ -124,7 +131,7 @@ mod_import_server <- function(input, output, session, parent_session) {
   data_set <- eventReactive(input$launch, {
     # read in database file-----------------------------------------------------
     if(input$example == FALSE) {
-      req(input$db_file)
+      req(input$db_file, input$metadata_file)
       
       
       # initialize list of dataframes
@@ -158,23 +165,65 @@ mod_import_server <- function(input, output, session, parent_session) {
       }
       # close connection
       RSQLite::dbDisconnect(con)
+
+      table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
+                    'merged_filter_summary','merged_qc_summary') # need ymltable
       
-      # validate metadata matches sample id of database
-      
+      validate(
+        # data_set contains necessary tables
+        need(any(table_ls %in% names(data_ls)),
+             "database file missing necessary table(s)."),
+        # metadata must have sampleID as a identifier
+        need("sampleID" %in% colnames(data_ls$metadata), 
+             "Metadata must include 'sampleID'."),
+        # sampleID must be unique
+        need(!any(duplicated(data_ls$metadata$sampleID)),
+             "Sample identifiers (sampleID) must be unique."),
+        # sampleID matches merge_abundance_id samples exactly
+        need(identical(sort(data_ls$metadata$sampleID),
+                       sort(colnames(data_ls[['merged_abundance_id']])[2:ncol(data_ls[['merged_abundance_id']])])),
+             "sampleID in metadata do not match samples in uploaded database."),
+        errorClass = 'importError')
       data_ls
     }
     
-    # Use example dataset---------------------------------------------------------
+    # Use example dataset-------------------------------------------------------
     else {
       switch(input$example, {data_ls <- OCMSExplorer::example_data})  }
-    
+
   })
   
-
-  # Check
-  output$check <- renderPrint({
-    names(data_set())
+  # validate dataset------------------------------------------------------------
+  observe({
+    table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
+                  'merged_filter_summary','merged_qc_summary') # need ymltable
+    output$import_status <- renderText({
+      validate(
+        # data_set contains necessary tables
+        need(any(table_ls %in% names(data_set())),
+             "database file missing necessary table(s)."),
+        # metadata must have sampleID as a identifier
+        need("sampleID" %in% colnames(data_set()$metadata), 
+             "Metadata must include 'sampleID'."),
+        # sampleID must be unique
+        need(!any(duplicated(data_set()$metadata$sampleID)),
+             "Sample identifiers (sampleID) must be unique."),
+        # sampleID matches merge_abundance_id samples exactly
+        need(identical(sort(data_set()$metadata$sampleID),
+                       sort(colnames(data_set()[['merged_abundance_id']])[2:ncol(data_set()[['merged_abundance_id']])])),
+             "sampleID in metadata do not match samples in uploaded database."),
+        errorClass = 'importError'
+      )
+      if(class(data_set()) == 'list') {
+        "Data validation successful"
+      }
+    })
   })
+  
+  # # Check
+  # output$check <- renderPrint({
+  # 
+  # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
     

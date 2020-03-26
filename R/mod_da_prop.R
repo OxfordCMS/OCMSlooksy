@@ -28,8 +28,7 @@ mod_da_prop_ui <- function(id){
     column(
       width = 3,
       fixedPanel(
-        sliderInput(ns('rho_cutoff'), "Rho cutoff, absolute value",
-                    min = 0, max = 1, value = 0.6)
+        
       )
     ),
     column(
@@ -57,7 +56,7 @@ mod_da_prop_server <- function(input, output, session, param){
   prop_calculate <- reactive(param$prop_input$prop_calculate)
   
   # calculate rho---------------------------------------------------------------
-  propr_ls <- eventReactive(prop_calculate(), {
+  propr_obj <- eventReactive(prop_calculate(), {
     # propr package uses propr S4 class to store info -- see propr manual
     count_mat <- asv() %>% 
       select(-featureID) %>% 
@@ -67,11 +66,6 @@ mod_da_prop_server <- function(input, output, session, param){
     # features in columns
     # default setting for ivar is clr transform
     propr_obj <- propr(t(count_mat), metric = 'rho')
-    
-    # unpack into list
-    out <- list('logratio' = propr_obj@logratio,
-                'mat' = propr_obj@matrix,
-                'result' = propr_obj@results)
   })
   
   # output$prop_table <- DT::renderDataTable(
@@ -79,7 +73,7 @@ mod_da_prop_server <- function(input, output, session, param){
   # )
   rho_df <- reactive({
     req(prop_calculate())
-    out <- propr_ls()$result
+    out <- propr_obj()$results
     
     # add asv ids to results -- map asv to partner/pair
     map <- data.frame(mapID = 1:length(asv()$featureID),
@@ -94,13 +88,8 @@ mod_da_prop_server <- function(input, output, session, param){
     
     out
   })
+  
   output$check <- renderPrint({
-    count_mat <- asv() %>% 
-      select(-featureID) %>% 
-      as.matrix()
-    rownames(count_mat) <- asv()$featureID
-    out <- reactive(propr(t(count_mat), metric = 'rho'))
-    out()@results
   })
 }
     

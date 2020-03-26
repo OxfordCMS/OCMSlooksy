@@ -35,11 +35,10 @@ mod_qc_ui <- function(id){
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('Sequence Prevalence', tabName = 'asv_prevalence'),
-          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab',
-                   actionButton(ns('rare_calculate'), "Calculate")),
+          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab'),
           menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
           menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
-      
+          
           conditionalPanel(
             condition = "input.menu === 'group_distribution_tab'",
             br(), hr(),
@@ -56,9 +55,9 @@ mod_qc_ui <- function(id){
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
           
-          fluidRow(
-            box(width = 12, h3('Check'),
-                verbatimTextOutput(ns('check')))),
+          # fluidRow(
+          #   box(width = 12, h3('Check'),
+          #       verbatimTextOutput(ns('check')))),
           tabItems(
               # main page---------------------------------------------------------
               tabItem(
@@ -410,10 +409,10 @@ mod_qc_ui <- function(id){
 mod_qc_server <- function(input, output, session, improxy){
   ns <- session$ns 
   
-  # Check
-  output$check <- renderPrint({
-    data_set()$merged_filter_summary
-  })
+  # # Check
+  # output$check <- renderPrint({
+  #   data_set()$merged_filter_summary
+  # })
 
   # reading in tables ----------------------------------------------------------
   data_set <- reactive({improxy$data_db})

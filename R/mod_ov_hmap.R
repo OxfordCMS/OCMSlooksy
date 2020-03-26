@@ -392,10 +392,10 @@ mod_ov_hmap_server <- function(input, output, session, param){
     }
     hmap_data
   })
-  
-  output$check <- renderPrint({
-    
-  })
+  # 
+  # output$check <- renderPrint({
+  #   
+  # })
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(

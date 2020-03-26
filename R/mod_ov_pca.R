@@ -16,7 +16,7 @@
 mod_ov_pca_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     
     h1('Principle Component Analysis'),
     tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data."),
@@ -209,9 +209,9 @@ mod_ov_pca_server <- function(input, output, session, param){
   pca_scale <- reactive(param$pca_input$pca_scale)
   pca_calculate <- reactive(param$pca_input$pca_calculate)
   
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
   # calculate pca---------------------------------------------------------------
 
   # centre and scale

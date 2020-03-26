@@ -71,8 +71,12 @@ mod_qc_ui <- function(id){
               tabName = 'dada2_filter',
               fluidRow(
                 column(width = 12,
-                      h1("dada2 filtering reads"),
+                      h1("Filtering Reads"),
                       tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
+                      br(),
+                      h3("Filtering parameters applied:"),
+                      DT::dataTableOutput(ns('filter_yml')),
+                      h3("Filtering Effects"),
                       column(width = 1, style = 'padding:0px;', dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
                         style = 'material-circle', width = 160,
@@ -106,9 +110,13 @@ mod_qc_ui <- function(id){
               tabName = 'dada2_denoise',
               fluidRow(
                 column(width = 12,
-                      h1("De-replication, sample inference, merging and chimera removal"),
+                      h1("Denoising Sequences"),
                       tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
                       br(),
+                      h3("Denoising parameters applied:"),
+                      DT::dataTableOutput(ns('denoise_yml')),
+                      br(),
+                      h3('Denoising Effects'),
                       column(width = 1, style = 'padding:0px;', dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
                         style = 'material-circle', width = 160,
@@ -255,8 +263,12 @@ mod_qc_ui <- function(id){
               tabName = 'tax_distribution_tab',
               fluidRow(
                 column(width = 12,
-                      h1("Taxonomic Distribution"),
+                      h1("Taxonomy Distribution"),
                       tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
+                      br(),
+                      h3("Taxonomy assigment parameters applied:"),
+                      DT::dataTableOutput(ns('taxonomy_yml')),
+                      br(),
                     
                       column(width = 4,
                              br(), br(),
@@ -398,23 +410,6 @@ mod_qc_ui <- function(id){
 mod_qc_server <- function(input, output, session, improxy){
   ns <- session$ns 
   
-
-  
-
-  # Render reactive widgets
-  output$sample_select_ui <- renderUI({
-    choices <- colnames(met())
-    radioButtons(ns('sample_select'), label = "Group samples by:",
-                 choices = choices, selected = 'sampleID')
-  })
-  
-  # render rarefaction ui-------------------------------------------------------
-  output$rare_colour_ui <- renderUI({
-    selectInput(ns('rare_colour'), "Colour curves by:",
-                choices = c('none', colnames(met())),
-                selected = 'none')
-  })
-  
   # Check
   output$check <- renderPrint({
     data_set()$merged_filter_summary
@@ -430,7 +425,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   qc_nochim <- reactive({data_set()$merged_qc_summary})
-  
+  yml <- reactive({data_set()$parameter_table})
   asv <- reactive({data_set()$merged_abundance_id})
   met <- reactive({data_set()$metadata})
   tax <- reactive({data_set()$merged_taxonomy})
@@ -445,21 +440,40 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   
-  # Render reactive widgets
+  # Render reactive widgets-----------------------------------------------------
   output$sample_select_ui <- renderUI({
     choices <- colnames(met())
     radioButtons(ns('sample_select'), label = "Group samples by:",
                  choices = choices, selected = 'sampleID')
   })
   
-  # render rarefaction ui-------------------------------------------------------
+  # render rarefaction ui
   output$rare_colour_ui <- renderUI({
     selectInput(ns('rare_colour'), "Colour curves by:",
                 choices = c('none', colnames(met())),
                 selected = 'none')
   })
+  
   # Filtering-------------------------------------------------------------------
   # define reads.in as the difference between the starting number and the finishing number. This enables visualisation in a stacked bar chart
+  # Check
+  output$check <- renderPrint({
+    yml() %>%
+      filter(task == 'trim')
+  })
+  output$filter_yml <- DT::renderDataTable({
+    
+    # add dada2 function that corresponds to yml parameters
+    out <- yml() %>%
+      filter(task == 'trim') %>%
+      arrange(parameter) %>%
+      mutate(dada2_fxn = 'filterAndTrim') %>%
+      select(task, dada2_fxn, parameter, value)
+    
+    DT::datatable(out, colnames = c('pipeline task','dada2 function',
+                                    'parameter','value'), 
+                  options = list(scrollX = TRUE))
+  })
   
   pdata_filt <- reactive({
     qc_filtered() %>%
@@ -532,6 +546,51 @@ mod_qc_server <- function(input, output, session, improxy){
   )
   
   # Chimera removal-------------------------------------------------------------
+  output$denoise_yml <- DT::renderDataTable({
+    
+    # add dada2 functions that correspond to yml parameters
+    ## note: this would be safer if all parameters are included in yml
+    ## but still works if yml is missing any parameters
+    ##### these parameters would be listed under options? #########
+    ###### if so, then need to handle differently in yml2Table ####
+    out <- yml() %>%
+      filter(task == 'sample_inference') %>%
+      arrange(parameter) %>%
+      mutate(dada2_fxn = ifelse(parameter == 'nbases', 'learnErrors', NA),
+             dada2_fxn = ifelse(parameter == 'filtF', 'learnErrors', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'filtR', 'learnErrors', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'omega-a', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'use-quals', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'use-kmers', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'kdist-cutoff', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'band-size', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'gap-penalty', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'homopolymer-ga-penalty', 
+                                  'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'min-fold', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'min-hamming', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'min-abundance', 'dada', 
+                                  dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'max-clust', 'dada', dada2_fxn),
+             dada2_fxn = ifelse(parameter == 'max-consist', 'dada', 
+                                  dada2_fxn)) %>%
+      ## filtF and filtR values for drepFastq should be same as those used in
+      ## learnErrors (and not NA) -- need to fix this
+      add_row(task = "sample_inference", parameter = "filtF", 
+              dada2_fxn = "dreqFastq", value = NA) %>%
+      add_row(task = "sample_inference", parameter = "filtR",
+              dada2_fxn = "drepFastq", value = NA) %>%
+      add_row(task = "sample_inference", parameter = "method", 
+              dada2_fxn = "removeBimeraDenovo", value = "consensus") %>%
+      add_row(task = "sample_inference", parameter = NA, 
+              dada2_fxn = "mergePairs", value = NA) %>%
+      select(task, dada2_fxn, parameter, value)
+    
+    DT::datatable(out, colnames = c('pipeline task','dada2 function',
+                                    'parameter','value'), 
+                  options = list(scrollX = TRUE))
+      
+  })
   pdata_nochim <- reactive({
     qc_nochim() %>% 
       gather(key = 'variable', value = 'value', -sample) %>%
@@ -834,12 +893,6 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
-
-  # Check
-  output$check <- renderPrint({
-
-  })
-
   # rarefaction curve-----------------------------------------------------------
   rare_df <- eventReactive(input$rare_calculate, {
     mat <- asv() %>% select(-featureID)
@@ -886,6 +939,20 @@ mod_qc_server <- function(input, output, session, improxy){
     
   })
   # read count distribution of taxa---------------------------------------------
+  
+  # add dada2 functions corresponding to yml parameters
+  output$taxonomy_yml <- DT::renderDataTable({
+    out <- yml() %>%
+      filter(task == "taxonomy") %>%
+      mutate(dada2_fxn = ifelse(parameter == 'taxonomy_file', 'assignTaxonomy', NA),
+             dada2_fxn = ifelse(parameter == 'species_file', 'addSpecies', 
+                                dada2_fxn)) %>%
+      select(task, dada2_fxn, parameter, value)
+    
+    DT::datatable(out, colnames = c('pipeline task','dada2 function',
+                                    'parameter','value'), 
+                  options = list(scrollX = TRUE))
+  })
   # customize count data based on selected taxonomic level
 
   output$n_sample <- renderText({length(unique(met()$sampleID))})

@@ -1,3 +1,7 @@
 .sidebar {
   height: 90vh; overflow-y: auto;
   }
+
+.importError {
+  color: red; font-weight: bold; display: inline-block  
+}

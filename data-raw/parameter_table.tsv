@@ -1,0 +1,68 @@
+task	parameter	value
+testing	testing	False
+pipeline_yml	pipeline_yml	['/etc/cgat/pipeline.yml', 'pipeline.yml']
+scriptsdir	scriptsdir	/gfs/devel/syen/NGSKit/R
+toolsdir	toolsdir	/gfs/devel/syen/cgat-core/cgat-core/scripts
+tmpdir	tmpdir	/gfs/scratch
+shared_tmpdir	shared_tmpdir	/gfs/scratch
+database	url	sqlite:///./csvdb
+cluster	queue	compute
+cluster	priority	-10
+cluster	num_jobs	100
+cluster	memory_resource	mem_free
+cluster	memory_default	unlimited
+cluster	memory_ulimit	False
+cluster	options	
+cluster	parallel_environment	dedicated
+cluster	queue_manager	sge
+cluster	tmpdir	$SCRATCH_DIR
+jobs_limit_db	jobs_limit_db	10
+jobs_limit_R	jobs_limit_R	1
+os	os	Linux
+start_dir	start_dir	/gfs/work/syen/testdada2/analysis/dada2
+work_dir	work_dir	/gfs/work/syen/testdada2/analysis/dada2
+pipelinedir	pipelinedir	/gfs/devel/syen/NGSKit/pipelines
+paired	paired	None
+trim	maxn	0
+trim	maxee	2
+trim	truncq	2
+trim	trunclen	150
+trim	trimleft	17
+sample_inference	nbases	10000000
+sample_inference	options	
+taxonomy	memory	10G
+taxonomy	taxonomy_file	/gfs/mirror/dada2/RefSeq-RDP16S_v2_May2018.fa.gz
+taxonomy	species_file	/gfs/mirror/dada2/silva_species_assignment_v132.fa.gz
+report	diagnostics	None
+report	directory	/gfs/devel/syen/NGSKit/docs/Rmd/pipeline_dada2
+report	author	Sandi Yen
+report	title	V3 16S
+database_url	database_url	sqlite:///./csvdb
+cluster_queue	cluster_queue	compute
+cluster_priority	cluster_priority	-10
+cluster_num_jobs	cluster_num_jobs	100
+cluster_memory_resource	cluster_memory_resource	mem_free
+cluster_memory_default	cluster_memory_default	4G
+cluster_memory_ulimit	cluster_memory_ulimit	False
+cluster_options	cluster_options	
+cluster_parallel_environment	cluster_parallel_environment	dedicated
+cluster_queue_manager	cluster_queue_manager	slurm
+cluster_tmpdir	cluster_tmpdir	$SCRATCH_DIR
+trim_maxn	trim_maxn	0
+trim_maxee	trim_maxee	2
+trim_truncq	trim_truncq	2
+trim_trunclen	trim_trunclen	150
+trim_trimleft	trim_trimleft	17
+sample_inference_nbases	sample_inference_nbases	10000000
+sample_inference_options	sample_inference_options	
+taxonomy_memory	taxonomy_memory	10G
+taxonomy_taxonomy_file	taxonomy_taxonomy_file	/gfs/mirror/dada2/RefSeq-RDP16S_v2_May2018.fa.gz
+taxonomy_species_file	taxonomy_species_file	/gfs/mirror/dada2/silva_species_assignment_v132.fa.gz
+report_diagnostics	report_diagnostics	None
+report_directory	report_directory	/gfs/devel/syen/NGSKit/docs/Rmd/pipeline_dada2
+report_author	report_author	Sandi Yen
+report_title	report_title	V3 16S
+pipeline_name	pipeline_name	/gfs/devel/syen/NGSKit/pipelines/pipeline_dada2.py
+dryrun	dryrun	False
+shell_logfile	shell_logfile	None
+ruffus_checksums_level	ruffus_checksums_level	0

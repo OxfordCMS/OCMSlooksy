@@ -18,8 +18,7 @@
 #' @import stringr
 #' @import dplyr
 #' @import forcats
-#' @import DBI
-#' @import validate
+#' @import DBIÏ
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -169,7 +168,7 @@ mod_import_server <- function(input, output, session, parent_session) {
       table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                     'merged_filter_summary','merged_qc_summary') # need ymltable
       
-      validate(
+      shiny::validate(
         # data_set contains necessary tables
         need(any(table_ls %in% names(data_ls)),
              "database file missing necessary table(s)."),
@@ -198,7 +197,7 @@ mod_import_server <- function(input, output, session, parent_session) {
     table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                   'merged_filter_summary','merged_qc_summary') # need ymltable
     output$import_status <- renderText({
-      validate(
+      shiny::validate(
         # data_set contains necessary tables
         need(any(table_ls %in% names(data_set())),
              "database file missing necessary table(s)."),

@@ -18,7 +18,7 @@
 #' @import stringr
 #' @import dplyr
 #' @import forcats
-#' @import DBIÏ
+#' @import DBI
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(

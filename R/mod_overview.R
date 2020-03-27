@@ -8,7 +8,7 @@
 #' @param output internal
 #' @param session internal
 #'
-#' @rdname mod_explore
+#' @rdname mod_overview
 #'
 #' @keywords internal
 #' @export 
@@ -189,7 +189,7 @@ mod_overview_ui <- function(id){
 
 # Module Server
 
-#' @rdname mod_explore
+#' @rdname mod_overview
 #' @export
 #' @keywords internal
 

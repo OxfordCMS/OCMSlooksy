@@ -38,9 +38,12 @@ mod_diffAbund_ui <- function(id){
               width = 225,
               tags$div(style = "text-align: center", 
                        tags$b("Proportionality Parameters")),
-              sliderInput(ns('rho_cutoff'), "Rho cutoff, absolute value",
-                          min = 0, max = 1, value = 0.6),
-              selectInput(ns("rho_operator"))
+              radioButtons(ns("rho_operator"), "Cut-off direction",
+                           choices = c('inside range','outside range'),),
+              sliderInput(ns('rho_cutoff'), "Rho cutoff",
+                          min = -1, max = 1, value = c(-0.6, 0.6),
+                          step = 0.1),
+              
               actionButton(ns('prop_calculate'), 'Calculate')
             )
           )

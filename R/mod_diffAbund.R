@@ -1,5 +1,5 @@
 # Module UI
-  
+
 #' @title   mod_diffAbund_ui and mod_diffAbund_server
 #' @description  A shiny Module.
 #'
@@ -12,8 +12,8 @@
 #' @rdname mod_diffAbund
 #'
 #' @keywords internal
-#' @export 
-#' @importFrom shiny NS tagList 
+#' @export
+#' @importFrom shiny NS tagList
 #' @import shinyjs
 #' @import plotly
 #' @import ALDEx2
@@ -25,37 +25,26 @@ mod_diffAbund_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(
           id = 'menu', br(),
-          menuItem('Task Info', tabName = 'info_tab_diffAbund', 
+          menuItem('Task Info', tabName = 'info_tab_diffAbund',
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('Proportionality', tabName = 'prop_tab'),
           menuItem('Differential Abundance', tabName = "diffAbund_tab"),
-          
+
           # proportionality-----------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'prop_tab'",
             br(), hr(),
-            fixedPanel(
-              width = 225,
-              tags$div(style = "text-align: center", 
-                       tags$b("Proportionality Parameters")),
-              radioButtons(ns("rho_operator"), "Cut-off direction",
-                           choices = c('inside range','outside range'),),
-              sliderInput(ns('rho_cutoff'), "Rho cutoff",
-                          min = -1, max = 1, value = c(-0.6, 0.6),
-                          step = 0.1),
-              
-              actionButton(ns('prop_calculate'), 'Calculate')
-            )
+            actionButton(ns('prop_calculate'), 'Calculate')
           )
         )
       ),
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-          
+
           wellPanel(width = 12, h3('check'), br(),
                     verbatimTextOutput(ns('check'))),
-          
+
           tabItems(
             # main page---------------------------------------------------------
             tabItem(
@@ -74,24 +63,24 @@ mod_diffAbund_ui <- function(id){
     )
   )
 }
-    
+
 # Module Server
-    
+
 #' @rdname mod_diffAbund
 #' @export
 #' @keywords internal
-    
+
 mod_diffAbund_server <- function(input, output, session, improxy){
   ns <- session$ns
-  
+
   # import data into module-----------------------------------------------------
   working_set <- reactive(improxy$data_db)
-  
+
   met <- reactive(working_set()$metadata)
   asv <- reactive(working_set()$asv)
   asv_transform <- reactive(working_set()$t_asv)
   tax <- reactive(working_set()$tax)
-  
+
   # store data in reactiveValues to pass onto submodule-------------------------
   bridge <- reactiveValues()
   observe({
@@ -100,7 +89,7 @@ mod_diffAbund_server <- function(input, output, session, improxy){
     bridge$asv_transform <- improxy$data_db$t_asv
     bridge$tax <- improxy$data_db$tax
   })
-  
+
   # proportionality-------------------------------------------------------------
   # add prop inputs
   bridge$prop_input <- reactiveValues()
@@ -109,10 +98,10 @@ mod_diffAbund_server <- function(input, output, session, improxy){
   })
   callModule(mod_da_prop_server, "da_prop_ui_1", bridge)
 }
-    
+
 ## To be copied in the UI
 # mod_diffAbund_ui("diffAbund_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_diffAbund_server, "diffAbund_ui_1")
- 
+

@@ -24,7 +24,7 @@ mod_da_prop_ui <- function(id){
     column(
       width = 12,
       column(
-        width = 12, 'Explanation....'),
+        width = 12, 'Explanation....', br()),
       br(),
       hidden(div(
         id = ns('fdr_summary_div'),
@@ -34,31 +34,28 @@ mod_da_prop_ui <- function(id){
         ),
         column(
           width = 4,
-          "Explanation..."
+          "Explanation...Choose the largest cutoff that keeps the FDR below 0.05"
         )
-      ))
+      )),
+      br()
     ),
     column(
       width = 12,
       column(
-        width = 4,
-        wellPanel(
-            tags$div(style = "text-align: center",
-                     tags$b("Proportionality Parameters")),
-            tags$style(HTML(".irs-bar {background: none; border: none}")),
-            tags$style(HTML("irs-grid-pol.small {height: 0px;}")),
-            tags$style(HTML(".irs-grid-text { font-size: 11pt; }")),
-            sliderInput(ns('rho_cutoff'), "Rho cutoff", min = -1, max = 1,
-                        value = c(-0.6, 0.6), step = 0.1),
-            radioButtons(ns("rho_operator"), "Keep Rho values",
-                         choices = c('inside range'='inside',
-                                     'outside range' = 'outside'))
-        )
+        width = 8,
+        h3("Summary of Rho Values"),
+        verbatimTextOutput(ns('prop_summary'))
       ),
       column(
-        width = 8,
-        h2("Rho metric"),
-        DT::dataTableOutput(ns('prop_table')))
+        width = 4,
+        br(),br(),
+        "Explanation..."
+      )
+    ),
+    column(
+      width = 12,
+      h3('Proportionality Matrix'),
+      DT::dataTableOutput(ns('prop_table'))
     )
 
   )
@@ -80,8 +77,12 @@ mod_da_prop_server <- function(input, output, session, param){
   asv_transform <- reactive(param$asv_transform)
 
   prop_calculate <- reactive(param$prop_input$prop_calculate)
+  apply_filter <- reactive(param$prop_input$apply_filter)
+  rho_filter <- reactive(param$prop_input$rho_filter)
+  rho_cutoff <- reactive(param$prop_input$rho_cutoff)
+  rho_operator <- reactive(param$prop_input$rho_operator)
 
-  # show/hide ui componnent-----------------------------------------------------
+  # show/hide fdr summary-------------------------------------------------------
   observeEvent(prop_calculate(), {
     show('fdr_summary_div')
   })
@@ -103,39 +104,70 @@ mod_da_prop_server <- function(input, output, session, param){
     out
   })
 
-  # showing fdr calculations
+  # showing fdr calculations----------------------------------------------------
   output$prop_fdr_summary <- renderPrint({
     propr_obj()@fdr
   })
 
-  # # subsetting dataset based on cutoff
-  # sub_obj <- reactive({
-  #
-  # })
-  rho_df <- reactive({
-    req(prop_calculate())
-    out <- propr_obj()$results
-
-    # add asv ids to results -- map asv to partner/pair
-    map <- data.frame(mapID = 1:length(asv()$featureID),
-                      featureID = asv()$featureID)
-    out <- out %>%
-      inner_join(map, c("Partner" = "mapID")) %>%
-      select(-Partner) %>%
-      rename('Partner' = featureID) %>%
-      inner_join(map, c('Pair' = 'mapID')) %>%
-      select(-Pair) %>%
-      rename('Pair' = featureID)
-
+  # identify pairs that satisfy filter------------------------------------------
+  pairs_keep <- eventReactive(apply_filter(), {
+    req(rho_filter())
+    if(rho_filter() == 'filter') {
+      req(rho_cutoff())
+      # keep inside range
+      if(rho_operator() == 'inside') {
+        lesser <- propr_obj()["<=", max(rho_cutoff())]@pairs
+        greater <- propr_obj()[">=", min(rho_cutoff())]@pairs
+        out <- intersect(lesser, greater)
+      }
+      # keep outside range
+      else {
+        lesser <- propr_obj()["<=", min(rho_cutoff())]@pairs
+        greater <- propr_obj()[">=", max(rho_cutoff())]@pairs
+        out <- c(lesser, greater)
+      }
+    }
+    # keep all (no filter)
+    else {
+      out <- propr_obj()["<=", 1]@pairs
+    }
     out
   })
 
-  # output$prop_table <- DT::renderDataTable(
-  #
-  # )
+  # apply filters
+  work_obj <- eventReactive(apply_filter(),{
+    out <- propr_obj()
+    out@pairs <- pairs_keep()
+    out <- simplify(out)
+  })
+
+  # extract rho values
+  rho_df <- eventReactive(apply_filter(), {
+    propr:::proprPairs(work_obj()@matrix)
+  })
+
+  # # convert df to matrix
+  # rho_mat <- reactive({
+  #   work_df() %>%
+  #     spread(Partner, rho)
+  # })
+
+  output$prop_summary <- renderPrint({
+    cat('Rho distribution:\n')
+    print(summary(rho_df()$prop))
+    cat('Number of Feature Pairs:\n')
+    print(length(work_obj()@pairs))
+  })
+
+  output$prop_table <- DT::renderDataTable(
+    DT::datatable(work_obj()@matrix, extension = 'Buttons',
+                   options=list(dom = 'Blfrtip', buttons = c('copy','csv'),
+                                scrollX = TRUE)) %>%
+      DT::formatRound(column = colnames(work_obj()@matrix), digits = 3)
+  )
 
   output$check <- renderPrint({
-    head()
+    print(head(rho_df()))
   })
 }
 

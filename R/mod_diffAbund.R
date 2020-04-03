@@ -34,7 +34,32 @@ mod_diffAbund_ui <- function(id){
           conditionalPanel(
             condition = "input.menu === 'prop_tab'",
             br(), hr(),
-            actionButton(ns('prop_calculate'), 'Calculate')
+            fixedPanel(
+              width = 225,
+              tags$div(style = "text-align: center",
+                       tags$b("Proportionality Parameters")),
+              actionButton(ns('prop_calculate'), 'Calculate'),
+
+              hidden(div(
+                id = ns('rho_filter_div'),
+                radioButtons(ns('rho_filter'), NULL,
+                             choices = c('Show all pairs' = 'all',
+                                         'Filter by rho' = 'filter'),
+                             selected = 'all'),
+                hidden(div(
+                  id = ns('rho_slider_div'),
+                  tags$style(HTML(".irs-bar {background: none; border: none}")),
+                  tags$style(HTML("irs-grid-pol.small {height: 0px;}")),
+                  tags$style(HTML(".irs-grid-text { font-size: 11pt; }")),
+                  sliderInput(ns('rho_cutoff'), "Rho cutoff", min = -1, max = 1,
+                              value = c(-0.6, 0.6), step = 0.01),
+                  radioButtons(ns("rho_operator"), "Keep Rho values",
+                               choices = c('inside range'='inside',
+                                           'outside range' = 'outside'))
+                )),
+                actionButton(ns('apply_filter'), "Apply filter")
+              ))
+            )
           )
         )
       ),
@@ -91,10 +116,28 @@ mod_diffAbund_server <- function(input, output, session, improxy){
   })
 
   # proportionality-------------------------------------------------------------
+  # show/hide ui component
+  observeEvent(input$prop_calculate, {
+    show('rho_filter_div')
+  })
+
+  observeEvent(input$rho_filter, {
+    if(input$rho_filter == 'filter') {
+      show('rho_slider_div')
+    }
+    else {
+      hide('rho_slider_div')
+    }
+  })
+
   # add prop inputs
   bridge$prop_input <- reactiveValues()
   observe({
     bridge$prop_input$prop_calculate <- input$prop_calculate
+    bridge$prop_input$apply_filter <- input$apply_filter
+    bridge$prop_input$rho_filter <- input$rho_filter
+    bridge$prop_input$rho_cutoff <- input$rho_cutoff
+    bridge$prop_input$rho_operator <- input$rho_operator
   })
   callModule(mod_da_prop_server, "da_prop_ui_1", bridge)
 }

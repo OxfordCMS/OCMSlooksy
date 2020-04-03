@@ -7,6 +7,29 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports: 
+    ALDEx2,
+    DBI,
     shiny, 
-    golem
+    golem,
+    DT,
+    RColorBrewer,
+    datasets,
+    dplyr,
+    forcats,
+    ggdendro,
+    ggfortify,
+    ggplot2,
+    golem,
+    heatmaply,
+    htmltools,
+    plotly,
+    propr,
+    shiny,
+    shinyFiles,
+    shinyWidgets,
+    shinydashboard,
+    shinyjqui,
+    shinyjs,
+    stringr,
+    tidyr
 RoxygenNote: 7.0.2

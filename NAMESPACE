@@ -44,15 +44,7 @@ import(heatmaply)
 import(htmltools)
 import(htmlwidgets)
 import(plotly)
-<<<<<<< HEAD
-<<<<<<< HEAD
-import(readr)
-=======
->>>>>>> 72d381dd85c19d87a159acb8b5ff19f7cf8fd4fe
-=======
 import(propr)
-import(shinipsum)
->>>>>>> 5f6adba... setting up differential abundance analysis
 import(shiny)
 import(shinyFiles)
 import(shinyWidgets)

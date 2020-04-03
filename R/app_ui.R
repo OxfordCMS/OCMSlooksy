@@ -10,9 +10,11 @@ app_ui <- function() {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     shinyjs::useShinyjs(),
-    # List the first level UI elements here 
+
+    # List the first level UI elements here
     # h3('Check'),
     # verbatimTextOutput('check'),
+
     navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'fixed-top',
 
                # Introduction---------------------------------------------------
@@ -30,9 +32,9 @@ app_ui <- function() {
                # Prepare dataset for analysis-----------------------------------
                tabPanel(title = "Prepare Data Set", value = 'prepare',
                         icon = icon("filter"), mod_setup_ui("setup_ui_1")),
-               
+
                # Overview samples-----------------------------------------------
-               tabPanel(title = "Overview", value = 'overview', 
+               tabPanel(title = "Overview", value = 'overview',
                         icon = icon("binoculars"),
                         mod_overview_ui("overview_ui_1")),
 
@@ -46,12 +48,13 @@ app_ui <- function() {
 
 #' @import shiny
 golem_add_external_resources <- function(){
-  
+
   tags$link(rel="stylesheet", type="text/css", href="www/custom.css")
+
   addResourcePath(
     'www', system.file('app/www', package = 'OCMSExplorer')
   )
- 
+
   tags$head(
     golem::activate_js(),
     golem::favicon()

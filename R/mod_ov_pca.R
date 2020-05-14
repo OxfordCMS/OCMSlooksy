@@ -13,6 +13,7 @@
 #' @keywords internal
 #' @export 
 #' @importFrom shiny NS tagList 
+#' @import htmlwidgets
 mod_ov_pca_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -386,7 +387,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   p_biplot <- reactive({
     req(pca_calculate())
 
-    p_biplot <- OCMSExplorer:::cms_biplot(
+    p_biplot <- cms_biplot(
       score_data(), load_data(),
       xPC = input$xPC, yPC = input$yPC,
       # score point

@@ -17,9 +17,9 @@
 #' @import dplyr
 #' @import tidyr
 #' @import shinyFiles
-#' @import shinyWidgets
 #' @import shinyjqui
-#' 
+#' @import htmlwidgets
+#' @import readr
 mod_qc_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -897,7 +897,7 @@ mod_qc_server <- function(input, output, session, improxy){
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
     mat <- as.matrix(mat)
-    OCMSExplorer:::cms_rarefy(t(mat))
+    cms_rarefy(t(mat))
   })
 
   output$plot_rarefaction <- renderPlotly({

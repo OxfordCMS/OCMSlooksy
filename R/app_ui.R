@@ -1,5 +1,4 @@
 #' @import shiny
-#' @import shinipsum
 #' @import DT
 #' @import datasets
 #' @import htmltools

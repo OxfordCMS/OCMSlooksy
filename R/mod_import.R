@@ -19,6 +19,8 @@
 #' @import dplyr
 #' @import forcats
 #' @import DBI
+#' @import RSQLite
+#' @import vroom
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(

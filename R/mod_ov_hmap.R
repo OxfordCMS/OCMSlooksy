@@ -13,6 +13,9 @@
 #' @keywords internal
 #' @export 
 #' @importFrom shiny NS tagList 
+#' @import cowplot
+#' @import htmlwidgets
+#' @import readr
 mod_ov_hmap_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -213,7 +216,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   
   samp_ddata <- reactive({
     req(hmap_calculate())
-    OCMSExplorer:::dendro_data_k(samp_hclust(), input$hmap_samp_k)
+    dendro_data_k(samp_hclust(), input$hmap_samp_k)
   })
   
   # sample dendrogram
@@ -221,7 +224,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
     req(input$hmap_samp_k, input$hmap_samp_colour)
     if(input$hmap_samp_colour == 'none') category <- NULL
     else category <- input$hmap_samp_colour
-    p <- OCMSExplorer:::plot_ggdendro(
+    p <- plot_ggdendro(
       samp_ddata(),
       direction = 'lr',
       branch.size = 0.5,
@@ -301,7 +304,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   
   asv_ddata <- reactive({
     req(hmap_calculate())
-    OCMSExplorer:::dendro_data_k(asv_hclust(), input$hmap_asv_k)
+    dendro_data_k(asv_hclust(), input$hmap_asv_k)
   })
   
   # asv dendrogram
@@ -310,7 +313,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
     if(input$hmap_asv_colour == 'none') category <- NULL
     else category <- input$hmap_asv_colour
     
-    p <- OCMSExplorer:::plot_ggdendro(
+    p <- plot_ggdendro(
       asv_ddata(),
       direction = 'lr',
       branch.size = 0.5,

@@ -100,7 +100,7 @@ plot_ggdendro <- function(hcdata,
                  size         =  branch.size)
   
   # labels
-  labelParams <- OCMSExplorer:::set_labels_params(nrow(hcdata$labels), direction, fan)
+  labelParams <- set_labels_params(nrow(hcdata$labels), direction, fan)
   hcdata$labels$angle <- labelParams$angle
   
   if(is.null(category)) {

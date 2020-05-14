@@ -230,4 +230,4 @@ mod_ov_bar_server <- function(input, output, session, param){
     
 ## To be copied in the server
 # callModule(mod_ov_bar_server, "ov_bar_ui_1")
- 
+

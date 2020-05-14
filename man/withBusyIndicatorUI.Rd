@@ -12,5 +12,5 @@ withBusyIndicatorUI(button)
 \description{
 UI function to show busy/loading/error indicator after button is pressed.
 Corresponds with \code{withBusyIndicatorServer} function.
-copied from \link{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
+copied from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
 }

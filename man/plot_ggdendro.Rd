@@ -20,5 +20,5 @@ plot_ggdendro(
 }
 \description{
 use ggplot to make customized dendrogram.
-following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 }

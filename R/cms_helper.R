@@ -2,7 +2,7 @@
 #' 
 #' UI function to show busy/loading/error indicator after button is pressed.
 #' Corresponds with \code{withBusyIndicatorServer} function.
-#' copied from \link{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
+#' copied from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
 #' 
 #' @param button Action button for indicator to act on
 
@@ -55,7 +55,7 @@ withBusyIndicatorUI <- function(button) {
 #' Call this function from the server with the button id that is clicked and the
 #' expression to run when the button is clicked.
 #' Corresponds with \code{withBustyIndicatorUI} function.
-#' Copied from \link{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
+#' Copied from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
 #' 
 #' @param buttonID
 #' @param expr

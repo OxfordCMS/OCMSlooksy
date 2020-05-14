@@ -10,5 +10,5 @@ withBusyIndicatorServer(buttonId, expr)
 Call this function from the server with the button id that is clicked and the
 expression to run when the button is clicked.
 Corresponds with \code{withBustyIndicatorUI} function.
-Copied from \link{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
+Copied from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
 }

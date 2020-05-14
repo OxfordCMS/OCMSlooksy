@@ -1,7 +1,7 @@
 #' dendro_data_k
 #' 
 #' Extract dendrogram data for plot customized dendrogram. 
-#' following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 dendro_data_k <- function(hc, k) {
   
@@ -33,7 +33,7 @@ dendro_data_k <- function(hc, k) {
 #' set_label_param
 #' 
 #' set parameters of labels for plotting customized dendrogram. 
-#' following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 set_labels_params <- function(nbLabels,
                               direction = c("tb", "bt", "lr", "rl"),
@@ -56,7 +56,7 @@ set_labels_params <- function(nbLabels,
 #' plot_ggdendro
 #' 
 #' use ggplot to make customized dendrogram.
-#' following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 plot_ggdendro <- function(hcdata,
                           metadata,

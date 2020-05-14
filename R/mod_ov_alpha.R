@@ -14,7 +14,7 @@
 #' @export 
 #' @importFrom shiny NS tagList 
 #' @import htmlwidgets
-#' import readr
+#' @import readr
 mod_ov_alpha_ui <- function(id){
   ns <- NS(id)
   tagList(

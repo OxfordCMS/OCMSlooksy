@@ -20,6 +20,7 @@
 #' @import shinyjqui
 #' @import htmlwidgets
 #' @import readr
+#' @import shinyWidgets
 mod_qc_ui <- function(id){
   ns <- NS(id)
   tagList(

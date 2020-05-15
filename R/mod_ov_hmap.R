@@ -15,6 +15,7 @@
 #' @importFrom shiny NS tagList 
 #' @import cowplot
 #' @import htmlwidgets
+#' @import shinyWidgets
 #' @import readr
 mod_ov_hmap_ui <- function(id){
   ns <- NS(id)

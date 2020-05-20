@@ -19,7 +19,7 @@
 mod_ov_bar_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     h1('Relative Distribution of Taxa'),
     column(width = 12,
            h3(textOutput(ns('bar_title'))),

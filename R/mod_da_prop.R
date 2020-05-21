@@ -85,78 +85,90 @@ mod_da_prop_ui <- function(id){
                           choices = c('featureID','Taxon','Species')))
           )
         )
-      ),
-      column(
-        width = 12,
-        column(
-          width = 1, style = 'padding:0px;',
-          dropdown(
-            size = 'xs', icon = icon('save'), inline = TRUE,
-            style = 'material-circle', width = 160,
-            animate = animateOptions(
-              enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-              exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-
-            downloadBttn(ns('dl_hmap_html'),
-                         list(icon('file-code'), "Interactive plot"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_hmap_data'),
-                         list(icon('file-alt'), "Plot data"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_hmap_rds'),
-                         list(icon('file-prescription'), "RDS"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_hmap_all'),
-                         list(icon('file-archive'), "All"),
-                         size = 'xs', style = 'minimal')
-          )),
-        column(
-          width = 11, style = 'padding:0px;',
-          shinyjqui::jqui_resizable(
-            plotlyOutput(ns('hmap_prop'), width = '100%', height = 'auto')))
-      ),
-      column(
-        width = 12,
-        h3('Visualizing Feature Pairs'),
-        DT::dataTableOutput(ns('prop_table')),
-      ),
-      column(
-        width = 12,
-        tabsetPanel(
-          type = 'tabs',
-          tabPanel("Feature Pairs",
-                   column(
-                     width = 1, style = 'padding:0px;',
-                     dropdown(
-                       size = 'xs', icon = icon('save'), inline = TRUE,
-                       style = 'material-circle', width = 160,
-                       animate = animateOptions(
-                         enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                         exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-
-                       downloadBttn(ns('dl_pair_html'),
-                                    list(icon('file-code'), "Interactive plot"),
-                                    size = 'xs', style = 'minimal'), br(),
-                       downloadBttn(ns('dl_pair_data'),
-                                    list(icon('file-alt'), "Plot data"),
-                                    size = 'xs', style = 'minimal'), br(),
-                       downloadBttn(ns('dl_pair_rds'),
-                                    list(icon('file-prescription'), "RDS"),
-                                    size = 'xs', style = 'minimal'), br(),
-                       downloadBttn(ns('dl_pair_all'),
-                                    list(icon('file-archive'), "All"),
-                                    size = 'xs', style = 'minimal')
-                     )),
-                   column(
-                     width = 11, style = 'padding:0px;',
-                     shinyjqui::jqui_resizable(
-                       plotlyOutput(ns("plot_pair"), width = '100%', height = 'auto'))
-                    )
-                  ),
-          tabPanel("By Metadata")
-        )
       )
-    ))
+    )),
+    column(
+      width = 12,
+      column(
+        width = 1, style = 'padding:0px;',
+        dropdown(
+          size = 'xs', icon = icon('save'), inline = TRUE,
+          style = 'material-circle', width = 160,
+          animate = animateOptions(
+            enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+            exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+
+          downloadBttn(ns('dl_hmap_html'),
+                       list(icon('file-code'), "Interactive plot"),
+                       size = 'xs', style = 'minimal'), br(),
+          downloadBttn(ns('dl_hmap_data'),
+                       list(icon('file-alt'), "Plot data"),
+                       size = 'xs', style = 'minimal'), br(),
+          downloadBttn(ns('dl_hmap_rds'),
+                       list(icon('file-prescription'), "RDS"),
+                       size = 'xs', style = 'minimal'), br(),
+          downloadBttn(ns('dl_hmap_all'),
+                       list(icon('file-archive'), "All"),
+                       size = 'xs', style = 'minimal')
+        )),
+      column(
+        width = 11, style = 'padding:0px;',
+        shinyjqui::jqui_resizable(
+          plotlyOutput(ns('hmap_prop'), width = '100%', height = 'auto')))
+    ),
+    column(
+      width = 12,
+      h3('Visualizing Feature Pairs'),
+      DT::dataTableOutput(ns('prop_table')),
+    ),
+    column(
+      width = 12,
+      tabsetPanel(
+        type = 'tabs',
+        tabPanel("Feature Pairs",
+                 column(
+                   width = 1, style = 'padding:0px;',
+                   dropdown(
+                     size = 'xs', icon = icon('save'), inline = TRUE,
+                     style = 'material-circle', width = 160,
+                     animate = animateOptions(
+                       enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                       exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+
+                     downloadBttn(ns('dl_pair_html'),
+                                  list(icon('file-code'), "Interactive plot"),
+                                  size = 'xs', style = 'minimal'), br(),
+                     downloadBttn(ns('dl_pair_data'),
+                                  list(icon('file-alt'), "Plot data"),
+                                  size = 'xs', style = 'minimal'), br(),
+                     downloadBttn(ns('dl_pair_rds'),
+                                  list(icon('file-prescription'), "RDS"),
+                                  size = 'xs', style = 'minimal'), br(),
+                     downloadBttn(ns('dl_pair_all'),
+                                  list(icon('file-archive'), "All"),
+                                  size = 'xs', style = 'minimal')
+                   )),
+                 column(
+                   width = 11, style = 'padding:0px;',
+                   shinyjqui::jqui_resizable(
+                     plotlyOutput(ns("plot_pair"), width = '100%',
+                                  height = 'auto'))
+                 )
+        ),
+        tabPanel("By Metadata",
+                 wellPanel(
+                   uiOutput(ns("meta_x_ui"))
+                 ),
+                 column(
+                   width = 11, style = 'padding:0px',
+                   shinyjqui::jqui_resizable(
+                     plotlyOutput(ns("plot_meta"), width = '100%',
+                                     height = 'auto')
+                   )
+                 )
+                )
+      )
+    )
   )
 }
 
@@ -188,6 +200,12 @@ mod_da_prop_server <- function(input, output, session, param){
 
   observeEvent(apply_filter(), {
     show('prop_hmap_div')
+  })
+
+  #generate UI------------------------------------------------------------------
+  output$meta_x_ui <- renderUI({
+    selectInput(ns('meta_x'), 'x-axis', choices = colnames(met()),
+                selected = 'sampleID')
   })
 
   # calculate rho---------------------------------------------------------------
@@ -361,10 +379,6 @@ mod_da_prop_server <- function(input, output, session, param){
     }
   )
 
-  output$check <- renderPrint({
-
-  })
-
   # select ASV pairs from table
   output$prop_table <- DT::renderDataTable({
     DT::datatable(rho_df() %>%
@@ -380,7 +394,7 @@ mod_da_prop_server <- function(input, output, session, param){
     out
   })
 
-  pdata <- reactive({
+  pair_pdata <- reactive({
     curr <- work_obj()@logratio
     out <- c()
     for(i in selected()) {
@@ -390,6 +404,7 @@ mod_da_prop_server <- function(input, output, session, param){
                                           curr_row[1], curr_row[2], curr_row[3]),
                           feature1 = curr_row[1],
                           feature2 = curr_row[2],
+                          prop = curr_row[3],
                           x = curr[,curr_row[1]],
                           y = curr[,curr_row[2]])
       out <- rbind(out, entry)
@@ -398,7 +413,7 @@ mod_da_prop_server <- function(input, output, session, param){
   })
 
   p_pair <- reactive({
-    ggplot(pdata(), aes(x = x, y = y)) +
+    ggplot(pair_pdata(), aes(x = x, y = y)) +
       geom_point() +
       geom_smooth(method = 'lm', se = FALSE, show.legend = FALSE) +
       facet_wrap(~panel, scales = 'free', ncol = 3) +
@@ -422,7 +437,7 @@ mod_da_prop_server <- function(input, output, session, param){
   output$dl_pair_data <- downloadHandler(
     fname <- function() {"da_pair.csv"},
     content <- function(file) {
-      readr::write_csv(pdata(), file)
+      readr::write_csv(pair_pdata(), file)
     }
   )
 
@@ -443,7 +458,7 @@ mod_da_prop_server <- function(input, output, session, param){
       setwd(tempdir())
       to_zip <- c("da_pair.html","da_pair.csv", "da_pair.rds")
       htmlwidgets::saveWidget(ggplotly(p_pair()), to_zip[2])
-      write.csv(pdata(), to_zip[3])
+      write.csv(pair_pdata(), to_zip[3])
       saveRDS(p_pair(), to_zip[4])
 
       #create the zip file
@@ -452,6 +467,39 @@ mod_da_prop_server <- function(input, output, session, param){
     }
   )
 
+  output$check <- renderPrint({
+    print(head(pair_pdata()))
+    print(head(meta_pdata()))
+  })
+
+  # put metadata with selected features
+  meta_pdata <- reactive({
+
+    logratio <- work_obj()@logratio
+    logratio$sampleID <- rownames(logratio)
+    logratio <- logratio %>%
+      gather('featureID', 'logratio', -sampleID) %>%
+      inner_join(met(), 'sampleID')
+
+    pair_pdata() %>%
+      distinct(pairID, panel, prop, feature1, feature2) %>%
+      gather('variable','featureID', -pairID, -panel, -prop) %>%
+      left_join(logratio, 'featureID')
+  })
+
+  p_meta <- reactive({
+    ggplot(meta_pdata(), aes_string(x = input$meta_x, y = 'logratio')) +
+      geom_point(aes(colour = featureID)) +
+      geom_line(aes(colour = featureID, group = featureID)) +
+      facet_wrap(~panel, scales = 'free', ncol = 3) +
+      theme_bw(12) +
+      theme(legend.position = 'none') +
+      ylab('Normalized\nrelative abundance')
+  })
+
+  output$plot_meta <- renderPlotly({
+    ggplotly(p_meta())
+  })
   # # return dataset
   # cross_module <- reactiveValues()
   # # observe({cross_module$work_obj <- work_obj()})

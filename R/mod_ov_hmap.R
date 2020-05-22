@@ -22,10 +22,12 @@ mod_ov_hmap_ui <- function(id){
   tagList(
     h1('Heirarchical Clustering'),
     tags$div("Heirarchical clustering is influenced by the linkage method used to measure the distance between clusters of observations. The linkage methods differ in the criteria that is used to determine the distance of sets of observations. The criteria are based on the distance between individual observations within a set. Choice in distance method also affects the clustering outcome, which measures the distance between a pair of observations. Distance metrics fall into three categories: agglomerative, divisive, and dissimilarity."),
+    wellPanel(verbatimTextOutput(ns('check'))),
     hidden(div(
       id = ns('hmap_body_div'),
       column(
         width = 12,
+        
         column(
           width = 3, br(), br(),
           wellPanel(
@@ -208,6 +210,9 @@ mod_ov_hmap_server <- function(input, output, session, param){
   })
   
   # calculate heatmap-----------------------------------------------------------
+  output$check <- renderPrint({
+    samp_ddata()
+  })
   # calculate sample clustering
   samp_hclust <- reactive({
     req(hmap_calculate())
@@ -231,6 +236,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
       branch.size = 0.5,
       metadata = met(),
       category = category,
+      nudge.label = 0.01,
       label.category = input$hmap_samp_label,
       id = 'sampleID')
     p
@@ -320,6 +326,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
       branch.size = 0.5,
       metadata = tax(),
       label.category = input$hmap_asv_label,
+      nudge.label = 0.01,
       category = category,
       id = 'featureID')
   })
@@ -396,10 +403,8 @@ mod_ov_hmap_server <- function(input, output, session, param){
     }
     hmap_data
   })
-  # 
-  # output$check <- renderPrint({
-  #   
-  # })
+
+
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(
@@ -418,17 +423,24 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # plot heat map
   output$hmap_plot <- renderPlotly({
     req(hmap_calculate())
-    heatmaply(hmap(), node_type = 'heatmap', colors = 'RdYlBu',
+    heatmaply(hmap(), node_type = 'heatmap', 
+              scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+                low = "blue",
+                high = "red"),
               key.title = 'Normalized\nRelative Abundance') 
   })
   
   output$dl_hmap_html <- downloadHandler(
     fname <- function() {"ov_hmap.html"},
     content <- function(file) {
-      htmlwidgets::saveWidget(heatmaply(hmap(), 
-                                        node_type = 'heatmap', colors = 'RdYlBu',
-                                        key.title = 'Normalized\nRelative Abundance'), 
-                              file)
+      htmlwidgets::saveWidget(heatmaply(
+        hmap(), 
+        node_type = 'heatmap', 
+        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+          low = "blue",
+          high = "red"),
+        key.title = 'Normalized\nRelative Abundance'),
+        file)
     }
   )
   
@@ -455,7 +467,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
       tmpdir <- tempdir()
       setwd(tempdir())
       to_zip <- c("ov_hmap.html","ov_hmap.csv", "ov_hmap.rds")
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_hmap())), to_zip[2])
+      htmlwidgets::saveWidget(heatmaply(
+        hmap(), 
+        node_type = 'heatmap', 
+        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+          low = "blue",
+          high = "red"),
+        key.title = 'Normalized\nRelative Abundance'), to_zip[2])
       write.csv(asv_ddata(), to_zip[3])
       saveRDS(p_hmap(), to_zip[4])
       

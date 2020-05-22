@@ -47,7 +47,7 @@ set_labels_params <- function(nbLabels,
   } else {
     angle       <-  rep(0, nbLabels)
     hjust       <-  0
-    if (direction %in% c("tb", "bt")) { angle <- angle + 45 }
+    if (direction %in% c("tb", "bt")) { angle <- angle + 90 }
     if (direction %in% c("tb", "rl")) { hjust <- 1 }
   }
   return(list(angle = angle, hjust = hjust, vjust = 0))
@@ -114,7 +114,7 @@ plot_ggdendro <- function(hcdata,
               aes(x       =  x,
                   y       =  y,
                   label   =  new_label,
-                  colour  =  factor(clust),
+                  # colour  =  factor(clust),
                   angle   =  angle),
               vjust       =  labelParams$vjust,
               hjust       =  labelParams$hjust,
@@ -135,8 +135,10 @@ plot_ggdendro <- function(hcdata,
       scale_linetype_discrete(guide = FALSE)
   }
   else{
-    p <- p + scale_colour_discrete(name = 'cluster', labels = nclust) +
-      scale_linetype_discrete(guide = FALSE)
+    p <- p + 
+      scale_linetype_discrete(guide = FALSE) +
+      scale_colour_manual(name = 'cluster', labels = nclust,
+                         values = cms_palette(max(segment(hcdata)$clust)))
   }
   
   # categorical data
@@ -150,7 +152,8 @@ plot_ggdendro <- function(hcdata,
     
     p <- p +
       geom_tile(data = cat_data, 
-                aes_string(x = 'x', y = 'shift_y', fill = 'value'), height = 0.5) +
+                aes_string(x = 'x', y = 'shift_y', fill = 'value'), 
+                height = max(segment(hcdata)$y) * 0.05) +
       scale_fill_discrete(name = category)
   }
   

@@ -85,7 +85,8 @@ mod_setup_ui <- function(id){
               radioButtons(ns('transform_method'), "Transformation method:",
                                  choices = c('none' = 'none', 
                                              'centre log-ratio' = 'clr',
-                                             'additive log-ratio' = 'alr'),
+                                             'log10' = 'log10',
+                                             'percent abundance' = 'percent'),
                                  selected = 'clr'),
               actionButton(ns('submit_transform'), "Transform Counts")
             )
@@ -97,9 +98,9 @@ mod_setup_ui <- function(id){
       dashboardBody(
         box(width = '100%', br(),br(), br(),
             
-            # fluidRow(width = 12,
-            #         h3('Check Box'),
-            #         verbatimTextOutput(ns('check'))),
+            fluidRow(width = 12,
+                    h3('Check Box'),
+                    verbatimTextOutput(ns('check'))),
             
             tabItems(
               # main page-------------------------------------------------------
@@ -287,8 +288,6 @@ mod_setup_server <- function(input, output, session, improxy){
       filter(sampleID %in% unique(working_meta()$sampleID))
   })
   
-  # output$check <- renderPrint({
-  # })
   # subset ASVs-----------------------------------------------------------------
   
   # control UI based on filter method--------------------------------------
@@ -459,6 +458,12 @@ mod_setup_server <- function(input, output, session, improxy){
 
   
   # transform ASVs--------------------------------------------------------------
+  
+  output$check <- renderPrint({
+    input$transform_method
+    
+  })
+  
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)
     
@@ -477,14 +482,29 @@ mod_setup_server <- function(input, output, session, improxy){
       clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
                              function(m){t(apply(m,1,median))})
       ## samples in columns
-      clr_df <- data.frame(matrix(unlist(clr_instance), ncol = length(clr_instance),
+      clr_df <- data.frame(matrix(unlist(clr_instance), 
+                                  ncol = length(clr_instance),
                                   byrow = FALSE,
                                   dimnames = list(colnames(clr_instance[[1]]),
                                                   names(clr_instance))),
                            stringsAsFactors=FALSE)
       out <- clr_df
     }
-    else {
+    if(input$transform_method == 'log10') {
+      out <- apply(asv_df, 2, function(x) log10(x))
+    }
+    if(input$transform_method == 'percent') {
+      out <- working_asv() %>%
+        group_by(sampleID) %>%
+        mutate(sample_tot = sum(read_count),
+               rel_abund = read_count / sample_tot) %>%
+        select(-read_count, -sample_tot) %>%
+        spread(sampleID, rel_abund) %>%
+        as.data.frame()
+      rownames(out) <- out$featureID
+      out <- out[, colnames(out) != 'featureID']
+    }
+    if(input$transform_method == 'none') {
       out <- asv_df
     }
     out
@@ -493,7 +513,8 @@ mod_setup_server <- function(input, output, session, improxy){
   output$preview_transform <- DT::renderDataTable({
     DT::datatable(asv_transform(), extensions = 'Buttons', 
                   options = list(scrollX = TRUE, 
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+                                 dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
+      DT::formatRound(column = colnames(asv_transform()), digits = 3)
   })
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({

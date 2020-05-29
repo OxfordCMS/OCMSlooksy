@@ -1,45 +1,80 @@
 #' cms_rarefy
 #' 
-#' rarefaction curve based on vegan. returns dataframe of rarefaction curve adapted from https://github.com/mahendra-mariadassou/phyloseq-extended/blob/master/R/graphical_methods.R and vegan
+#' from MetaSequencing by microbialman
 #' 
-#' @param x matrix with samples in row, feature in column
-#' 
+#' @param x matrix with samples in columns, feature in rows
+#' import foreach
+#' import vegan
 
 cms_rarefy <- function(x) {
   
-  rarefun <- function(i) {
-    step <- 1
-    se <- TRUE
-    
-    cat(paste("rarefying sample", rownames(x)[i]), sep = "\n")
-    n <- seq(1, tot[i], by = step)
-    if (n[length(n)] != tot[i]) {
-      n <- c(n, tot[i])
-    }
-    
-    y <- vegan::rarefy(x[i, ,drop = FALSE], n, se = se)
-    
-    if (nrow(y) != 1) {
-      rownames(y) <- c("species_richness", "std_error")
-      return(data.frame(t(y), sample_size = n, sampleID = rownames(x)[i]))
-    } 
-    else {
-      return(data.frame(species_richness = y[1, ], sample_size = n, 
-                        sampleID = rownames(x)[i]))
-    }
+  `%dopar%` <- foreach::`%dopar%`
+  # getting sample read depth
+  sampmax = colSums(df)
+  raredepths = round(c(seq(from=1, to=max(sampmax),
+                           by=(max(sampmax)-1)/20)))
+  
+  # initiate rarefaction values matrix
+  vals = matrix(nrow=length(raredepths), ncol=ncol(df))
+  
+  # calculate rarefaction
+  forres = foreach::foreach(i = 1:length(raredepths)) %dopar% {
+    depth = raredepths[i]
+    res = vegan::rarefy(round(t(df)), depth)
+    res[sampmax < depth] = NA
+    return(res)
   }
   
-  x <- as.matrix(x)
-  if (!identical(all.equal(x, round(x)), TRUE)) 
-    stop("function accepts only integers (counts)")
- 
-  tot <- rowSums(x)
-  S <- rowSums(x > 0)
-  nr <- nrow(x)
-  step = 1
+  # populate matrix with rarefaction values
+  for(i in 1:length(forres)){
+    vals[i,] = unlist(forres[i])
+  }
   
-  out <- lapply(seq_len(nr), rarefun)
+  colnames(vals)=colnames(df)
+  rownames(vals)=raredepths
   
-  df <- do.call(rbind, out)
-  return(df)
+  raremelt = reshape2::melt(vals)
+  colnames(raremelt) = c("Depth","sampleID","Richness")
+  raremelt = raremelt[!is.na(raremelt$Richness),]
+  
+  labels = data.frame(Sample = colnames(df),
+                      Depth = sampmax,
+                      Rich = apply(vals, 2, function(x){max(x,na.rm = T)}))
+  
+  # 
+  # rarefun <- function(i) {
+  #   step <- 1
+  #   se <- TRUE
+  #   
+  #   cat(paste("rarefying sample", rownames(x)[i]), sep = "\n")
+  #   n <- seq(1, tot[i], by = step)
+  #   if (n[length(n)] != tot[i]) {
+  #     n <- c(n, tot[i])
+  #   }
+  #   
+  #   y <- vegan::rarefy(x[i, ,drop = FALSE], n, se = se)
+  #   
+  #   if (nrow(y) != 1) {
+  #     rownames(y) <- c("species_richness", "std_error")
+  #     return(data.frame(t(y), sample_size = n, sampleID = rownames(x)[i]))
+  #   } 
+  #   else {
+  #     return(data.frame(species_richness = y[1, ], sample_size = n, 
+  #                       sampleID = rownames(x)[i]))
+  #   }
+  # }
+  # 
+  # x <- as.matrix(x)
+  # if (!identical(all.equal(x, round(x)), TRUE)) 
+  #   stop("function accepts only integers (counts)")
+  # 
+  # tot <- rowSums(x)
+  # S <- rowSums(x > 0)
+  # nr <- nrow(x)
+  # step = 1
+  # 
+  # out <- lapply(seq_len(nr), rarefun)
+  # 
+  # df <- do.call(rbind, out)
+  return(raremelt)
 }

@@ -56,9 +56,9 @@ mod_qc_ui <- function(id){
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
           
-          # fluidRow(
-          #   box(width = 12, h3('Check'),
-          #       verbatimTextOutput(ns('check')))),
+          fluidRow(
+            box(width = 12, h3('Check'),
+                verbatimTextOutput(ns('check')))),
           tabItems(
               # main page---------------------------------------------------------
               tabItem(
@@ -250,8 +250,6 @@ mod_qc_ui <- function(id){
                 h1("featureID Rarefaction"),
                 tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
                 actionButton(ns('rare_calculate'), 'Calculate'),
-                uiOutput(ns('rare_colour_ui')),
-                checkboxInput(ns('rare_se'), 'Show standard error', value = FALSE),
                 jqui_resizable(
                   plotlyOutput(ns('plot_rarefaction'),
                                width = '100%', height = 'auto') %>% 
@@ -410,10 +408,6 @@ mod_qc_ui <- function(id){
 mod_qc_server <- function(input, output, session, improxy){
   ns <- session$ns 
   
-  # # Check
-  # output$check <- renderPrint({
-  #   data_set()$merged_filter_summary
-  # })
 
   # reading in tables ----------------------------------------------------------
   data_set <- reactive({improxy$data_db})
@@ -445,13 +439,6 @@ mod_qc_server <- function(input, output, session, improxy){
     choices <- colnames(met())
     radioButtons(ns('sample_select'), label = "Group samples by:",
                  choices = choices, selected = 'sampleID')
-  })
-  
-  # render rarefaction ui
-  output$rare_colour_ui <- renderUI({
-    selectInput(ns('rare_colour'), "Colour curves by:",
-                choices = c('none', colnames(met())),
-                selected = 'none')
   })
   
   # Filtering-------------------------------------------------------------------
@@ -893,12 +880,19 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+  
+  # Check
+  output$check <- renderPrint({
+    head(rare_df())
+  })
+  
   # rarefaction curve-----------------------------------------------------------
+  
   rare_df <- eventReactive(input$rare_calculate, {
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
     mat <- as.matrix(mat)
-    cms_rarefy(t(mat))
+    cms_rarefy(mat)
   })
 
   output$plot_rarefaction <- renderPlotly({
@@ -906,29 +900,12 @@ mod_qc_server <- function(input, output, session, improxy){
     pdata <- rare_df() %>%
       inner_join(met(), 'sampleID')
     
-    p <- ggplot(pdata, aes_string(x = 'sample_size', y = 'species_richness'))
-    
-    if(input$rare_colour == 'none') {
-      p <- p + geom_line(colour = 'black') 
-      
-      if(input$rare_se) {
-        p <- p + 
-          geom_ribbon(aes_string(ymin = "species_richness - std_error", 
-                                 ymax = "species_ricnhess + std_error"), 
-                                 color = NULL, fill = 'grey50', alpha = 0.2)
-      }
-    }
-    else {
-      p <- p + geom_line(aes_string(colour = input$rare_colour))
-      
-      if(input$rare_se) {
-        p <- p + 
-          geom_ribbon(aes_string(ymin = "species_richness - std_error", 
-                                 ymax = "species_ricnhess + std_error", 
-                                 color = NULL, fill = input$rare_color), 
-                      alpha = 0.2)
-      }
-    }
+    p <- ggplot(pdata, aes(x=Depth, y=Richness, color=sampleID)) +
+      geom_line() +
+      guides(color = F)+
+      geom_label(aes(label=sampleID, colour = sampleID),
+                 fill = alpha(c("white"), 0.2), 
+                 nudge_y = max(rare_df()$Richness*0.01))
     
     p <- p +
       theme_bw(12) +

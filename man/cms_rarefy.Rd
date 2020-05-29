@@ -7,8 +7,10 @@
 cms_rarefy(x)
 }
 \arguments{
-\item{x}{matrix with samples in row, feature in column}
+\item{x}{matrix with samples in columns, feature in rows
+import foreach
+import vegan}
 }
 \description{
-rarefaction curve based on vegan. returns dataframe of rarefaction curve adapted from https://github.com/mahendra-mariadassou/phyloseq-extended/blob/master/R/graphical_methods.R and vegan
+from MetaSequencing by microbialman
 }

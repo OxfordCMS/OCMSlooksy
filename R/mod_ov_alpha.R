@@ -22,7 +22,9 @@ mod_ov_alpha_ui <- function(id){
     h1("\u03B1-Diversity"),
     tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
     column(width = 12,
-           DT::dataTableOutput(ns('alpha_table'))),
+           DT::dataTableOutput(ns('alpha_table'))  %>%
+             shinycssloaders::withSpinner()
+          ),
     hidden(div(id = ns('alpha_body_div'),
                column(width = 3, br(), br(),
                       wellPanel(
@@ -52,10 +54,13 @@ mod_ov_alpha_ui <- function(id){
                                      size = 'xs', style = 'minimal')
                       ),
                       shinyjqui::jqui_resizable(
-                        plotlyOutput(ns('alpha_plot'), width = '100%')
+                        plotlyOutput(ns('alpha_plot'), width = '100%') %>% 
+                          shinycssloaders::withSpinner()
                       )),
                column(width = 12,
-                      DT::dataTableOutput(ns('alpha_test')))
+                      DT::dataTableOutput(ns('alpha_test'))  %>%
+                        shinycssloaders::withSpinner()
+                    )
     ))
   )
 }

@@ -64,7 +64,9 @@ mod_ov_hmap_ui <- function(id){
                         list(icon('file-archive'), "All"),
                         size = 'xs', style = 'minimal')),
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('sample_dendro_plot'), width = '100%')))),
+            plotlyOutput(ns('sample_dendro_plot'), width = '100%') %>% 
+              shinycssloaders::withSpinner()
+          ))),
       column(
         width = 12,
         column(
@@ -102,7 +104,9 @@ mod_ov_hmap_ui <- function(id){
                          list(icon('file-archive'), "All"),
                          size = 'xs', style = 'minimal')),
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('asv_dendro_plot'), width = '100%')))),
+            plotlyOutput(ns('asv_dendro_plot'), width = '100%') %>% 
+              shinycssloaders::withSpinner()
+          ))),
       
       h2('Heat map'), br(), br(),
       wellPanel(  
@@ -151,7 +155,9 @@ mod_ov_hmap_ui <- function(id){
             column(
               width = 11, style = 'padding:0px;',
               shinyjqui::jqui_resizable(
-                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto'))))
+                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto') %>% 
+                  shinycssloaders::withSpinner()
+              )))
     ))
   )
 }

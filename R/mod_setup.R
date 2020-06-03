@@ -122,13 +122,18 @@ mod_setup_ui <- function(id){
                 br(), br(),
                 hidden(div(id = ns('sample_filter_div'),
                    column(width = 8,
-                          DT::dataTableOutput(ns('sample_options_ui'))),
+                          DT::dataTableOutput(ns('sample_options_ui'))  %>%
+                            shinycssloaders::withSpinner()
+                        ),
                    column(width = 4,
                           wellPanel(tags$b('Selected samples:'),
                           htmlOutput(ns('sample_select')))))),
                 column(width = 12,
                        h3(textOutput(ns('preview_sample_title'))),
-                       DT::dataTableOutput(ns('preview_sample')))),
+                       DT::dataTableOutput(ns('preview_sample'))  %>%
+                         shinycssloaders::withSpinner()
+                      )
+              ),
               
               # filter asv------------------------------------------------------
               tabItem(
@@ -171,7 +176,8 @@ mod_setup_ui <- function(id){
                      column(
                        width = 12,
                           h3('Filter features based on selection'),
-                          DT::dataTableOutput(ns('asv_table_select'))
+                          DT::dataTableOutput(ns('asv_table_select'))  %>%
+                         shinycssloaders::withSpinner()
                      ))))),
                        
                 column(width = 12, br(),
@@ -182,7 +188,9 @@ mod_setup_ui <- function(id){
                             ))),
                 column(width = 12,
                        h3(textOutput(ns('preview_asv_title'))),
-                       DT::dataTableOutput(ns('preview_asv')))
+                       DT::dataTableOutput(ns('preview_asv'))  %>%
+                         shinycssloaders::withSpinner()
+                      )
               )),
               
               # asv transformation----------------------------------------------
@@ -193,7 +201,8 @@ mod_setup_ui <- function(id){
                        tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link].", 
                                 br(), 
                                 "Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data. Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."),
-                       DT::dataTableOutput(ns('preview_transform')))
+                       DT::dataTableOutput(ns('preview_transform')) %>%
+                         shinycssloaders::withSpinner())
               )
             )
         )

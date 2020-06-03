@@ -75,7 +75,8 @@ mod_qc_ui <- function(id){
                       tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
                       br(),
                       h3("Filtering parameters applied:"),
-                      DT::dataTableOutput(ns('filter_yml')) ,
+                      DT::dataTableOutput(ns('filter_yml'))  %>%
+                        shinycssloaders::withSpinner(),
                       h3("Filtering Effects"),
                       column(width = 1, style = 'padding:0px;', dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
@@ -115,7 +116,8 @@ mod_qc_ui <- function(id){
                       tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
                       br(),
                       h3("Denoising parameters applied:"),
-                      DT::dataTableOutput(ns('denoise_yml')),
+                      DT::dataTableOutput(ns('denoise_yml')) %>%
+                        shinycssloaders::withSpinner(),
                       br(),
                       h3('Denoising Effects'),
                       column(width = 1, style = 'padding:0px;', dropdown(
@@ -271,7 +273,7 @@ mod_qc_ui <- function(id){
                       tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
                       br(),
                       h3("Taxonomy assigment parameters applied:"),
-                      DT::dataTableOutput(ns('taxonomy_yml')) %>% 
+                      DT::dataTableOutput(ns('taxonomy_yml'))  %>%
                         shinycssloaders::withSpinner(),
                       br(),
                     
@@ -293,7 +295,9 @@ mod_qc_ui <- function(id){
                              br()),
                       column(width = 8,
                              h2('Table of Distribution of Taxa'),
-                             DT::dataTableOutput(ns('tax_distrib_table'))),
+                             DT::dataTableOutput(ns('tax_distrib_table'))  %>%
+                               shinycssloaders::withSpinner()
+                            ),
                       column(width = 12,
                              h2('Distribution of Taxa'),
                              column(width = 1, style = 'padding:0px;', dropdown(

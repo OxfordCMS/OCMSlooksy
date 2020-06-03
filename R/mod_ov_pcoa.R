@@ -25,9 +25,11 @@ mod_ov_pcoa_ui <- function(id){
     hidden(div(
       id = ns('pcoa_body_div'),
       h2("Distance Matrix"),
-      DT::dataTableOutput(ns('pcoa_dist_table')),
+      DT::dataTableOutput(ns('pcoa_dist_table'))  %>%
+        shinycssloaders::withSpinner(),
       h2("PCoA Summary"),
-      DT::dataTableOutput(ns('pcoa_summary')),
+      DT::dataTableOutput(ns('pcoa_summary'))  %>%
+        shinycssloaders::withSpinner(),
       h2('PCoA plot'),
       wellPanel(
         tags$div(style = 'text_align: center', h3("Plot Parameters")),
@@ -113,7 +115,9 @@ mod_ov_pcoa_ui <- function(id){
                           list(icon('file-archive'), "All"),
                           size = 'xs', style = 'minimal')),
             shinyjqui::jqui_resizable(
-              plotlyOutput(ns('pcoa_plot'), width = '100%')))
+              plotlyOutput(ns('pcoa_plot'), width = '100%') %>% 
+                shinycssloaders::withSpinner()
+            ))
           ))
     ))
   )

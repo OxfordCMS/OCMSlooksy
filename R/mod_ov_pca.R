@@ -25,7 +25,8 @@ mod_ov_pca_ui <- function(id){
     hidden(div(
       id = ns('pca_summary_div'), 
       h2('Summary of PCA'),
-      DT::dataTableOutput(ns('summary_pca'))
+      DT::dataTableOutput(ns('summary_pca'))  %>%
+        shinycssloaders::withSpinner()
     )),
     
     hidden(div(
@@ -120,7 +121,9 @@ mod_ov_pca_ui <- function(id){
         )),
         column(width = 11, style = 'padding:0px;',
             shinyjqui::jqui_resizable(
-              plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')))
+              plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto') %>% 
+                shinycssloaders::withSpinner()
+            ))
       )
   )
 }

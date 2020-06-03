@@ -23,7 +23,9 @@ mod_ov_bar_ui <- function(id){
     h1('Relative Distribution of Taxa'),
     column(width = 12,
            h3(textOutput(ns('bar_title'))),
-           DT::dataTableOutput(ns('bar_table'))),
+           DT::dataTableOutput(ns('bar_table'))  %>%
+             shinycssloaders::withSpinner()
+          ),
     column(width = 12,
            column(width = 1, style = 'padding:0px;', dropdown(
              size = 'xs', icon = icon('save'), inline = TRUE,
@@ -50,7 +52,8 @@ mod_ov_bar_ui <- function(id){
            )),
            column(width = 11, style = 'padding:0px;',
                   shinyjqui::jqui_resizable(
-                    plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto'))
+                    plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>% 
+                      shinycssloaders::withSpinner())
            )
     )
   )

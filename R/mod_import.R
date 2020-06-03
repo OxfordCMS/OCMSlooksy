@@ -87,7 +87,9 @@ mod_import_ui <- function(id){
             fluidRow(
               column(width = 12,
                      h1('Preview of metadata'),
-                     DT::DTOutput(ns('metadata_preview'))))),
+                     DT::dataTableOutput(ns('metadata_preview'))  %>%
+                       shinycssloaders::withSpinner()
+                    ))),
           
           # Preview of read count-----------------------------------------------
           tabItem(
@@ -95,13 +97,17 @@ mod_import_ui <- function(id){
             fluidRow(
               column(width = 12,
                      h1('Preview of sequence counts'),
-                     DT::DTOutput(ns('asv_preview')))),
+                     DT::dataTableOutput(ns('asv_preview'))  %>%
+                       shinycssloaders::withSpinner()
+                    )),
             ),
           tabItem(
             tabName = 'tax_menu_tab',
             column(width = 12,
                    h1('Preview of taxonomy'),
-                   DT::DTOutput(ns('tax_preview'))))
+                   DT::dataTableOutput(ns('tax_preview'))  %>%
+                     shinycssloaders::withSpinner()
+                  ))
           )
         )
       )

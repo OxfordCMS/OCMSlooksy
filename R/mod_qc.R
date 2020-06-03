@@ -75,7 +75,7 @@ mod_qc_ui <- function(id){
                       tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
                       br(),
                       h3("Filtering parameters applied:"),
-                      DT::dataTableOutput(ns('filter_yml')),
+                      DT::dataTableOutput(ns('filter_yml')) ,
                       h3("Filtering Effects"),
                       column(width = 1, style = 'padding:0px;', dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
@@ -102,7 +102,8 @@ mod_qc_ui <- function(id){
                       )),
                       column(width = 11, style = 'padding:0px;', 
                              jqui_resizable(
-                               plotlyOutput(ns('plot_filt'), width = '100%', height = 'auto'))
+                               plotlyOutput(ns('plot_filt'), width = '100%', height = 'auto') %>% 
+                                 shinycssloaders::withSpinner())
                       )))
               ),
             # denoising-----------------------------------------------------------
@@ -142,7 +143,8 @@ mod_qc_ui <- function(id){
                       )),
                       column(width = 11, style = 'padding:0px;', 
                              jqui_resizable(
-                               plotlyOutput(ns('plot_nochim'), width = '100%', height = 'auto'))
+                               plotlyOutput(ns('plot_nochim'), width = '100%', height = 'auto') %>% 
+                                 shinycssloaders::withSpinner())
                       )))
               ),
             
@@ -178,7 +180,8 @@ mod_qc_ui <- function(id){
                       )),
                       column(width = 11, style = 'padding:0px;',
                              jqui_resizable(
-                               plotlyOutput(ns('plot_nasv'), width = '100%', height = 'auto'))),
+                               plotlyOutput(ns('plot_nasv'), width = '100%', height = 'auto') %>% 
+                                 shinycssloaders::withSpinner())),
                       br(),
                       column(width = 6, style = 'padding:0px;', 
                         h4('Distribution of Feature Prevalence'),
@@ -209,7 +212,8 @@ mod_qc_ui <- function(id){
                         column(width = 10, style = 'padding:0px;', 
                           jqui_resizable(
                             plotlyOutput(
-                              ns('plot_prevalence'), width = '100%', height = 'auto'))
+                              ns('plot_prevalence'), width = '100%', height = 'auto') %>% 
+                              shinycssloaders::withSpinner())
                         )
                       ),
                       column(width = 6, 
@@ -240,7 +244,9 @@ mod_qc_ui <- function(id){
                              column(width=10, style = 'padding:0px;',
                                     jqui_resizable(
                                       plotlyOutput(ns('plot_spurious'), 
-                                                   width = '100%', height = 'auto'))))
+                                                   width = '100%', height = 'auto') %>% 
+                                        shinycssloaders::withSpinner()
+                                      )))
                       ))
               ),
             # rarefaction curve of number seq vs number of asv------------------
@@ -265,7 +271,8 @@ mod_qc_ui <- function(id){
                       tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
                       br(),
                       h3("Taxonomy assigment parameters applied:"),
-                      DT::dataTableOutput(ns('taxonomy_yml')),
+                      DT::dataTableOutput(ns('taxonomy_yml')) %>% 
+                        shinycssloaders::withSpinner(),
                       br(),
                     
                       column(width = 4,
@@ -315,13 +322,18 @@ mod_qc_ui <- function(id){
                              column(width = 11, style = 'padding:0px;',
                                     jqui_resizable(
                                       plotlyOutput(ns('tax_distribution'), 
-                                                   width = '100%', height = 'auto')))),
+                                                   width = '100%', height = 'auto') %>% 
+                                        shinycssloaders::withSpinner()
+                                      ))),
                       column(width = 12,
                              h2('Percent assigned:'),
                              jqui_resizable(
-                               plotlyOutput(ns('perc_assigned'), width = '100%', height = 'auto'))))
+                               plotlyOutput(ns('perc_assigned'), width = '100%', height = 'auto') %>% 
+                                 shinycssloaders::withSpinner()
+                               ))
                       
-              )),
+              ))
+            ),
             
             # Read count distribution---------------------------------------------
             tabItem(
@@ -357,7 +369,9 @@ mod_qc_ui <- function(id){
                       )),
                       column(width = 11, style = 'padding:0px;',
                              jqui_resizable(
-                               plotlyOutput(ns('group_distribution'), width = '100%', height = 'auto'))),
+                               plotlyOutput(ns('group_distribution'), width = '100%', height = 'auto') %>% 
+                                 shinycssloaders::withSpinner()
+                               )),
                       br(),
                       tags$div("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
                       br(),
@@ -388,7 +402,9 @@ mod_qc_ui <- function(id){
                       column(width = 11, style = 'padding:0px;',
                              jqui_resizable(
                                plotlyOutput(ns('sample_distribution'), 
-                                            width = '100%', height = 'auto'))))
+                                            width = '100%', height = 'auto') %>% 
+                                 shinycssloaders::withSpinner()
+                               )))
               ))
           )
         )

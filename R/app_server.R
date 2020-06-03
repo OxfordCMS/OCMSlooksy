@@ -8,7 +8,7 @@
 app_server <- function(input, output, session) {
   # List the first level callModules here
 
-
+  options(shiny.maxRequestSize=100*1024^2)
   callModule(mod_intro_server, "intro_ui_1", parent_session = session)
   
   cross_module1 <- callModule(mod_import_server, "import_ui_1", parent_session = session)

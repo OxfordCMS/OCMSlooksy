@@ -6,14 +6,15 @@
 #' import foreach
 #' import vegan
 
-cms_rarefy <- function(x) {
+cms_rarefy <- function(df) {
   
   `%dopar%` <- foreach::`%dopar%`
   # getting sample read depth
   sampmax = colSums(df)
   raredepths = round(c(seq(from=1, to=max(sampmax),
                            by=(max(sampmax)-1)/20)))
-  
+
+
   # initiate rarefaction values matrix
   vals = matrix(nrow=length(raredepths), ncol=ncol(df))
   
@@ -24,7 +25,7 @@ cms_rarefy <- function(x) {
     res[sampmax < depth] = NA
     return(res)
   }
-  
+
   # populate matrix with rarefaction values
   for(i in 1:length(forres)){
     vals[i,] = unlist(forres[i])
@@ -36,7 +37,7 @@ cms_rarefy <- function(x) {
   raremelt = reshape2::melt(vals)
   colnames(raremelt) = c("Depth","sampleID","Richness")
   raremelt = raremelt[!is.na(raremelt$Richness),]
-  
+
   labels = data.frame(Sample = colnames(df),
                       Depth = sampmax,
                       Rich = apply(vals, 2, function(x){max(x,na.rm = T)}))

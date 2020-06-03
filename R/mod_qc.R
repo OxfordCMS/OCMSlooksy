@@ -283,9 +283,7 @@ mod_qc_ui <- function(id){
                              br(),
                              tags$b('Number of Features:'), 
                              textOutput(ns('n_asv'), inline = TRUE),
-                             br(),
-                             tags$b('Reference database:'), 
-                             textOutput(ns('ref_tax'), inline = TRUE)),
+                             br()),
                       column(width = 8,
                              h2('Table of Distribution of Taxa'),
                              DT::dataTableOutput(ns('tax_distrib_table'))),
@@ -442,12 +440,6 @@ mod_qc_server <- function(input, output, session, improxy){
   })
   
   # Filtering-------------------------------------------------------------------
-  # define reads.in as the difference between the starting number and the finishing number. This enables visualisation in a stacked bar chart
-  # Check
-  output$check <- renderPrint({
-    yml() %>%
-      filter(task == 'trim')
-  })
   output$filter_yml <- DT::renderDataTable({
     
     # add dada2 function that corresponds to yml parameters
@@ -464,14 +456,14 @@ mod_qc_server <- function(input, output, session, improxy){
   
   pdata_filt <- reactive({
     qc_filtered() %>%
+      mutate(reads.in = reads.in + reads.out) %>%
       gather(key = 'variable', value = 'value', -sample) %>%
       group_by(variable) %>%
-      mutate(sample = forcats::fct_reorder(sample, -value))
+      mutate(sample = forcats::fct_reorder(sample,-value))
   })
   p_filt <- reactive({
-    p <- ggplot(pdata_filt(), aes(x=reorder(sample, as.numeric(sample)),
-                           y=value, fill=variable)) +
-      geom_bar(stat="identity") +
+    p <- ggplot(pdata_filt(), aes(x=sample, y=value)) +
+      geom_point(aes(colour = variable), alpha = 0.6) +
       scale_fill_manual(name = NULL, values=c("red4", "blue4")) +
       theme_bw(12) +
       theme(axis.text.x=element_text(angle=90)) +
@@ -648,11 +640,12 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+
   # prevalence of ASVs across samples-----------------------------------------
   pdata_nasv <- reactive({
     work() %>%
+      filter(read_count > 0) %>%
       group_by(sampleID) %>%
-      distinct(sampleID, featureID) %>%
       summarize(n_asv = n()) %>%
       ungroup() %>%
       mutate(sampleID = fct_reorder(sampleID, -n_asv))
@@ -729,30 +722,32 @@ mod_qc_server <- function(input, output, session, improxy){
     df <- d %>%
       filter(read_count > 0) 
     prev <- (nrow(df)/nsamples)*100
-    prev.df <- data.frame(featureID=unique(d$featureID), Prevalence=prev)
+    prev.df <- data.frame(featureID=as.character(unique(d$featureID)),
+                          Prevalence=prev)
     return(prev.df)
   }
   
   prevalence <- reactive({
     work() %>%
+      filter(read_count > 0) %>%
       group_by(featureID) %>%
-      do(pprev(.))
+      summarize(n_observe = n(), 
+                Prevalence = n_observe / length(unique(work()$sampleID)))
   })
   
   # tally frequency of prevalence values
   pdata_preval <- reactive({
-    pdata <- as.data.frame(table(prevalence()$Prevalence))
-    pdata$Var1 <- as.numeric(as.character(pdata$Var1))
-    pdata
+    hist_table <- hist(prevalence()$Prevalence, plot = FALSE)
+    out <- data.frame(bin_mid = hist_table$mids,
+                      n_asv = hist_table$counts)
+    out
   })
   
   p_preval <- reactive({
-    p <- ggplot(pdata_preval(), aes(x = Var1, y = Freq)) +
-      geom_bar(stat = 'identity') +
-      xlab('Prevalence of featureID across Samples (%)') +
+    p <- ggplot(pdata_preval(), aes(x = bin_mid, y = n_asv)) +
+      geom_point() +
+      xlab('Feature Prevalence') +
       ylab('Number of ASVs') +
-      scale_x_continuous(breaks = seq(0,100, 10), labels = seq(0, 100, 10),
-                         limits = c(-2,102)) +
       theme_bw(12)
     p
   })
@@ -823,12 +818,13 @@ mod_qc_server <- function(input, output, session, improxy){
   p_spur <- reactive({
     p <- ggplot(pdata_spur(), aes(x = avg_abund, y = Prevalence)) +
       geom_point(size = 3, alpha = 0.6) +
-      scale_y_continuous(limits=c(0,100)) +
+      scale_y_continuous(limits=c(0,1)) +
       xlab('Mean Relative Abundance (%)') +
-      ylab('Prevalence of features across Samples (%)') +
+      ylab('Feature Prevalence') +
       theme_bw(12)
     p
   })
+  
   output$plot_spurious <- renderPlotly({
     ggplotly(p_spur())
   })
@@ -880,13 +876,11 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+  # rarefaction curve-----------------------------------------------------------
   
   # Check
   output$check <- renderPrint({
-    head(rare_df())
   })
-  
-  # rarefaction curve-----------------------------------------------------------
   
   rare_df <- eventReactive(input$rare_calculate, {
     mat <- asv() %>% select(-featureID)
@@ -905,7 +899,7 @@ mod_qc_server <- function(input, output, session, improxy){
       guides(color = F)+
       geom_label(aes(label=sampleID, colour = sampleID),
                  fill = alpha(c("white"), 0.2), 
-                 nudge_y = max(rare_df()$Richness*0.01))
+                 nudge_y = max(rare_df()$Richness)*0.01)
     
     p <- p +
       theme_bw(12) +
@@ -933,7 +927,6 @@ mod_qc_server <- function(input, output, session, improxy){
   # customize count data based on selected taxonomic level
 
   output$n_sample <- renderText({length(unique(met()$sampleID))})
-  output$ref_tax <- renderText({random_text(nwords = 1)})
   
   tax_distrb_df <- eventReactive(input$tax_level, {
     work() %>%
@@ -1026,13 +1019,15 @@ mod_qc_server <- function(input, output, session, improxy){
       setwd(mydir)
     }
   )
+  
+
   # evaluate number ASVs assigned to taxonomy level
   n_assigned <- reactive({
     
     df <- select(tax(), -sequence, -featureID, -Taxon)
     out <- data.frame(tax_class = colnames(df),
-                      n_NA = apply(df, 2, function(x) sum(is.na(unique(x)))),
-                      n_ass = apply(df, 2, function(x) sum(!is.na(unique(x)))))
+                      n_NA = apply(df, 2, function(x) sum(is.na(x))),
+                      n_ass = apply(df, 2, function(x) sum(!is.na(x))))
     out
   })
   
@@ -1041,8 +1036,9 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(n_asv = n_NA + n_ass,
              perc_assigned = n_ass / n_asv * 100,
              tax_class = factor(tax_class, 
-                                levels = c('Kingdom','Phylum','Class','Order',
-                                           'Family','Genus','Species')))
+                                levels = c('Kingdom','Phylum','Class',
+                                           'Order','Family','Genus',
+                                           'Species')))
     
     p <- ggplot(pdata, aes(x = tax_class, y = perc_assigned)) +
       geom_bar(stat = 'identity') +
@@ -1138,7 +1134,8 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(group_tot = sum(read_count), avg = mean(sample_tot),
              x = as.numeric(selected_var), xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
       select(-read_count, -featureID) %>%
-      distinct() 
+      distinct() %>%
+      ungroup()
   })
   
   

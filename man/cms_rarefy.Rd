@@ -4,7 +4,7 @@
 \alias{cms_rarefy}
 \title{cms_rarefy}
 \usage{
-cms_rarefy(x)
+cms_rarefy(df)
 }
 \arguments{
 \item{x}{matrix with samples in columns, feature in rows

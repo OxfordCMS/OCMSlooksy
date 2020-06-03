@@ -53,15 +53,15 @@ mod_import_ui <- function(id){
           menuItemOutput(ns('metadata_menu')),
           menuItemOutput(ns('asv_menu')),
           menuItemOutput(ns('tax_menu'))
-      ),
+      )),
       
       dashboardBody(
         box(width = "100%",
             br(),br(), br(),
-        #   
-        # fluidRow(
-        #   box(width = 12, h3('Check'),
-        #       verbatimTextOutput(ns('check')))),
+
+        fluidRow(
+          box(width = 12, h3('Check'),
+              verbatimTextOutput(ns('check')))),
         tabItems(
           
           # info tab------------------------------------------------------------
@@ -159,21 +159,21 @@ mod_import_server <- function(input, output, session, parent_session) {
       table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                     'merged_filter_summary','merged_qc_summary') # need ymltable
       
-      shiny::validate(
-        # data_set contains necessary tables
-        need(any(table_ls %in% names(data_ls)),
-             "database file missing necessary table(s)."),
-        # metadata must have sampleID as a identifier
-        need("sampleID" %in% colnames(data_ls$metadata), 
-             "Metadata must include 'sampleID'."),
-        # sampleID must be unique
-        need(!any(duplicated(data_ls$metadata$sampleID)),
-             "Sample identifiers (sampleID) must be unique."),
-        # sampleID matches merge_abundance_id samples exactly
-        need(identical(sort(data_ls$metadata$sampleID),
-                       sort(colnames(data_ls[['merged_abundance_id']])[2:ncol(data_ls[['merged_abundance_id']])])),
-             "sampleID in metadata do not match samples in uploaded database."),
-        errorClass = 'importError')
+      # shiny::validate(
+      #   # data_set contains necessary tables
+      #   need(any(table_ls %in% names(data_ls)),
+      #        "database file missing necessary table(s)."),
+      #   # metadata must have sampleID as a identifier
+      #   need("sampleID" %in% colnames(data_ls$metadata), 
+      #        "Metadata must include 'sampleID'."),
+      #   # sampleID must be unique
+      #   need(!any(duplicated(data_ls$metadata$sampleID)),
+      #        "Sample identifiers (sampleID) must be unique."),
+      #   # sampleID matches merge_abundance_id samples exactly
+      #   need(identical(sort(as.character(data_ls$metadata$sampleID)),
+      #                  sort(colnames(data_ls[['merged_abundance_id']])[2:ncol(data_ls[['merged_abundance_id']])])),
+      #        "holdup! sampleID in metadata do not match samples in uploaded database."),
+      #   errorClass = 'importError')
       data_ls
     }
     
@@ -199,9 +199,9 @@ mod_import_server <- function(input, output, session, parent_session) {
         need(!any(duplicated(data_set()$metadata$sampleID)),
              "Sample identifiers (sampleID) must be unique."),
         # sampleID matches merge_abundance_id samples exactly
-        need(identical(sort(data_set()$metadata$sampleID),
+        need(identical(sort(as.character(data_set()$metadata$sampleID)),
                        sort(colnames(data_set()[['merged_abundance_id']])[2:ncol(data_set()[['merged_abundance_id']])])),
-             "sampleID in metadata do not match samples in uploaded database."),
+             "Uh oh! sampleID in metadata do not match samples in uploaded database."),
         errorClass = 'importError'
       )
       if(class(data_set()) == 'list') {
@@ -210,10 +210,10 @@ mod_import_server <- function(input, output, session, parent_session) {
     })
   })
   
-  # # Check
-  # output$check <- renderPrint({
-  # 
-  # })
+  # Check
+  output$check <- renderPrint({
+
+  })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
     

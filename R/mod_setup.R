@@ -122,16 +122,14 @@ mod_setup_ui <- function(id){
                 br(), br(),
                 hidden(div(id = ns('sample_filter_div'),
                    column(width = 8,
-                          DT::dataTableOutput(ns('sample_options_ui'))  %>%
-                            shinycssloaders::withSpinner()
+                          DT::dataTableOutput(ns('sample_options_ui')) 
                         ),
                    column(width = 4,
                           wellPanel(tags$b('Selected samples:'),
                           htmlOutput(ns('sample_select')))))),
                 column(width = 12,
                        h3(textOutput(ns('preview_sample_title'))),
-                       DT::dataTableOutput(ns('preview_sample'))  %>%
-                         shinycssloaders::withSpinner()
+                       DT::dataTableOutput(ns('preview_sample')) 
                       )
               ),
               
@@ -176,8 +174,7 @@ mod_setup_ui <- function(id){
                      column(
                        width = 12,
                           h3('Filter features based on selection'),
-                          DT::dataTableOutput(ns('asv_table_select'))  %>%
-                         shinycssloaders::withSpinner()
+                          DT::dataTableOutput(ns('asv_table_select')) 
                      ))))),
                        
                 column(width = 12, br(),
@@ -188,8 +185,7 @@ mod_setup_ui <- function(id){
                             ))),
                 column(width = 12,
                        h3(textOutput(ns('preview_asv_title'))),
-                       DT::dataTableOutput(ns('preview_asv'))  %>%
-                         shinycssloaders::withSpinner()
+                       DT::dataTableOutput(ns('preview_asv'))  
                       )
               )),
               

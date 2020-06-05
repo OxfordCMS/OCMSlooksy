@@ -21,6 +21,7 @@ Imports:
     ggdendro,
     ggfortify,
     ggplot2,
+    ggpubr,
     golem,
     golem,
     heatmaply,

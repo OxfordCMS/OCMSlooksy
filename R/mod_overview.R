@@ -58,6 +58,10 @@ mod_overview_ui <- function(id){
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b('PCA Parameters')),
+              radioButtons(ns('pca_input_data'), "Input data",
+                           choices = c("count" = "count",
+                                       "transformed" = "transformed",
+                                       "relative abundance" = "rel_abund")),
               radioButtons(ns('pca_scale'), "Scale",
                            choices = c("none" = "none",
                                        "unit-variance scaling" = 'UV',
@@ -86,32 +90,17 @@ mod_overview_ui <- function(id){
           ),
         
           # # Alpha-diversity-------------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'alpha_tab'",
-            div(id = ns('alpha_param_div'),
-                br(), hr(),
-                fixedPanel(
-                  width = 225,
-                  tags$div(style = "text-align: center", 
-                           tags$b("\u03B1-Diversity Parameters")),
-                  selectInput(ns('alpha_method'), "Diversity Metric",
-                    choices = list(
-                      `Entropy Measures` = 
-                        list("Shannon-Weaver Index (H)"="shannon",
-                             "Simpson Index (D1)" = "simpson"),
-                      `Diversity Measures` =
-                        list("Shannon (H'), q = 1" = "shannon_d",
-                             "Inverse Simpson (D2), q = 2" = "invsimpson",
-                             "Species Richness (S), q = 0" = "richness",
-                             "Species Evenness (J)" = "evenness"))),
-                  # checkboxGroupInput(ns('alpha_test'), "Statistical Test",
-                  #              c("ANOVA" = "anova",
-                  #                "Kruskal-Wallis" = 'kw',
-                  #                "Effect size" = "effect_size")),
-                  # checkboxInput(ns('alpha_paired'), "Paired data", FALSE),
-                  actionButton(ns('alpha_calculate'), "Calculate")
-                ))
-            ),
+          # conditionalPanel(
+          #   condition = "input.menu === 'alpha_tab'",
+          #   div(id = ns('alpha_param_div'),
+          #       br(), hr(),
+          #       fixedPanel(
+          #         width = 225,
+          #         tags$div(style = "text-align: center",
+          #                  tags$b("\u03B1-Diversity Parameters")),
+          #         actionButton(ns('alpha_calculate'), "Calculate")
+          #       ))
+          #   ),
 
           # Heat map--------------------------------------------------------------
           conditionalPanel(
@@ -251,10 +240,6 @@ mod_overview_server <- function(input, output, session, improxy){
   
   # Alpha diversity server------------------------------------------------------
   bridge$alpha_input <- reactiveValues()
-  observe({
-    bridge$alpha_input$alpha_method <- input$alpha_method
-    bridge$alpha_input$alpha_calculate <- input$alpha_calculate
-  })
   callModule(mod_ov_alpha_server, "ov_alpha_ui_1", param = bridge)
   
   # Heatmap server--------------------------------------------------------------

@@ -85,7 +85,7 @@ mod_setup_ui <- function(id){
               radioButtons(ns('transform_method'), "Transformation method:",
                                  choices = c('none' = 'none', 
                                              'centre log-ratio' = 'clr',
-                                             'log10' = 'log10',
+                                             'log10 of percent abundance' = 'log10',
                                              'percent abundance' = 'percent'),
                                  selected = 'clr'),
               actionButton(ns('submit_transform'), "Transform Counts")
@@ -465,8 +465,7 @@ mod_setup_server <- function(input, output, session, improxy){
   # transform ASVs--------------------------------------------------------------
   
   output$check <- renderPrint({
-    input$transform_method
-    
+
   })
   
   asv_transform <- eventReactive(input$submit_transform, {
@@ -496,7 +495,16 @@ mod_setup_server <- function(input, output, session, improxy){
       out <- clr_df
     }
     if(input$transform_method == 'log10') {
-      out <- apply(asv_df, 2, function(x) log10(x))
+      out <- working_asv() %>%
+        group_by(sampleID) %>%
+        mutate(sample_tot = sum(read_count),
+               rel_abund = read_count / sample_tot) %>%
+        select(-read_count, -sample_tot) %>%
+        spread(sampleID, rel_abund) %>%
+        as.data.frame()
+      rownames(out) <- out$featureID
+      out <- out[, colnames(out) != 'featureID']
+      out <- apply(out, 2, function(x) log10(x))
     }
     if(input$transform_method == 'percent') {
       out <- working_asv() %>%
@@ -523,12 +531,14 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
-    req(input$sample_select_prompt, input$asv_select_prompt)
+    req(input$sample_select_prompt, input$asv_select_prompt, 
+        input$transform_method)
     # keep in wide format to be consistent with db format
     
     list(metadata = working_meta(),
          asv = working_asv() %>% spread(sampleID, read_count),
          t_asv = asv_transform(),
+         t_selected = input$transform_method,
          tax = tax() %>% 
            filter(featureID %in% working_asv()$featureID)
          )

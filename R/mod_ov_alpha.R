@@ -26,8 +26,12 @@ mod_ov_alpha_ui <- function(id){
       width = 12,
       DT::dataTableOutput(ns('alpha_table'))  %>%
         shinycssloaders::withSpinner()
-    ),
-
+    ), br(),
+    column(
+      width = 12,
+      DT::dataTableOutput(ns('alpha_test'))  %>%
+        shinycssloaders::withSpinner()
+    ), br(),
     column(
       width = 3, br(), br(),
       wellPanel(uiOutput(ns('alpha_grp_ui')))
@@ -62,11 +66,6 @@ mod_ov_alpha_ui <- function(id){
                      height= 'auto') %>% 
           shinycssloaders::withSpinner()
       )
-    ),
-    column(
-      width = 12,
-      DT::dataTableOutput(ns('alpha_test'))  %>%
-        shinycssloaders::withSpinner()
     )
   )
 }
@@ -95,7 +94,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
   # calculate alpha diversity---------------------------------------------------
   
   alpha_result <- reactive({
-    
+    req(input$alpha_grp)
     alpha_data <- asv() %>% select(-featureID)
     alpha_data <- as.data.frame(alpha_data)
     rownames(alpha_data) <- asv()$featureID
@@ -120,48 +119,43 @@ mod_ov_alpha_server <- function(input, output, session, param){
     out
   })
   
-  # perform statistical tests on alpha values ********PICK UP HERE**********
-  alpha_stat_validate <- function(input) {
-    if(any(input == 'anova')) {
-      
-    }
-  }
-  
-  
   output$check <- renderPrint({
-    
+    ymax = pdata_alpha() %>%
+      group_by(alpha_metric) %>%
+      summarise(ymax = max(alpha_value)) %>%
+      mutate(ylimit = ymax * 1.1)
+    ylimit <- ymax$ylimit
+    names(ylimit) <- ymax$alpha_metric
+    print(ylimit)
   })
-  
-  alpha_stat_function <- function(d) {
-    df <- d %>% spread(grouping, alpha_value)
-    # anova_result <- 
-  }
-  
-  observe({
-    saveRDS(alpha_result() %>%
-              gather('alpha_metric', 'alpha_value', -sampleID) %>%
-              inner_join(met() %>% gather('meta_variable','grouping', -sampleID),
-                         'sampleID'),
-            "/gfs/devel/syen/OCMSExplorer/data/alpha_result.RDS")  
+
+  # determine valid stat test
+  grp_tally <- reactive(table(met()[,input$alpha_grp]))
+  stat_test <- reactive({
+    if(length(grp_tally()) == 2) 'wilcox.test'
+    else 'kruskal.test'
   })
   
   alpha_stat <- eventReactive(input$alpha_grp, {
-    
-    # validate selected tests
+
+    validate(
+      need(max(grp_tally()) != 1, "Only one observation per group. Group-wise comparisons not performed"),
+      need(length(grp_tally()) > 1, "All observations are in the same group. Group-wise comparisons not performed")
+    )
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
       inner_join(met() %>% gather('meta_variable','grouping', -sampleID),
                  'sampleID') %>%
-      group_by(meta_variable, alpha_metric) %>%
-      do(alpha_stat_function(.))
-      
-      
+      filter(meta_variable == input$alpha_grp)
+    
+    out <- ggpubr::compare_means(formula = alpha_value~grouping, data = out,
+                                 group.by = c('alpha_metric'),
+                                 method = stat_test(), p.adjust.method = 'BH')
+    out
   })
   
-  
-  
-  # plot alpha diversity
+  # show tables
   output$alpha_table <- DT::renderDataTable({
     out <- met() %>%
       arrange(sampleID) %>%
@@ -172,7 +166,20 @@ mod_ov_alpha_server <- function(input, output, session, param){
       DT::formatRound(column = colnames(alpha_result())[2:ncol(alpha_result())], digits = 3)
   })
   
+  output$alpha_test <- DT::renderDataTable({
+    validate(
+      need(max(grp_tally()) != 1, "Only one observation per group. Group-wise comparisons not performed"),
+      need(length(grp_tally()) > 1, "All observations are in the same group. Group-wise comparisons not performed")
+    )
+    
+    DT::datatable(alpha_stat() %>%
+                    select(-.y., -p.format, ), extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, dom = 'Blfrtip', 
+                                 buttons = c('copy','csv'))) %>%
+      DT::formatRound(column = 'p', digits = 3)
+  })
   
+  # plot alpha diversity
   pdata_alpha <- eventReactive(input$alpha_grp, {
 
     # set xorder based on shannon_d
@@ -203,21 +210,24 @@ mod_ov_alpha_server <- function(input, output, session, param){
     
     p <- ggplot(pdata_alpha(), aes(x = x, y = alpha_value, group = x)) +
       facet_wrap(~alpha_metric, scales = 'free')
-    
-    n_grp <- table(met()[,input$alpha_grp])
-    # compare_means(alpha_value ~ x, data = pdata_alpha(),
-    #               group_by = 'alpha_metric',
-    #               method = stat_test, p.adjust.method = 'BH')
-    # determine valid stat test
-    if(min(n_grp) > 1) {
-      if(length(n_grp) == 2) stat_test <- 'wilcox.test'
-      else stat_test <- 'kruskal.test'
+   
+    if(max(grp_tally()) > 1) {
+      # geom_GeomSignif not compatible with plotly
+      # compare_pairs <- combn(names(grp_tally()), 2, simplify = FALSE)
+      
+      ymax = pdata_alpha() %>%
+        group_by(alpha_metric) %>%
+        mutate(ymax = max(alpha_value), yupper = ymax * 1.02,
+                  ymin = min(alpha_value), ylower = ymin * 0.98)
       
       p <- p +
-        ggpubr::stat_compare_means(method = stat_test)
+        ggpubr::stat_compare_means(method = stat_test(), label = 'p.format',
+                                   size = 3) +
+        geom_blank(data = ymax, aes(y = yupper)) +
+        geom_blank(data = ymax, aes(y = ylower))
     }
     
-    if(min(n_grp) > 5) {
+    if(min(grp_tally()) > 5) {
       p <- p +
         geom_point(position = position_jitter(width = 0.25, seed = 1), 
                    alpha = 0.8)
@@ -235,6 +245,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
     
     p
   })
+  
   output$alpha_plot <- renderPlotly({
     ggplotly(p_alpha())
   })

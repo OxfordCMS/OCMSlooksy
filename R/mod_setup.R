@@ -504,7 +504,7 @@ mod_setup_server <- function(input, output, session, improxy){
         as.data.frame()
       rownames(out) <- out$featureID
       out <- out[, colnames(out) != 'featureID']
-      out <- apply(out, 2, function(x) log10(x))
+      out <- apply(out, 2, function(x) log10(x + 1*10^-6))
     }
     if(input$transform_method == 'percent') {
       out <- working_asv() %>%

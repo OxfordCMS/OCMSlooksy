@@ -58,12 +58,7 @@ mod_overview_ui <- function(id){
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b('PCA Parameters')),
-              radioButtons(ns('pca_scale'), "Scale",
-                           choices = c("none" = "none",
-                                       "unit-variance scaling" = 'UV',
-                                       "pareto scaling" = 'pareto',
-                                       "vast scaling" = 'vast'),
-                           selected = 'UV'),
+              uiOutput(ns('pca_scale_ui')),
               actionButton(ns('pca_calculate'), "Calculate")
               )
             ),
@@ -214,6 +209,23 @@ mod_overview_server <- function(input, output, session, improxy){
   callModule(mod_ov_bar_server, "ov_bar_ui_1", param = bridge)
   
   # PCA server------------------------------------------------------------------
+  output$pca_scale_ui <- renderUI({
+    if(any(asv_transform() < 0)) {
+      choices <- c("none" = "none",
+                   "unit-variance scaling" = 'UV',
+                   "vast scaling" = 'vast')
+    }
+    else {
+      choices <- c("none" = "none",
+                   "unit-variance scaling" = 'UV',
+                   "pareto scaling" = 'pareto',
+                   "vast scaling" = 'vast')
+    }
+    
+    radioButtons(ns('pca_scale'), "Scale",
+                 choices = choices,
+                 selected = 'UV')
+  })
   bridge$pca_input <- reactiveValues()
   observeEvent(input$pca_calculate, {
     if(t_selected() != 'percent') {

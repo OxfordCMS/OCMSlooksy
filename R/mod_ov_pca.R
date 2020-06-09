@@ -220,6 +220,7 @@ mod_ov_pca_server <- function(input, output, session, param){
 
   # centre and scale
   asv_scale <- eventReactive(pca_calculate(), {
+    
     if(pca_scale() == 'UV') {
       apply(asv_transform(), 2, function(x) (x - mean(x)) / sd(x))
     }

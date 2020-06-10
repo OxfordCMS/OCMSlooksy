@@ -79,9 +79,9 @@ mod_ov_bar_server <- function(input, output, session, param){
   bar_y <- reactive(param$bar_input$bar_y)
   bar_x <- reactive(param$bar_input$bar_x)
   
-  output$check <- renderPrint({
-    
-  })
+  # output$check <- renderPrint({
+  #   
+  # })
   
   # putting data into one dataframe
   work <- reactive({

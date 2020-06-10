@@ -111,7 +111,7 @@ mod_overview_ui <- function(id){
         box(
           width = '100%', br(), br(), br(),
           
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           
           tabItems(
             # main page---------------------------------------------------------
@@ -172,9 +172,9 @@ mod_overview_server <- function(input, output, session, improxy){
   t_selected <- reactive(working_set()$t_selected)
   tax <- reactive(working_set()$tax)
   
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
   output$pca_menu_ui <- renderUI({
     if(t_selected() != 'percent') {
       sidebarMenu(menuSubItem('PCA', tabName = 'pca_tab'))

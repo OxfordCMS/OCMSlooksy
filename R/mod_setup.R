@@ -98,9 +98,9 @@ mod_setup_ui <- function(id){
       dashboardBody(
         box(width = '100%', br(),br(), br(),
             
-            fluidRow(width = 12,
-                    h3('Check Box'),
-                    verbatimTextOutput(ns('check'))),
+            # fluidRow(width = 12,
+            #         h3('Check Box'),
+            #         verbatimTextOutput(ns('check'))),
             
             tabItems(
               # main page-------------------------------------------------------
@@ -464,9 +464,9 @@ mod_setup_server <- function(input, output, session, improxy){
   
   # transform ASVs--------------------------------------------------------------
   
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
   
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)

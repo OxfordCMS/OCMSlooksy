@@ -19,7 +19,7 @@
 mod_ov_alpha_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     h1("\u03B1-Diversity"),
     tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
     column(
@@ -119,15 +119,9 @@ mod_ov_alpha_server <- function(input, output, session, param){
     out
   })
   
-  output$check <- renderPrint({
-    ymax = pdata_alpha() %>%
-      group_by(alpha_metric) %>%
-      summarise(ymax = max(alpha_value)) %>%
-      mutate(ylimit = ymax * 1.1)
-    ylimit <- ymax$ylimit
-    names(ylimit) <- ymax$alpha_metric
-    print(ylimit)
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
 
   # determine valid stat test
   grp_tally <- reactive(table(met()[,input$alpha_grp]))

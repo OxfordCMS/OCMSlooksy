@@ -22,7 +22,7 @@ mod_ov_hmap_ui <- function(id){
   tagList(
     h1('Heirarchical Clustering'),
     tags$div("Heirarchical clustering is influenced by the linkage method used to measure the distance between clusters of observations. The linkage methods differ in the criteria that is used to determine the distance of sets of observations. The criteria are based on the distance between individual observations within a set. Choice in distance method also affects the clustering outcome, which measures the distance between a pair of observations. Distance metrics fall into three categories: agglomerative, divisive, and dissimilarity."),
-    wellPanel(verbatimTextOutput(ns('check'))),
+    # wellPanel(verbatimTextOutput(ns('check'))),
     hidden(div(
       id = ns('hmap_body_div'),
       column(
@@ -216,9 +216,9 @@ mod_ov_hmap_server <- function(input, output, session, param){
   })
   
   # calculate heatmap-----------------------------------------------------------
-  output$check <- renderPrint({
-    samp_ddata()
-  })
+  # output$check <- renderPrint({
+  #   samp_ddata()
+  # })
   # calculate sample clustering
   samp_hclust <- reactive({
     req(hmap_calculate())

@@ -56,9 +56,9 @@ mod_qc_ui <- function(id){
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
           
-          fluidRow(
-            box(width = 12, h3('Check'),
-                verbatimTextOutput(ns('check')))),
+          # fluidRow(
+          #   box(width = 12, h3('Check'),
+          #       verbatimTextOutput(ns('check')))),
           tabItems(
               # main page---------------------------------------------------------
               tabItem(
@@ -899,8 +899,8 @@ mod_qc_server <- function(input, output, session, improxy){
   # rarefaction curve-----------------------------------------------------------
   
   # Check
-  output$check <- renderPrint({
-  })
+  # output$check <- renderPrint({
+  # })
   
   rare_df <- eventReactive(input$rare_calculate, {
     mat <- asv() %>% select(-featureID)

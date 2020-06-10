@@ -283,9 +283,9 @@ mod_import_server <- function(input, output, session, parent_session) {
   })
 
   # jump to next tab------------------------------------------------------------
-  observeEvent(input$next_tab, {
-    updateTabsetPanel(session, "tabs", selected = "prepare")
-  })
+  # observeEvent(input$next_tab, {
+  #   updateTabsetPanel(session, "tabs", selected = "prepare")
+  # })
 
   # return dataset
   cross_module = reactiveValues()

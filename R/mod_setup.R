@@ -543,11 +543,11 @@ mod_setup_server <- function(input, output, session, improxy){
            filter(featureID %in% working_asv()$featureID)
          )
   })
-  # jump to next tab
-  observeEvent(input$next_tab, {
-    updateTabsetPanel(session, "tabs",
-                      selected = "overview")
-  })
+  # # jump to next tab
+  # observeEvent(input$next_tab, {
+  #   updateTabsetPanel(session, "tabs",
+  #                     selected = "overview")
+  # })
   # return dataset
   cross_module <- reactiveValues()
   observe({cross_module$data_db <- working_set()})

@@ -173,7 +173,7 @@ mod_overview_server <- function(input, output, session, improxy){
   tax <- reactive(working_set()$tax)
   
   output$check <- renderPrint({
-    names(bridge)
+
   })
   output$pca_menu_ui <- renderUI({
     if(t_selected() != 'percent') {

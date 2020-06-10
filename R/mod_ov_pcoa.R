@@ -25,7 +25,7 @@ mod_ov_pcoa_ui <- function(id){
     hidden(div(
       id = ns('pcoa_body_div'),
       h2("Distance Matrix"),
-      DT::dataTableOutput(ns('pcoa_dist_table'))  %>%
+      DT::dataTableOutput(ns('dist_table'))  %>%
         shinycssloaders::withSpinner(),
       h2("PCoA Summary"),
       DT::dataTableOutput(ns('pcoa_summary'))  %>%
@@ -182,7 +182,8 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   })
   output$pcoa_lab_colour_ui <- renderUI({
     selectInput(ns('pcoa_lab_colour'), 'Label colour:', 
-                choices = c('none', 'cluster', colnames(met())), selected = 'none')
+                choices = c('none', 'cluster', colnames(met())), 
+                selected = 'none')
   })
   
   # ### pca loaing points aesthetics
@@ -199,12 +200,13 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   # sample clustering
   
   ## samples as rows
-  pcoa_dist <- reactive({
+  dist_data <- eventReactive(pcoa_calculate(), {
+    req(pcoa_dist())
     vegan::vegdist(t(asv_transform()), method = pcoa_dist())
   })
   
-  output$pcoa_dist_table <- DT::renderDataTable({
-    DT::datatable(as.data.frame(as.matrix(pcoa_dist())), 
+  output$dist_table <- DT::renderDataTable({
+    DT::datatable(as.data.frame(as.matrix(dist_data())), 
                   extensions = 'Buttons', 
                   options = list(scrollX = TRUE, 
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
@@ -212,8 +214,8 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   
   # identify clusters based on distances
   cluster_result <- reactive({
-    data.frame(sampleID = rownames(as.matrix(pcoa_dist())),
-               pam_cluster = as.vector(cluster::pam(pcoa_dist(), 
+    data.frame(sampleID = rownames(as.matrix(dist_data())),
+               pam_cluster = as.vector(cluster::pam(dist_data(), 
                                                     input$pcoa_nclust)$cluster))
     
   })
@@ -229,7 +231,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
       
       # calculate Calisnki-Harabasz index to determine the fit to the cluster
       out[k] <- clusterSim::index.G1(t(asv_transform()), cluster_result()$pam_cluster, 
-                                     d = pcoa_dist(), centrotypes = "medoids")
+                                     d = dist_data(), centrotypes = "medoids")
     }
     
     out
@@ -257,7 +259,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   # 
   # calculate principal coordinates
   pcoa_data <- eventReactive(pcoa_calculate(), {
-    ape::pcoa(pcoa_dist(), correction = 'cailliez')
+    ape::pcoa(dist_data(), correction = 'cailliez')
   })
   
   # summary of pcoa

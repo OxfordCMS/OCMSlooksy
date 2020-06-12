@@ -72,7 +72,6 @@ mod_ov_bar_server <- function(input, output, session, param){
   met <- reactive(param$met)
   asv <- reactive(param$asv)
   tax <- reactive(param$tax)
-  asv_transform <- reactive(param$asv_transform)
   
   # unpack bar plot inputs
   bar_tax <- reactive(param$bar_input$bar_tax)
@@ -85,14 +84,8 @@ mod_ov_bar_server <- function(input, output, session, param){
   
   # putting data into one dataframe
   work <- reactive({
-    clr_gather <- asv_transform()
-    clr_gather$featureID <- rownames(clr_gather)
-    clr_gather <- clr_gather %>%
-      gather('sampleID', 'clr_count')
-    
     asv_gather <- asv() %>%
-      gather('sampleID','read_count', -featureID) %>%
-      inner_join(clr_gather, 'sampleID')
+      gather('sampleID','read_count', -featureID)
     
     met() %>%
       inner_join(asv_gather, 'sampleID') %>%

@@ -15,7 +15,6 @@
 #' @importFrom shiny NS tagList 
 #' @import shinyjs
 #' @import shinydashboard
-#' @import stringr
 #' @import dplyr
 #' @import forcats
 #' @import DBI
@@ -59,9 +58,9 @@ mod_import_ui <- function(id){
         box(width = "100%",
             br(),br(), br(),
 
-        fluidRow(
-          box(width = 12, h3('Check'),
-              verbatimTextOutput(ns('check')))),
+        # fluidRow(
+        #   box(width = 12, h3('Check'),
+        #       verbatimTextOutput(ns('check')))),
         tabItems(
           
           # info tab------------------------------------------------------------
@@ -217,9 +216,9 @@ mod_import_server <- function(input, output, session, parent_session) {
   })
   
   # Check
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
     
@@ -271,15 +270,38 @@ mod_import_server <- function(input, output, session, parent_session) {
   output$asv_preview <- DT::renderDT({
     out <- work() %>%
       spread(sampleID, read_count)
-    DT::datatable(out, extensions = 'Buttons',
-                  options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+    
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')), 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = list(c('copy','csv'), 
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    )))
   })
 
   output$tax_preview <- DT::renderDT({
-    DT::datatable(tax(), extensions = "Buttons",
-                  options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+    
+    DT::datatable(tax(), extensions = 'Buttons', 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = c('copy','csv')))
   })
 
   # jump to next tab------------------------------------------------------------

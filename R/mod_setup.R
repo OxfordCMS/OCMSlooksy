@@ -98,9 +98,9 @@ mod_setup_ui <- function(id){
       dashboardBody(
         box(width = '100%', br(),br(), br(),
             
-            # fluidRow(width = 12,
-            #         h3('Check Box'),
-            #         verbatimTextOutput(ns('check'))),
+            fluidRow(width = 12,
+                    h3('Check Box'),
+                    verbatimTextOutput(ns('check'))),
             
             tabItems(
               # main page-------------------------------------------------------
@@ -129,7 +129,8 @@ mod_setup_ui <- function(id){
                           htmlOutput(ns('sample_select')))))),
                 column(width = 12,
                        h3(textOutput(ns('preview_sample_title'))),
-                       DT::dataTableOutput(ns('preview_sample')) 
+                       DT::dataTableOutput(ns('preview_sample')) %>% 
+                         shinycssloaders::withSpinner()
                       )
               ),
               
@@ -174,18 +175,19 @@ mod_setup_ui <- function(id){
                      column(
                        width = 12,
                           h3('Filter features based on selection'),
-                          DT::dataTableOutput(ns('asv_table_select')) 
+                          DT::dataTableOutput(ns('asv_table_select')) %>% 
+                         shinycssloaders::withSpinner()
                      ))))),
                        
-                column(width = 12, br(),
+                column(width = 10, br(),
                        hidden(
                          div(id = ns('asv_remove_div'),
-                             wellPanel(tags$b('features to be removed:'),
-                                htmlOutput(ns('asv_remove')))
+                             wellPanel(textOutput(ns('asv_remove')))
                             ))),
                 column(width = 12,
                        h3(textOutput(ns('preview_asv_title'))),
-                       DT::dataTableOutput(ns('preview_asv'))  
+                       DT::dataTableOutput(ns('preview_asv'))  %>% 
+                         shinycssloaders::withSpinner()
                       )
               )),
               
@@ -270,27 +272,30 @@ mod_setup_server <- function(input, output, session, improxy){
   })
 
   # filter samples in data set
-  working_meta <- eventReactive(input$submit_sample, {
+  meta_filtered <- eventReactive(input$submit_sample, {
       met() %>%
         filter(sampleID %in% sample_include())
     })
   
-  observeEvent(input$submit_sample, {
-    output$preview_sample_title <- renderText({
-      'Samples included in analysis:'
-    })
-    
-    output$preview_sample <- DT::renderDataTable({
-      DT::datatable(working_meta(), extensions = 'Buttons', 
-                    options = list(scrollX = TRUE, 
-                                   dom = 'Blfrtip', buttons = c('copy','csv')))
-    })
+  
+  output$preview_sample_title <- renderText({
+    req(input$submit_sample)
+    'Samples included in analysis:'
   })
   
+  output$preview_sample <- DT::renderDataTable({
+    req(input$submit_sample)
+    DT::datatable(meta_filtered(), extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 30,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+  
+  
   # update ASV with filtered samples
-  asv_filt_samp <- eventReactive(input$submit_sample, {
+  samp_filtered <- eventReactive(input$submit_sample, {
     format_asv() %>%
-      filter(sampleID %in% unique(working_meta()$sampleID))
+      filter(sampleID %in% unique(meta_filtered()$sampleID))
   })
   
   # subset ASVs-----------------------------------------------------------------
@@ -306,7 +311,7 @@ mod_setup_server <- function(input, output, session, improxy){
   # by read count
   observeEvent(input$asv_filter_options, {
     toggle(id = 'asv_option_count', 
-           condition = stringr::str_detect(input$asv_filter_options, 'asv_by_count'))
+           condition = grepl('asv_by_count', input$asv_filter_options))
     show(id = "cutoff_limit")
   })
   
@@ -314,28 +319,31 @@ mod_setup_server <- function(input, output, session, improxy){
   # by selected ASV
   observeEvent(input$asv_filter_options, {
     toggle(id = 'asv_option_select',
-           condition = stringr::str_detect(input$asv_filter_options, 'asv_by_select'))
-    toggle(id = 'asv_remove_div', condition = length(input$asv_filter_options) > 0)
+           condition = grepl('asv_by_select', input$asv_filter_options))
+    toggle(id = 'asv_remove_div', 
+           condition = grepl('asv_by_select', input$asv_filter_options))
   })
+  
   
   # ui for  cut-off threshold
   ui_entry <- eventReactive(input$cutoff_method, {
-    
+    req(input$cutoff_method)
     if(input$cutoff_method == 'abs_count') {
       label <- 'Read count cut-off:'
-      max_cutoff <- max(asv_filt_samp()$read_count)
+      max_cutoff <- max(samp_filtered()$read_count)
       step <- 1000
       default_value <- 1
 
-      msg <- 'Removing all sequences with a read count of less than REPLACE'
+      msg <- 'Removing REPLACE1 features with a read count of less than REPLACE2'
     }
     if(input$cutoff_method == 'percent_sample') {
       label <- 'Read count cut-off (% of sample total):'
+      min_cutoff <- min(samp_filtered()$samp_rel_abund)
       max_cutoff <- 100
       step <- 0.01
       default_value = 0.01
 
-      msg <- 'Removing all seqeunces with a read count that is less than REPLACE% of sample total read count'
+      msg <- 'Removing REPLACE1 features with a read count that is less than REPLACE2% of sample total read count'
     }
     if(input$cutoff_method == 'percent_total') {
       label <- 'Read count cut-off (% of dataset total):'
@@ -343,7 +351,7 @@ mod_setup_server <- function(input, output, session, improxy){
       step <- 0.01
       default_value = 0.01
 
-      msg <- 'Removing all sequences with a read count that is less than REPLACE% of dataset total read count'
+      msg <- 'Removing REPLACE1 features with a read count that is less than REPLACE2% of dataset total read count'
     }
     
     list('label' = label, 'max_cutoff' = max_cutoff, 'step' = step, 
@@ -351,7 +359,7 @@ mod_setup_server <- function(input, output, session, improxy){
   })
 
   output$asv_cutoff_ui <- renderUI({
-    
+    req(input$cutoff_method)
     numericInput(ns('asv_cutoff'), label = ui_entry()$label,
                  value = ui_entry()$default_value, step = ui_entry()$step,
                  min = 0, max = ui_entry()$max_cutoff)
@@ -360,52 +368,97 @@ mod_setup_server <- function(input, output, session, improxy){
   output$cutoff_max <- renderText({
     req(input$cutoff_method)
     ui_entry()$max_cutoff})
+  
   output$asv_cutoff_msg <- renderText({
-    stringr::str_replace(ui_entry()$msg, 'REPLACE', as.character(input$asv_cutoff))
+    req(input$cutoff_method)
+    out <- gsub('REPLACE2', as.character(input$asv_cutoff), ui_entry()$msg)
+    out <- gsub( "REPLACE1", as.character(length(to_remove())), out)
   })
 
   # by selecting ASVs
   output$asv_table_select <- DT::renderDataTable({
+    req(input$asv_filter_options)
+    
+    
     out <- tax() %>%
-      left_join(asv(), 'featureID') %>%
+      left_join(samp_filtered(), 'featureID') %>%
       select(-Taxon, -sequence) %>%
+      spread(sampleID, read_count) %>%
       arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
     
-    DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+    
+    DT::datatable(out, filter = 'top', 
+                  extensions = list(c('Buttons', 'FixedColumns')), 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = list(c('copy','csv'), 
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    )))
   })
   
+  output$check <- renderPrint({
 
+  })
+  
+  # prepare asv dataframe-------------------------------------------------------
+  working_asv <- reactive({
+    req(input$asv_select_prompt)
+    
+    if(input$asv_select_prompt == 'some') {
+      dataset_total <- sum(samp_filtered()$read_count)
+      
+      out <- samp_filtered() %>%
+        # calculate relative abundance as dataset total
+        mutate(ds_rel_abund = read_count / dataset_total * 100) %>%
+        # calculate relative abundance as sample total
+        group_by(sampleID) %>%
+        mutate(sample_total = sum(read_count),
+               samp_rel_abund = read_count / sample_total * 100) %>%
+        ungroup()
+      out  
+      
+    }
+    else {
+      samp_filtered()
+    }
+  })
   # define ASVs to be removed---------------------------------------------------
   to_remove <- reactive({
-    
+    req(input$asv_filter_options)
     if(input$asv_filter_options == 'asv_by_count') {
-      req(input$cutoff_method)
+      req(input$cutoff_method, input$asv_cutoff)
       
       # count cut-off
       if(input$cutoff_method == 'abs_count') {
         
-        out <- asv_filt_samp() %>%
+        out <- working_asv() %>%
           filter(read_count < input$asv_cutoff)
       }
       # cut-off based on percent of sample total
       if(input$cutoff_method == 'percent_sample') {
-        out <- asv_filt_samp() %>%
-          group_by(sampleID) %>%
-          mutate(sample_total = sum(read_count),
-                 rel_abund = read_count / sample_total * 100) %>%
-          filter(rel_abund < input$asv_cutoff) %>%
-          select(-sample_total, -rel_abund)
+        out <- working_asv() %>%
+          filter(samp_rel_abund < input$asv_cutoff)
         
       }
       # cut-off based on percent of dataset total
       if(input$cutoff_method == 'percent_total') {
-        
-        dataset_total <- sum(asv_filt_samp()$read_count)
-        
-        out <- asv_filt_samp() %>%
-          mutate(rel_abund = read_count / dataset_total * 100) %>%
-          filter(rel_abund < input$asv_cutoff) %>%
-          select(-rel_abund)
+        out <- working_asv() %>%
+          filter(ds_rel_abund < input$asv_cutoff)
       }
     }
 
@@ -414,8 +467,9 @@ mod_setup_server <- function(input, output, session, improxy){
       req(input$asv_table_select_rows_selected)
       
       out <- tax() %>%
-        left_join(asv(), 'featureID') %>%
-        select(-sequence, -Taxon) %>%
+        left_join(samp_filtered(), 'featureID') %>%
+        select(-Taxon, -sequence) %>%
+        spread(sampleID, read_count) %>%
         arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
         slice(c(input$asv_table_select_rows_selected)) %>%
         gather('sampleID', 'read_count', -featureID)
@@ -425,53 +479,72 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   
   # show ASVs removed-----------------------------------------------------------
+
   output$asv_remove <- renderText({
-    HTML(paste(to_remove(), collapse = "<br/>"))
+    req(input$asv_filter_options)
+    sprintf("Removing %s Features", length(to_remove()))
   })
   
   
-
-  # filter ASVs based on set cutoff---------------------------------------------
-  working_asv <- eventReactive(input$submit_asv, {
+  
+  # filter ASVs based on set cutoff/selection-----------------------------------
+  asv_filtered <- eventReactive(input$submit_asv, {
     req(input$asv_select_prompt)
+    
     if(input$asv_select_prompt == 'some') {
-      asv_filt_samp() %>%
-        filter(!featureID %in% to_remove())  
+      working_asv() %>%
+        filter(!featureID %in% to_remove())  %>% 
+        select(-ds_rel_abund, -samp_rel_abund, -sample_total)
     }
     else {
-      asv_filt_samp()
+      working_asv()
     }
   })
     
-  observeEvent(input$submit_asv, {
-    output$preview_asv_title <- renderText({
-      'Features included in analysis'
-    })
+  output$preview_asv_title <- renderText({
+    req(input$submit_asv)
+    'Features included in analysis'
+  })
+  
+  output$preview_asv <- DT::renderDataTable({
+    req(input$submit_asv)
+    out <- tax() %>%
+      right_join(asv_filtered() %>%
+                   spread(sampleID, read_count), 
+                'featureID') %>%
+      select(-Taxon, -sequence) %>%
+      arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
     
-    output$preview_asv <- DT::renderDataTable({
-      out <- tax() %>%
-        right_join(working_asv() %>% spread(sampleID, read_count), 
-                  'featureID') %>%
-        select(-Taxon, -sequence) %>%
-        arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
-      
-      DT::datatable(out, extensions = 'Buttons', 
-                    options = list(scrollX = TRUE, 
-                                   dom = 'Blfrtip', buttons = c('copy','csv')))
-    })
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')), 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = list(c('copy','csv'), 
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    )))
   })
 
   
   # transform ASVs--------------------------------------------------------------
   
-  # output$check <- renderPrint({
-  # 
-  # })
-  
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)
     
-    asv_df <- working_asv() %>% 
+    asv_df <- asv_filtered() %>% 
       spread(sampleID, read_count) %>% 
       as.data.frame()
     rownames(asv_df) <- asv_df$featureID
@@ -482,7 +555,8 @@ mod_setup_server <- function(input, output, session, improxy){
       ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
       ## use geometric mean abundance of features
       
-      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = working_meta()$sampleID)
+      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = meta_filtered()$sampleID, 
+                                   useMC = TRUE)
       clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
                              function(m){t(apply(m,1,median))})
       ## samples in columns
@@ -495,27 +569,16 @@ mod_setup_server <- function(input, output, session, improxy){
       out <- clr_df
     }
     if(input$transform_method == 'log10') {
-      out <- working_asv() %>%
-        group_by(sampleID) %>%
-        mutate(sample_tot = sum(read_count),
-               rel_abund = read_count / sample_tot) %>%
-        select(-read_count, -sample_tot) %>%
-        spread(sampleID, rel_abund) %>%
-        as.data.frame()
-      rownames(out) <- out$featureID
-      out <- out[, colnames(out) != 'featureID']
-      out <- apply(out, 2, function(x) log10(x + 1*10^-6))
+      out <- apply(asv_df, 2, function(x) log10(x + 1*10^-6))
     }
     if(input$transform_method == 'percent') {
-      out <- working_asv() %>%
+      out <- asv_filtered() %>%
         group_by(sampleID) %>%
-        mutate(sample_tot = sum(read_count),
-               rel_abund = read_count / sample_tot) %>%
-        select(-read_count, -sample_tot) %>%
-        spread(sampleID, rel_abund) %>%
-        as.data.frame()
-      rownames(out) <- out$featureID
-      out <- out[, colnames(out) != 'featureID']
+        mutate(sample_total = sum(read_count),
+               samp_rel_abund = read_count / sample_total * 100) %>%
+        ungroup() %>%
+        select(-read_count, -sample_total) %>%
+        spread(sampleID, samp_rel_abund)
     }
     if(input$transform_method == 'none') {
       out <- asv_df
@@ -524,19 +587,42 @@ mod_setup_server <- function(input, output, session, improxy){
   })
   
   output$preview_transform <- DT::renderDataTable({
-    DT::datatable(asv_transform(), extensions = 'Buttons', 
-                  options = list(scrollX = TRUE, 
-                                 dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
+    req(input$submit_transform, input$transform_method)
+    
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(asv_transform()) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(asv_transform()) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(asv_transform()) # index of columns to hide
+      vis_val <- FALSE
+    }
+    
+    DT::datatable(asv_transform(), 
+                  extensions = list(c('Buttons', 'FixedColumns')), 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = list(c('copy','csv'), 
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    ))) %>%
       DT::formatRound(column = colnames(asv_transform()), digits = 3)
   })
+  
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
     req(input$sample_select_prompt, input$asv_select_prompt, 
         input$transform_method)
     # keep in wide format to be consistent with db format
     
-    list(metadata = working_meta(),
-         asv = working_asv() %>% spread(sampleID, read_count),
+    list(metadata = meta_filtered(),
+         asv = asv_filtered() %>% spread(sampleID, read_count),
          t_asv = asv_transform(),
          t_selected = input$transform_method,
          tax = tax() %>% 

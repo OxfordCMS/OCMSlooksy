@@ -285,7 +285,7 @@ mod_qc_ui <- function(id){
                                             c('featureID','Kingdom','Phylum',
                                               'Class', 'Order', 'Family', 
                                               'Genus','Species', 'Taxon'),
-                                            selected = 'featureID')),
+                                            selected = 'Phylum')),
                              br(),
                              tags$b('Number of samples:'),
                              textOutput(ns('n_sample'), inline = TRUE),
@@ -748,11 +748,13 @@ mod_qc_server <- function(input, output, session, improxy){
   }
   
   prevalence <- reactive({
+    
+    n_sample <- length(unique(work()$sampleID))
     work() %>%
       filter(read_count > 0) %>%
       group_by(featureID) %>%
       summarize(n_observe = n(), 
-                Prevalence = n_observe / length(unique(work()$sampleID)))
+                Prevalence = n_observe / n_sample)
   })
   
   # tally frequency of prevalence values
@@ -916,10 +918,11 @@ mod_qc_server <- function(input, output, session, improxy){
     
     p <- ggplot(pdata, aes(x=Depth, y=Richness, color=sampleID)) +
       geom_line() +
-      guides(color = F)+
-      geom_label(aes(label=sampleID, colour = sampleID),
-                 fill = alpha(c("white"), 0.2), 
-                 nudge_y = max(rare_df()$Richness)*0.01)
+      guides(color = FALSE)
+      # geom_label not compatible with plotly
+      # geom_label(aes(label=sampleID, colour = sampleID),
+      #            fill = alpha(c("white"), 0.2), 
+      #            nudge_y = max(rare_df()$Richness)*0.01)
     
     p <- p +
       theme_bw(12) +
@@ -974,7 +977,7 @@ mod_qc_server <- function(input, output, session, improxy){
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
   
-  p_taxdistr <- reactive({
+  p_taxdistr <- eventReactive(input$tax_level, {
     ggplot(tax_distrb_df(), 
                 aes(x = 1, y = agg_perc, fill = !!as.symbol(input$tax_level),
                     colour = !!as.symbol(input$tax_level))) +
@@ -1044,10 +1047,12 @@ mod_qc_server <- function(input, output, session, improxy){
   # evaluate number ASVs assigned to taxonomy level
   n_assigned <- reactive({
     
-    df <- select(tax(), -sequence, -featureID, -Taxon)
-    out <- data.frame(tax_class = colnames(df),
-                      n_NA = apply(df, 2, function(x) sum(is.na(x))),
-                      n_ass = apply(df, 2, function(x) sum(!is.na(x))))
+    out <- tax() %>% 
+      select(-sequence, -Taxon) %>%
+      gather('tax_class', 'assignment', -featureID) %>%
+      group_by(tax_class) %>%
+      summarise(n_NA = sum(is.na(assignment)),
+                n_ass = sum(!is.na(assignment)))
     out
   })
   

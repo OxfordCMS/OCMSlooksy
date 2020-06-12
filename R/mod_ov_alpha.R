@@ -211,8 +211,8 @@ mod_ov_alpha_server <- function(input, output, session, param){
       
       ymax = pdata_alpha() %>%
         group_by(alpha_metric) %>%
-        mutate(ymax = max(alpha_value), yupper = ymax * 1.02,
-                  ymin = min(alpha_value), ylower = ymin * 0.98)
+        mutate(ymax = max(alpha_value), yupper = ymax * 1.04,
+                  ymin = min(alpha_value), ylower = ymin * 0.99)
       
       p <- p +
         ggpubr::stat_compare_means(method = stat_test(), label = 'p.format',

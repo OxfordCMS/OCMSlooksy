@@ -20,6 +20,7 @@
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(
+    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     h1("Principal Coordinate Analysis"),
     tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
     hidden(div(
@@ -262,12 +263,29 @@ mod_ov_pcoa_server <- function(input, output, session, param){
     ape::pcoa(dist_data(), correction = 'cailliez')
   })
   
+  # extract correction note
+  pcoa_note <- eventReactive(pcoa_calculate(), {
+    pcoa_data()$note
+  })
+  # output$check <- renderPrint({
+  #   pcoa_data()
+  # })
   # summary of pcoa
   pcoa_summary <- reactive({
+    
+    if(pcoa_note() == 'here were no negative eigenvalues. No correction was applied') {
+      col_keep <- c('Eigenvalues', 'Relative_eig','Cumul_eig')  
+      col_name <- c('Eigenvalues','Variance Explained', 'Cumulative Variance Explained')
+    }
+    else {
+      col_keep <- c('Corr_eig', 'Rel_corr_eig', 'Cum_corr_eig')
+      col_name <- c('Corrected Eigenvalues','Corrected Variance Explained', 'Corrected Cumulative Variance Explained')
+    }
+    
     out <- as.matrix(pcoa_data()$values)
-    out <- out[,c('Eigenvalues', 'Relative_eig','Cumul_eig')]
+    out <- out[, col_keep]
     rownames(out) <- paste0('PC', 1:nrow(out))
-    colnames(out) <- c('Eigenvalues','Variance Explained', 'Cumulative Variance Explained')
+    colnames(out) <- col_name
     t(out)
   })
   
@@ -358,8 +376,14 @@ mod_ov_pcoa_server <- function(input, output, session, param){
                                 label.alpha = pcoa_lab_alpha(), 
                                 label.size = pcoa_lab_size())
     
-    xvar <- round(pcoa_data()$values$Broken_stick[input$xPCo]*100, 2)
-    yvar <- round(pcoa_data()$values$Broken_stick[input$yPCo]*100, 2)
+    if(pcoa_note() == 'There were no negative eigenvalues. No correction was applied') {
+      rel_var <- 'Relative_eig'  
+    }
+    else {
+      rel_var <- 'Rel_corr_eig'
+    }
+    xvar <- round(pcoa_data()$values[,rel_var][input$xPCo]*100, 2)
+    yvar <- round(pcoa_data()$values[,rel_var][input$yPCo]*100, 2)
     p <- p + 
       theme_bw(12) +
       xlab(sprintf('PCo %s (%s%%)', input$xPCo, xvar)) +

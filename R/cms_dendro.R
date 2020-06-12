@@ -138,7 +138,7 @@ plot_ggdendro <- function(hcdata,
     p <- p + 
       scale_linetype_discrete(guide = FALSE) +
       scale_colour_manual(name = 'cluster', labels = nclust,
-                         values = cms_palette(max(segment(hcdata)$clust)))
+                         values = cms_palette(max(segment(hcdata)$clust) + 1))
   }
   
   # categorical data

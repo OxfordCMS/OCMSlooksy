@@ -39,7 +39,6 @@ Imports:
     shinydashboard,
     shinyjqui,
     shinyjs,
-    stringr,
     tidyr,
     vegan,
     vroom,

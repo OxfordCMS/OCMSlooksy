@@ -97,9 +97,9 @@ mod_overview_ui <- function(id){
                   tags$div(style = "text-align: center",
                            tags$b("Heirchical Cluster Parameters")),
                   selectInput(ns('hclust_method'), "Linkage method",
-                              choices = c('complete','ward.D','ward.D2','single',
-                                          'average','mcquitty','median','centroid'),
-                              selected = 'complete'),
+                              choices = c('complete','ward.D2',
+                                          'average','median','centroid'),
+                              selected = 'ward.D2'),
                   uiOutput(ns('dist_method_ui')),
                   actionButton(ns('hmap_calculate'), 'Calculate')
                   ))

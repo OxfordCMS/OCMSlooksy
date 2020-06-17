@@ -5,7 +5,7 @@
 \title{create_db
 generates qualitative colour palette from RColorBrewer}
 \usage{
-create_db(counts, taxonomy, overwrite = FALSE, outdir)
+create_db(counts, taxonomy, overwrite = FALSE, outdir, fromfile = FALSE)
 }
 \arguments{
 \item{counts}{dataframe of counts with samples in columns, features in rows. 

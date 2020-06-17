@@ -239,7 +239,7 @@ mod_overview_server <- function(input, output, session, improxy){
   # PCoA server-----------------------------------------------------------------
   output$pcoa_dist_ui <- renderUI({
     if(t_selected() == 'percent') choices <- 'bray'
-    else choices <- c("manhattan", "euclidean", "canberra", "bray")
+    else choices <- c("manhattan", "euclidean", "canberra")
     
     selectInput(ns('pcoa_dist'), "Distance method",
                 choices = choices,

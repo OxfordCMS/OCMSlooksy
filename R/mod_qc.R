@@ -257,7 +257,6 @@ mod_qc_ui <- function(id){
               column(width = 12,
                 h1("featureID Rarefaction"),
                 tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
-                actionButton(ns('rare_calculate'), 'Calculate'),
                 jqui_resizable(
                   plotlyOutput(ns('plot_rarefaction'),
                                width = '100%', height = 'auto') %>% 
@@ -282,9 +281,9 @@ mod_qc_ui <- function(id){
                              wellPanel(
                                # taxonomy level
                                radioButtons(ns('tax_level'), 'Taxonomic level',
-                                            c('featureID','Kingdom','Phylum',
+                                            c('Kingdom','Phylum',
                                               'Class', 'Order', 'Family', 
-                                              'Genus','Species', 'Taxon'),
+                                              'Genus','Species'),
                                             selected = 'Phylum')),
                              br(),
                              tags$b('Number of samples:'),
@@ -904,7 +903,7 @@ mod_qc_server <- function(input, output, session, improxy){
   # output$check <- renderPrint({
   # })
   
-  rare_df <- eventReactive(input$rare_calculate, {
+  rare_df <- eventReactive({
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
     mat <- as.matrix(mat)

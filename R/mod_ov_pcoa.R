@@ -20,7 +20,7 @@
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(
-    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     h1("Principal Coordinate Analysis"),
     tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
     hidden(div(
@@ -49,6 +49,8 @@ mod_ov_pcoa_ui <- function(id){
             # score point aesthetics
             h4("Score points aesthetics"),
             uiOutput(ns('pcoa_pt_colour_ui')),
+            hidden(div(id = ns('pcoa_nclust_div'), 
+                       uiOutput(ns('pcoa_nclust_ui')))),
             uiOutput(ns('pcoa_pt_shape_ui')),
             sliderInput(ns('pcoa_pt_size'), 'Point size:',
                         min = 0.1, max = 5, value = 3, step = 0.5,
@@ -73,7 +75,6 @@ mod_ov_pcoa_ui <- function(id){
             column(
               width = 3,
               h4("Cluster aesthetics"),
-              uiOutput(ns('pcoa_nclust_ui')),
               checkboxInput(ns('pcoa_ell_colour'),"Colour cluster ellipses",
                             value = TRUE),
               selectInput(ns('pcoa_ell_type'), "Type of ellipse",
@@ -148,6 +149,9 @@ mod_ov_pcoa_server <- function(input, output, session, param){
     show('pcoa_body_div')
   })
   
+  observeEvent(input$pcoa_pt_colour, {
+    toggle('pcoa_nclust_div', condition = input$pcoa_pt_colour == 'k-means')
+  })
   observeEvent(input$pcoa_ellipse, {
     toggle('pcoa_ell_div')
   })
@@ -169,7 +173,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   ### pcoa point aesthetics
   output$pcoa_pt_colour_ui <- renderUI({
     selectInput(ns('pcoa_pt_colour'), 'Point colour:', 
-                choices = c('none', 'cluster', colnames(met())), selected = 'none')
+                choices = c('none', 'k-means', colnames(met())), selected = 'none')
   })
   output$pcoa_pt_shape_ui <- renderUI({
     selectInput(ns('pcoa_pt_shape'), 'Point shape:', 
@@ -183,7 +187,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   })
   output$pcoa_lab_colour_ui <- renderUI({
     selectInput(ns('pcoa_lab_colour'), 'Label colour:', 
-                choices = c('none', 'cluster', colnames(met())), 
+                choices = c('none', 'k-means', colnames(met())), 
                 selected = 'none')
   })
   
@@ -213,30 +217,38 @@ mod_ov_pcoa_server <- function(input, output, session, param){
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
   
-  # identify clusters based on distances
+  # identify clusters based on k-means
   cluster_result <- reactive({
-    data.frame(sampleID = rownames(as.matrix(dist_data())),
-               pam_cluster = as.vector(cluster::pam(dist_data(), 
-                                                    input$pcoa_nclust)$cluster))
-    
-  })
-  
-  ## determine the optimal number of clusters for the dataset using the mediod
-  ## as a midpoint
-  pcoa_optk <- reactive({
-    out <- 0
-    
-    # cluster of 1 returns NaN
-    for (k in 2:(nrow(met())-1)) {
-      # find mediod clusters and return a vector of clusters
-      
-      # calculate Calisnki-Harabasz index to determine the fit to the cluster
-      out[k] <- clusterSim::index.G1(t(asv_transform()), cluster_result()$pam_cluster, 
-                                     d = dist_data(), centrotypes = "medoids")
+    req(input$pcoa_pt_colour)
+    if(input$pcoa_pt_colour == 'k-means'){
+      req(input$pcoa_nclust)
+      out <- data.frame(sampleID = rownames(as.matrix(dist_data())),
+                        pam_cluster = as.vector(cluster::pam(dist_data(), 
+                                                             input$pcoa_nclust)$cluster))    
     }
-    
+    else {
+      out <- data.frame(sampleID = rownames(as.matrix(dist_data())),
+                        pam_cluster = 1)
+    }
     out
   })
+  
+  # ## determine the optimal number of clusters for the dataset using the mediod
+  # ## as a midpoint
+  # pcoa_optk <- reactive({
+  #   out <- 0
+  #   
+  #   # cluster of 1 returns NaN
+  #   for (k in 2:(nrow(met())-1)) {
+  #     # find mediod clusters and return a vector of clusters
+  #     
+  #     # calculate Calisnki-Harabasz index to determine the fit to the cluster
+  #     out[k] <- clusterSim::index.G1(t(asv_transform()), cluster_result()$pam_cluster, 
+  #                                    d = dist_data(), centrotypes = "medoids")
+  #   }
+  #   
+  #   out
+  # })
   
   # # plot CH index
   # output$CH_plot <- renderPlotly({
@@ -267,13 +279,11 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   pcoa_note <- eventReactive(pcoa_calculate(), {
     pcoa_data()$note
   })
-  # output$check <- renderPrint({
-  #   pcoa_data()
-  # })
+
   # summary of pcoa
   pcoa_summary <- reactive({
     
-    if(pcoa_note() == 'here were no negative eigenvalues. No correction was applied') {
+    if(pcoa_note() == 'There were no negative eigenvalues. No correction was applied') {
       col_keep <- c('Eigenvalues', 'Relative_eig','Cumul_eig')  
       col_name <- c('Eigenvalues','Variance Explained', 'Cumulative Variance Explained')
     }
@@ -301,7 +311,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   # setting pcoa plot parameters
   pcoa_pt_colour <- reactive({
     if(input$pcoa_pt_colour == 'none')  'black'
-    else if(input$pcoa_pt_colour == 'cluster') 'pam_cluster'
+    else if(input$pcoa_pt_colour == 'k-means') 'pam_cluster'
     else input$pcoa_pt_colour
   })
   
@@ -325,7 +335,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   
   pcoa_lab_colour <- reactive({
     if(input$pcoa_lab_colour == 'none') NULL
-    else if(input$pcoa_lab_colour == 'cluster') 'pam_cluster'
+    else if(input$pcoa_lab_colour == 'k-means') 'pam_cluster'
     else input$pcoa_lab_colour
   })
   
@@ -333,9 +343,10 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   pcoa_lab_alpha <- reactive(input$pcoa_lab_alpha)
   
   pcoa_ell_colour <- reactive({
-    if(input$pcoa_ell_colour) 'pam_cluster'
+    if(input$pcoa_ell_colour) pcoa_pt_colour()
     else 'black'
   })
+
   
   # plot pcoa plot
   pdata_pcoa <- reactive({
@@ -363,7 +374,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
     if(input$pcoa_ellipse) {
       p <- p +
         ggfortify:::geom_factory(ggplot2::stat_ellipse, pdata_pcoa(),
-                                 group = 'pam_cluster',
+                                 group = pcoa_pt_colour(),
                                  colour = pcoa_ell_colour(),
                                  linetype = input$pcoa_ell_line,
                                  type = input$pcoa_ell_type,

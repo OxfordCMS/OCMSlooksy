@@ -36,20 +36,40 @@ mod_ov_pca_ui <- function(id){
        tags$div(style = 'text_align: center', h3("Plot Parameters")),
        fluidRow(
          # Plot controls
-         column(width = 6,
-                div(style = "display: inline-block;vertical-align: top",
-                    uiOutput(ns('xPC_ui'))),
-                div(style = "display: inline-block;vertical-align: top",
-                    uiOutput(ns('yPC_ui'))),
-                div(style = "display: inline-block;vertical-align: top",
-                    checkboxInput(ns('show_loading'), "Show loadings", TRUE)),
-                div(style = "display: inline-block;vertical-align: top",
-                    checkboxInput(ns('load_arrow'), 'Show loading arrows', TRUE))
+         column(width = 3,
+                uiOutput(ns('xPC_ui')),
+                uiOutput(ns('yPC_ui'))),
+         column(
+           width = 3,
+           checkboxInput(ns('show_loading'), "Show loadings", FALSE),
+           checkboxInput(ns('load_arrow'), 'Show loading arrows', FALSE),
+           checkboxInput(ns('show_ellipse'),"Show Ellipse",
+                         value = FALSE)
          ),
-         column(width = 12, hr()),
+         div(
+           id = ns('ellipse_div'),
+           column(
+             width = 3,
+             h4("Ellipse aesthetics"),
+             selectInput(ns('pca_ell_type'), "Type of ellipse",
+                         choices = c('t-distribution' = 't',
+                                     'normal distribution' = 'norm',
+                                     'Euclidean distance' = 'euclid'),
+                         selected = 'norm')),
+           column(
+             width = 3,
+             selectInput(ns('pca_ell_line'), "Linetype",
+                         choices = c('solid','dashed','longdash','dotdash'),
+                         selected = 'solid'),
+             numericInput(ns('pca_ell_ci'), "Confidence Interval",
+                          min = 0.1, max = 0.99, value = 0.95, 
+                          step = 0.05))
+         )
+       ),
+       fluidRow(
          column(width = 3,
                 # score point aesthetics
-                h3("Score points aesthetics"),
+                h4("Score points aesthetics"),
                 uiOutput(ns('score_pt_colour_ui')),
                 uiOutput(ns('score_pt_shape_ui')),
                 sliderInput(ns('score_pt_size'), 'Point size:',
@@ -60,7 +80,7 @@ mod_ov_pca_ui <- function(id){
          ),
          # score label aesthetics
          column(width = 3,
-                h3("Score labels aesthetics"),
+                h4("Score labels aesthetics"),
                 uiOutput(ns('score_label_ui')),
                 uiOutput(ns('score_lab_colour_ui')),
                 sliderInput(ns('score_lab_size'), 'Label size:',
@@ -69,10 +89,10 @@ mod_ov_pca_ui <- function(id){
                             min = 0.1, max = 1, value = 1, step = 0.1)
          ),
          
-         hidden(div(id=ns('loading_div'),
+         div(id=ns('loading_div'),
                     column(width = 3,
                            # loading point aesthetics
-                           h3('Loading points aesthetics'),
+                           h4('Loading points aesthetics'),
                            uiOutput(ns('load_pt_colour_ui')),
                            uiOutput(ns('load_pt_shape_ui')),
                            sliderInput(ns('load_pt_size'), 'Point size:',
@@ -82,7 +102,7 @@ mod_ov_pca_ui <- function(id){
                     ),
                     # loading label aesthetics
                     column(width = 3,
-                           h3('Loading labels aethetics'),
+                           h4('Loading labels aethetics'),
                            uiOutput(ns('load_label_ui')),
                            uiOutput(ns('load_lab_colour_ui')),
                            sliderInput(ns('load_lab_size'), 'Label size:',
@@ -90,7 +110,7 @@ mod_ov_pca_ui <- function(id){
                            sliderInput(ns('load_lab_alpha'), 'Label transparency:',
                                        min = 0.1, max = 1, value = 1, step = 0.1)
                     )
-         ))
+         )
       ))
     )),
     column(
@@ -144,7 +164,9 @@ mod_ov_pca_server <- function(input, output, session, param){
   observeEvent(pca_calculate(), {
     show('pca_body_div')
   })
-  
+  observeEvent(input$show_ellipse, {
+    toggle('ellipse_div')
+  })
   observeEvent(input$show_loading, {
     toggle('loading_div')
   })
@@ -220,7 +242,7 @@ mod_ov_pca_server <- function(input, output, session, param){
 
   # centre and scale
   asv_scale <- eventReactive(pca_calculate(), {
-    
+    req(pca_scale())
     if(pca_scale() == 'UV') {
       apply(asv_transform(), 2, function(x) (x - mean(x)) / sd(x))
     }
@@ -236,7 +258,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   # performing pca
-  d_pcx <- eventReactive(pca_calculate(), {
+  d_pcx <- reactive({
     ## samples in rows
     ## centring and scaling done outside of prcomp
     prcomp(t(asv_scale()), center = FALSE, scale. = FALSE)
@@ -266,7 +288,7 @@ mod_ov_pca_server <- function(input, output, session, param){
 
 
   # summary of pca
-  pcx_summary <- eventReactive(pca_calculate(), {
+  pcx_summary <- reactive({
     summary_pcx <- summary(d_pcx())
     summary_df <- unclass(summary_pcx)[['importance']]
 
@@ -280,10 +302,9 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   output$summary_pca <- DT::renderDataTable({
-    pcx_summary() %>%
-      DT::datatable(extensions = 'Buttons',
-                    options = list(scrollX = TRUE,
-                                   dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
+    DT::datatable(pcx_summary(), extensions = 'Buttons',
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
 
@@ -389,11 +410,14 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   p_biplot <- reactive({
-    req(pca_calculate())
 
     p_biplot <- cms_biplot(
       score_data(), load_data(),
       xPC = input$xPC, yPC = input$yPC,
+      # ellipse
+      frame = input$show_ellipse, frame.type = input$pca_ell_type, 
+      frame.line = input$pca_ell_line, frame.colour = score_pt_colour(),
+      frame.level = input$pca_ell_ci,
       # score point
       colour = score_pt_colour(), shape = score_pt_shape(),
       size = score_pt_size(), alpha = score_pt_alpha(),

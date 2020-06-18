@@ -47,6 +47,7 @@ cms_biplot(
   frame = FALSE,
   frame.type = NULL,
   frame.colour = colour,
+  frame.line = "solid",
   frame.level = 0.95,
   frame.alpha = 0.2,
   xlim = c(NA, NA),
@@ -138,6 +139,10 @@ cms_biplot(
 
 \item{frame.type}{type of CI estimation. must one of: \code{convex, t, norm or euclid} default NULL}
 
+\item{frame.colour}{frame colour. default \code{colour}}
+
+\item{frame.line}{frame linetype. default \code{'solid'}}
+
 \item{frame.level}{frame lineweight. default \code{0.95}}
 
 \item{frame.alpha}{frame alpha. default \code{0.2}}
@@ -161,8 +166,6 @@ cms_biplot(
 \item{xPC}{numeric; PC number for x axis. default 1}
 
 \item{yPC}{number; PC number for y axis. default 2}
-
-\item{fram.colour}{frame colour. default \code{colour}}
 }
 \description{
 Modification of \code{ggfortify::ggbiplot} to allow for selection of PCs

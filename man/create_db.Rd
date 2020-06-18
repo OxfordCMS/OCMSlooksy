@@ -22,7 +22,10 @@ Unclassified taxa should be represented with \code{NA}.}
 \item{overwrite}{logic. default FALSE. Allow database tables to overwrite
 existing tables of the same name.}
 
-\item{outdir}{output directory}
+\item{outdir}{output directory.}
+
+\item{fromfile}{default FALSE. read count table and taxonomy tables from 
+file (tab delimited or comma delimited)}
 }
 \value{
 sqlite database with merged_abundance_id (counts) and

@@ -163,20 +163,11 @@ mod_overview_ui <- function(id){
 mod_overview_server <- function(input, output, session, improxy){
   ns <- session$ns
   
-  # import data into module-----------------------------------------------------
-  working_set <- reactive(improxy$data_db)
-  
-  met <- reactive(working_set()$metadata)
-  asv <- reactive(working_set()$asv)
-  asv_transform <- reactive(working_set()$t_asv)
-  t_selected <- reactive(working_set()$t_selected)
-  tax <- reactive(working_set()$tax)
-  
   # output$check <- renderPrint({
   # 
   # })
   output$pca_menu_ui <- renderUI({
-    if(t_selected() != 'percent') {
+    if(improxy$work_db$transform_method != 'percent') {
       sidebarMenu(menuSubItem('PCA', tabName = 'pca_tab'))
     }
   })
@@ -184,19 +175,16 @@ mod_overview_server <- function(input, output, session, improxy){
   # store data in reactiveValues to pass onto submodule-------------------------
   bridge <- reactiveValues()
   observe({
-    bridge$met <- improxy$data_db$metadata
-    bridge$asv <- improxy$data_db$asv
-    bridge$asv_transform <- improxy$data_db$t_asv
-    bridge$tax <- improxy$data_db$tax
+    bridge$work_db <- improxy$work_db
   })
-  
+
   # bar plot server-------------------------------------------------------------
   # render controls bar plot
   output$bar_x_ui <- renderUI({
-    selectInput(ns('bar_x'), "x-axis", choices = colnames(met()),
+    selectInput(ns('bar_x'), "x-axis", choices = colnames(improxy$work_db$met),
                 selected = 'sampleID')
   })
-  
+
   # pass bar reactive inputs to submodule
   bridge$bar_input <- reactiveValues()
   observe({
@@ -207,10 +195,10 @@ mod_overview_server <- function(input, output, session, improxy){
 
   # call overview submodule for bar plot
   callModule(mod_ov_bar_server, "ov_bar_ui_1", param = bridge)
-  
+
   # PCA server------------------------------------------------------------------
   output$pca_scale_ui <- renderUI({
-    if(any(asv_transform() < 0)) {
+    if(any(improxy$work_db$asv_transform < 0)) {
       choices <- c("none" = "none",
                    "unit-variance scaling" = 'UV',
                    "vast scaling" = 'vast')
@@ -221,52 +209,52 @@ mod_overview_server <- function(input, output, session, improxy){
                    "pareto scaling" = 'pareto',
                    "vast scaling" = 'vast')
     }
-    
+
     radioButtons(ns('pca_scale'), "Scale",
                  choices = choices,
                  selected = 'UV')
   })
   bridge$pca_input <- reactiveValues()
   observeEvent(input$pca_calculate, {
-    if(t_selected() != 'percent') {
+    if(improxy$work_db$transform_method != 'percent') {
       # pass pca reactive inputs to submodule
       bridge$pca_input$pca_calculate <- input$pca_calculate
       bridge$pca_input$pca_scale <- input$pca_scale
       callModule(mod_ov_pca_server, "ov_pca_ui_1", param = bridge)
     }
   })
-  
+
   # PCoA server-----------------------------------------------------------------
   output$pcoa_dist_ui <- renderUI({
-    if(t_selected() == 'percent') choices <- 'bray'
+    if(improxy$work_db$transform_method == 'percent') choices <- 'bray'
     else choices <- c("manhattan", "euclidean", "canberra")
-    
+
     selectInput(ns('pcoa_dist'), "Distance method",
                 choices = choices,
                 selected = choices[1])
   })
-  
+
   bridge$pcoa_input <- reactiveValues()
   observe({
     bridge$pcoa_input$pcoa_dist <- input$pcoa_dist
     bridge$pcoa_input$pcoa_calculate <- input$pcoa_calculate
   })
   callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", param = bridge)
-  
+
   # Alpha diversity server------------------------------------------------------
 
   callModule(mod_ov_alpha_server, "ov_alpha_ui_1", param = bridge)
-  
+
   # Heatmap server--------------------------------------------------------------
   output$dist_method_ui <- renderUI({
-    if(t_selected() == 'percent') choices <- 'bray'
+    if(improxy$work_db$transform_method == 'percent') choices <- 'bray'
     else choices <- c("manhattan", "euclidean", "canberra", "bray")
-    
+
     selectInput(ns('dist_method'), "Distance method",
                 choices = choices,
                 selected = choices[1])
   })
-  
+
   bridge$hmap_input <- reactiveValues()
   observe({
     bridge$hmap_input$hclust_method <- input$hclust_method

@@ -56,9 +56,9 @@ mod_qc_ui <- function(id){
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
           
-          # fluidRow(
-          #   box(width = 12, h3('Check'),
-          #       verbatimTextOutput(ns('check')))),
+          fluidRow(
+            box(width = 12, h3('Check'),
+                verbatimTextOutput(ns('check')))),
           tabItems(
               # main page---------------------------------------------------------
               tabItem(
@@ -427,28 +427,17 @@ mod_qc_server <- function(input, output, session, improxy){
   
 
   # reading in tables ----------------------------------------------------------
-  data_set <- reactive({improxy$data_db})
-  
   qc_filtered <- reactive({
-    df <- data_set()$merged_filter_summary
+    df <- improxy$data_db$merged_filter_summary
     df$reads.in <- df$reads.in - df$reads.out
     df
   })
   
-  qc_nochim <- reactive({data_set()$merged_qc_summary})
-  yml <- reactive({data_set()$parameter_table})
-  asv <- reactive({data_set()$merged_abundance_id})
-  met <- reactive({data_set()$metadata})
-  tax <- reactive({data_set()$merged_taxonomy})
-
-  # combine tables into working dataframe
-  work <- reactive({
-    asv() %>%
-      gather('sampleID','read_count', -featureID) %>%
-      inner_join(tax(), by = 'featureID') %>%
-      select(-sequence) %>%
-      mutate(read_count = as.numeric(read_count))
-  })
+  qc_nochim <- reactive({improxy$data_db$merged_qc_summary})
+  yml <- reactive({improxy$data_db$parameter_table})
+  asv <- reactive({improxy$data_db$merged_abundance_id})
+  met <- reactive({improxy$data_db$metadata})
+  tax <- reactive({improxy$data_db$merged_taxonomy})
   
   
   # Render reactive widgets-----------------------------------------------------
@@ -662,7 +651,7 @@ mod_qc_server <- function(input, output, session, improxy){
 
   # prevalence of ASVs across samples-----------------------------------------
   pdata_nasv <- reactive({
-    work() %>%
+    improxy$asv_gather %>%
       filter(read_count > 0) %>%
       group_by(sampleID) %>%
       summarize(n_asv = n()) %>%
@@ -731,25 +720,10 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
-  # calculate prevalence
-  pprev <- function(d){
-    
-    # total number of samples
-    nsamples <- length(unique(d$sampleID))
-    
-    # count number of samples with count > 0
-    df <- d %>%
-      filter(read_count > 0) 
-    prev <- (nrow(df)/nsamples)*100
-    prev.df <- data.frame(featureID=as.character(unique(d$featureID)),
-                          Prevalence=prev)
-    return(prev.df)
-  }
-  
   prevalence <- reactive({
     
-    n_sample <- length(unique(work()$sampleID))
-    work() %>%
+    n_sample <- length(met()$sampleID)
+    improxy$asv_gather %>%
       filter(read_count > 0) %>%
       group_by(featureID) %>%
       summarize(n_observe = n(), 
@@ -825,7 +799,7 @@ mod_qc_server <- function(input, output, session, improxy){
   )
 
   pdata_spur <- reactive({
-    work() %>%
+    improxy$asv_met %>%
       group_by(sampleID) %>%
       mutate(tot_count = sum(read_count),
              rel_abund = read_count / tot_count * 100) %>%
@@ -900,10 +874,11 @@ mod_qc_server <- function(input, output, session, improxy){
   # rarefaction curve-----------------------------------------------------------
   
   # Check
-  # output$check <- renderPrint({
-  # })
+  output$check <- renderPrint({
+    names(improxy)
+  })
   
-  rare_df <- eventReactive({
+  rare_df <- reactive({
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
     mat <- as.matrix(mat)
@@ -951,11 +926,12 @@ mod_qc_server <- function(input, output, session, improxy){
   output$n_sample <- renderText({length(unique(met()$sampleID))})
   
   tax_distrb_df <- eventReactive(input$tax_level, {
-    work() %>%
+    tot_count <- sum(improxy$asv_gather$read_count)
+    improxy$asv_tax %>%
       group_by(.data[[input$tax_level]]) %>%
       select(.data[[input$tax_level]], read_count) %>%
       summarise(agg_count = sum(read_count)) %>%
-      mutate(agg_perc = agg_count / sum(work()$read_count) * 100) %>%
+      mutate(agg_perc = agg_count / tot_count * 100) %>%
       mutate(agg_perc = round(agg_perc, 2)) %>%
       ungroup() %>%
       distinct(.data[[input$tax_level]], agg_count, agg_perc)
@@ -1076,8 +1052,7 @@ mod_qc_server <- function(input, output, session, improxy){
   # read count distribution of samples------------------------------------------
 
   pdata_grpdistr <- reactive({
-    work() %>%
-      inner_join(met(), 'sampleID') %>%
+    improxy$asv_met %>%
       group_by(.data[[input$sample_select]]) %>%
       summarize(group_tot = sum(read_count))
   })
@@ -1144,7 +1119,10 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
-
+  # for speed, aggregate counts in sqlite
+  query <- reactive({
+    sprintf("SELECT * FROM merged_abundance_id INNER_JOIN")
+  })
   pdata_samdistr <- reactive({
     asv() %>%
       gather('sampleID', 'read_count', -featureID) %>%

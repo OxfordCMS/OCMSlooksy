@@ -76,9 +76,10 @@ mod_import_ui <- function(id){
               "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"),
               br(),
               div(style="font-weight: bold",
-                  textOutput(ns('import_status')))
-              ),
-           
+                  textOutput(ns('import_status'))),
+              shinybusy::add_busy_spinner(spin = 'circle', timeout = 2000, 
+                                          position = 'full-page')
+            )
           ),
           # Preview of metadata-------------------------------------------------
           tabItem(
@@ -236,29 +237,40 @@ mod_import_server <- function(input, output, session, parent_session) {
     })
   })  
 
-  asv <- reactive({
-    req(input$launch)
+  asv <- eventReactive(input$launch, {
     data_set()$merged_abundance_id
   })
-  met <- reactive({
-    req(input$launch)
+  met <- eventReactive(input$launch, {
     data_set()$metadata
   })
-  tax <- reactive({
-    req(input$launch)
+  tax <- eventReactive(input$launch, {
     data_set()$merged_taxonomy
   })
 
-  # combine tables into working dataframe
-  work <- reactive({
+  # combine tables into working dataframes to reduce loading times downstream
+  asv_gather <- eventReactive(input$launch, {
     asv() %>%
-      gather('sampleID','read_count', -featureID) %>%
+      gather('sampleID','read_count', -featureID)
+  })
+  
+  asv_tax <- eventReactive(input$launch, {
+    asv_gather() %>%
       inner_join(tax(), by = 'featureID') %>%
       select(-sequence) %>%
       mutate(read_count = as.numeric(read_count)) %>%
       ungroup()
   })
-
+  
+  asv_met <- eventReactive(input$launch, {
+    asv_gather() %>%
+      inner_join(met(), by = 'sampleID')
+  })
+  
+  work <- eventReactive(input$launch, {
+    asv_tax() %>% inner_join(met(), by = 'sampleID')
+  })
+  
+  
   # Summary of metadata-------------------------------------------------------
   output$metadata_preview <- DT::renderDT({
     DT::datatable(met(), extensions = 'Buttons',
@@ -268,7 +280,7 @@ mod_import_server <- function(input, output, session, parent_session) {
 
   # preview of count table----------------------------------------------------
   output$asv_preview <- DT::renderDT({
-    out <- work() %>%
+    out <- asv_tax() %>%
       spread(sampleID, read_count)
     
     # by default, only show first 50 samples + 8 tax columns
@@ -313,6 +325,11 @@ mod_import_server <- function(input, output, session, parent_session) {
   cross_module = reactiveValues()
   observe({
     cross_module$data_db <- data_set()
+    # adding long data formats to data list to be passed along in modules
+    cross_module$asv_gather <- asv_gather()
+    cross_module$asv_tax <- asv_tax()
+    cross_module$asv_met <- asv_met()
+    cross_module$work <- work()
   })
   return(cross_module)
 

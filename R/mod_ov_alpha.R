@@ -80,24 +80,19 @@ mod_ov_alpha_server <- function(input, output, session, param){
   ns <- session$ns
   
   # unpack data from parent module----------------------------------------------
-  met <- reactive(param$met)
-  asv <- reactive(param$asv)
-  tax <- reactive(param$tax)
-  asv_transform <- reactive(param$asv_transform)
-  
   # render controls - alpha diversity-------------------------------------------
   output$alpha_grp_ui <- renderUI({
     radioButtons(ns('alpha_grp'), "Compare Sample Groups",
-                 choices = colnames(met()), selected = 'sampleID')
+                 choices = colnames(param$work_db$met), selected = 'sampleID')
   })
   
   # calculate alpha diversity---------------------------------------------------
   
   alpha_result <- reactive({
     req(input$alpha_grp)
-    alpha_data <- asv() %>% select(-featureID)
+    alpha_data <- param$work_db$asv %>% select(-featureID)
     alpha_data <- as.data.frame(alpha_data)
-    rownames(alpha_data) <- asv()$featureID
+    rownames(alpha_data) <- param$work_db$asv$featureID
     
     shannon <- vegan::diversity(alpha_data,index = 'shannon',
                           base = 2, MARGIN = 2)
@@ -124,7 +119,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
   # })
 
   # determine valid stat test
-  grp_tally <- reactive(table(met()[,input$alpha_grp]))
+  grp_tally <- reactive(table(param$work_db$met[,input$alpha_grp]))
   stat_test <- reactive({
     if(length(grp_tally()) == 2) 'wilcox.test'
     else 'kruskal.test'
@@ -139,7 +134,8 @@ mod_ov_alpha_server <- function(input, output, session, param){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(met() %>% gather('meta_variable','grouping', -sampleID),
+      inner_join(param$work_db$met %>% 
+                   gather('meta_variable','grouping', -sampleID),
                  'sampleID') %>%
       filter(meta_variable == input$alpha_grp)
     
@@ -151,7 +147,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
   
   # show tables
   output$alpha_table <- DT::renderDataTable({
-    out <- met() %>%
+    out <- param$work_db$met %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID')
     DT::datatable(out, extensions = 'Buttons', 
@@ -177,7 +173,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
   pdata_alpha <- eventReactive(input$alpha_grp, {
 
     # set xorder based on shannon_d
-    xorder <- met() %>%
+    xorder <- param$work_db$met %>%
       mutate_all(as.character) %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID') %>%
@@ -190,7 +186,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(met() %>% mutate_all(as.character), 'sampleID') %>%
+      inner_join(param$work_db$met %>% mutate_all(as.character), 'sampleID') %>%
       group_by(alpha_metric, .data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value),
              x = factor(.data[[input$alpha_grp]], 

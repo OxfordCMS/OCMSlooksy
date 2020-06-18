@@ -172,18 +172,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
   ns <- session$ns
   
   # unpack data from parent module----------------------------------------------
-  met <- reactive(param$met)
-  asv <- reactive(param$asv)
-  tax <- reactive(param$tax)
-  asv_transform <- reactive(param$asv_transform)
-  
   # unpack alpha inputs
   hclust_method <- reactive(param$hmap_input$hclust_method)
   dist_method <- reactive(param$hmap_input$dist_method)
   hmap_calculate <- reactive(param$hmap_input$hmap_calculate)
   
   met_var <- reactive({
-    out <- colnames(met())
+    out <- colnames(param$work_db$met)
     out <- out[out != 'sampleID']
   })
   
@@ -195,7 +190,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # render controls - heat map--------------------------------------------------
   output$hmap_samp_label_ui <- renderUI({
     selectInput(ns('hmap_samp_label'), "Label:",
-                choices = colnames(met()), selected = 'sampleID')
+                choices = colnames(param$work_db$met), selected = 'sampleID')
   })
   output$hmap_samp_colour_ui <- renderUI({
     radioButtons(ns('hmap_samp_colour'), "Show sample metadata:",
@@ -205,11 +200,11 @@ mod_ov_hmap_server <- function(input, output, session, param){
   
   output$hmap_asv_label_ui <- renderUI({
     selectInput(ns('hmap_asv_label'), "Label:",
-                choices = colnames(tax()), selected = 'featureID')
+                choices = colnames(param$work_db$tax), selected = 'featureID')
   })
   
   output$hmap_asv_colour_ui <- renderUI({
-    choices <- c('none', colnames(tax()))
+    choices <- c('none', colnames(param$work_db$tax))
     choices <- choices[!choices %in% c('sequence','featureID','Taxon')]
     radioButtons(ns('hmap_asv_colour'), "Show taxonomy level:",
                  choices = choices, selected = 'none')
@@ -222,7 +217,8 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # calculate sample clustering
   samp_hclust <- reactive({
     req(hmap_calculate())
-    hclust(vegan::vegdist(t(asv_transform()), method = dist_method()), 
+    hclust(vegan::vegdist(t(param$work_db$asv_transform), 
+                          method = dist_method()), 
            method = hclust_method())
   })
   
@@ -240,7 +236,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
       samp_ddata(),
       direction = 'lr',
       branch.size = 0.5,
-      metadata = met(),
+      metadata = param$work_db$met,
       category = category,
       nudge.label = 0.01,
       label.category = input$hmap_samp_label,
@@ -311,7 +307,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   
   asv_hclust <- reactive({
     req(hmap_calculate())
-    hclust(vegan::vegdist(asv_transform(), method = dist_method()),
+    hclust(vegan::vegdist(param$work_db$asv_transform, method = dist_method()),
            method = hclust_method())
   })
   
@@ -330,7 +326,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
       asv_ddata(),
       direction = 'lr',
       branch.size = 0.5,
-      metadata = tax(),
+      metadata = param$work_db$tax,
       label.category = input$hmap_asv_label,
       nudge.label = 0.01,
       category = category,
@@ -400,12 +396,12 @@ mod_ov_hmap_server <- function(input, output, session, param){
   hmap_data <- reactive({
     
     if(input$sample_as_x) {
-      hmap_data <- asv_transform() # taxon in rows, samples in columns
-      rownames(hmap_data) <- tax()[, input$hmap_tax_label]
+      hmap_data <- param$work_db$asv_transform # taxon in rows, samples in columns
+      rownames(hmap_data) <- param$work_db$tax[, input$hmap_tax_label]
     }
     else {
-      hmap_data <- t(asv_transform())
-      colnames(hmap_data) <- tax()[, input$hmap_tax_label]
+      hmap_data <- t(param$work_db$asv_transform)
+      colnames(hmap_data) <- param$work_db$tax[, input$hmap_tax_label]
     }
     hmap_data
   })

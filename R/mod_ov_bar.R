@@ -68,11 +68,6 @@ mod_ov_bar_ui <- function(id){
 mod_ov_bar_server <- function(input, output, session, param){
   ns <- session$ns
   
-  # unpack data from param
-  met <- reactive(param$met)
-  asv <- reactive(param$asv)
-  tax <- reactive(param$tax)
-  
   # unpack bar plot inputs
   bar_tax <- reactive(param$bar_input$bar_tax)
   bar_y <- reactive(param$bar_input$bar_y)
@@ -81,21 +76,11 @@ mod_ov_bar_server <- function(input, output, session, param){
   # output$check <- renderPrint({
   #   
   # })
-  
-  # putting data into one dataframe
-  work <- reactive({
-    asv_gather <- asv() %>%
-      gather('sampleID','read_count', -featureID)
-    
-    met() %>%
-      inner_join(asv_gather, 'sampleID') %>%
-      inner_join(tax(), 'featureID')
-  })
-  
+
   # calculate output bar plot---------------------------------------------------
   
   bar_data <- reactive({
-    work() %>%
+    param$work_db$work %>%
       # sample total read count
       group_by(sampleID) %>%
       mutate(sample_total = sum(read_count)) %>%
@@ -134,7 +119,7 @@ mod_ov_bar_server <- function(input, output, session, param){
                     options = list(scrollX = TRUE,
                                    dom = 'Blfrtip',
                                    buttons = c('copy','csv'))) %>%
-        DT::formatRound(column = met()[,bar_x()], digits = 3)
+        DT::formatRound(column = param$work_db$met[,bar_x()], digits = 3)
     }
     else {
       DT::datatable(out, extensions = 'Buttons',

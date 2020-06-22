@@ -76,9 +76,7 @@ mod_import_ui <- function(id){
               "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"),
               br(),
               div(style="font-weight: bold",
-                  textOutput(ns('import_status'))),
-              shinybusy::add_busy_spinner(spin = 'circle', timeout = 2000, 
-                                          position = 'full-page')
+                  textOutput(ns('import_status')))
             )
           ),
           # Preview of metadata-------------------------------------------------

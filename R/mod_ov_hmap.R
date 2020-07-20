@@ -64,8 +64,7 @@ mod_ov_hmap_ui <- function(id){
                         list(icon('file-archive'), "All"),
                         size = 'xs', style = 'minimal')),
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('sample_dendro_plot'), width = '100%') %>% 
-              shinycssloaders::withSpinner()
+            plotlyOutput(ns('sample_dendro_plot'), width = '100%')
           ))),
       column(
         width = 12,
@@ -104,8 +103,7 @@ mod_ov_hmap_ui <- function(id){
                          list(icon('file-archive'), "All"),
                          size = 'xs', style = 'minimal')),
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('asv_dendro_plot'), width = '100%') %>% 
-              shinycssloaders::withSpinner()
+            plotlyOutput(ns('asv_dendro_plot'), width = '100%')
           ))),
       
       h2('Heat map'), br(), br(),
@@ -155,8 +153,7 @@ mod_ov_hmap_ui <- function(id){
             column(
               width = 11, style = 'padding:0px;',
               shinyjqui::jqui_resizable(
-                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto') %>% 
-                  shinycssloaders::withSpinner()
+                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto')
               )))
     ))
   )
@@ -211,9 +208,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   })
   
   # calculate heatmap-----------------------------------------------------------
-  # output$check <- renderPrint({
-  #   samp_ddata()
-  # })
+
   # calculate sample clustering
   samp_hclust <- reactive({
     req(hmap_calculate())
@@ -406,7 +401,9 @@ mod_ov_hmap_server <- function(input, output, session, param){
     hmap_data
   })
 
-
+  # output$check <- renderPrint({
+  #   hmap_data()
+  # })
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(
@@ -425,11 +422,21 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # plot heat map
   output$hmap_plot <- renderPlotly({
     req(hmap_calculate())
+    
+    if(param$work_db$transform_method == 'none') {
+      key_title <- 'Read Count'
+    }
+    else if(param$work_db$transform_method == 'percent') {
+      key_title <- 'Relative Abundance (%)'
+    }
+    else {
+      key_title <- 'Normalized\nRelative Abundance'
+    }
     heatmaply(hmap(), node_type = 'heatmap', 
               scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
                 low = "blue",
                 high = "red"),
-              key.title = 'Normalized\nRelative Abundance') 
+              key.title = key_title) 
   })
   
   output$dl_hmap_html <- downloadHandler(

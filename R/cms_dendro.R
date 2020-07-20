@@ -66,14 +66,14 @@ plot_ggdendro <- function(hcdata,
                           label.size  = 3,
                           label.category = NULL,
                           nudge.label = 0.01,
-                          expand.y    = 0.1,
+                          expand.y    = 0.5,
                           category = NULL,
                           id = 'sampleID') {
   
   direction <- match.arg(direction) # if fan = FALSE
   ymax      <- round(max(segment(hcdata)$y))
-  ymin <- -1
-  ybreaks   <- seq(ymin, ymax, 5)
+  ymin <- round(min(segment(hcdata)$yend))
+  ybreaks   <- seq(-1, ymax, ymax*0.1)
   
   # set dendrogram labels
   if(!is.null(label.category) & label.category != id) {
@@ -107,8 +107,9 @@ plot_ggdendro <- function(hcdata,
     hcdata$labels$y <- -0.1
   }
   else {
-    hcdata$labels$y <- -0.6
+    hcdata$labels$y <- -1 - max(segment(hcdata)$y) * 0.05
   }
+
   p <- p +
     geom_text(data        =  ggdendro::label(hcdata),
               aes(x       =  x,
@@ -147,13 +148,13 @@ plot_ggdendro <- function(hcdata,
       dplyr::rename(rowID = !!id) %>%
       tidyr::gather('met_cat', 'value', -rowID) %>%
       dplyr::filter(met_cat == category)  %>%
-      dplyr::mutate(shift_y = -0.3) %>%
+      dplyr::mutate(shift_y = 0 - max(segment(hcdata)$y) * 0.03) %>%
       dplyr::inner_join(ggdendro::label(hcdata), c('rowID' = 'label'))
     
     p <- p +
       geom_tile(data = cat_data, 
                 aes_string(x = 'x', y = 'shift_y', fill = 'value'), 
-                height = max(segment(hcdata)$y) * 0.05) +
+                height = max(segment(hcdata)$y) * 0.02) +
       scale_fill_discrete(name = category)
   }
   
@@ -161,7 +162,6 @@ plot_ggdendro <- function(hcdata,
     p <- p + scale_fill_discrete(guide = FALSE)
   }
 
-  
   ## orientation
   if (fan) {
     p <- p +

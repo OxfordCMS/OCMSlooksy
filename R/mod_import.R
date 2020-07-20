@@ -46,7 +46,9 @@ mod_import_ui <- function(id){
                    br(),
                    
                    # Launch data
-                   actionButton(ns('launch'), 'Launch Dataset'),
+                   withBusyIndicatorUI(
+                     actionButton(ns('launch'), 'Launch Dataset', class = "btn-primary")
+                   ),
                    br(), hr()),
           
           menuItemOutput(ns('metadata_menu')),
@@ -220,19 +222,22 @@ mod_import_server <- function(input, output, session, parent_session) {
   # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
-    
-    # show menu items
-    output$metadata_menu <- renderMenu({
-      menuItem('Metadata Preview', tabName = 'metadata_menu_tab', selected = TRUE)
+    withBusyIndicatorServer("launch", 'import_ui_1', {
+      Sys.sleep(1)
+      # show menu items
+      output$metadata_menu <- renderMenu({
+        menuItem('Metadata Preview', tabName = 'metadata_menu_tab', selected = TRUE)
+      })
+      
+      output$asv_menu <- renderMenu({
+        menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
+      })
+      
+      output$tax_menu <- renderMenu({
+        menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
+      })
     })
     
-    output$asv_menu <- renderMenu({
-      menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
-    })
-    
-    output$tax_menu <- renderMenu({
-      menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
-    })
   })  
 
   asv <- eventReactive(input$launch, {

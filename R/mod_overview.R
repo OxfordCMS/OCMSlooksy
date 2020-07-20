@@ -59,9 +59,11 @@ mod_overview_ui <- function(id){
               width = 225,
               tags$div(style = "text-align: center", tags$b('PCA Parameters')),
               uiOutput(ns('pca_scale_ui')),
-              actionButton(ns('pca_calculate'), "Calculate")
+              withBusyIndicatorUI(
+                actionButton(ns('pca_calculate'), "Calculate")  
               )
-            ),
+            )
+          ),
           # PCoA controls------------------------------------------------------- 
           conditionalPanel(
             condition = "input.menu === 'pcoa_tab'",
@@ -70,7 +72,9 @@ mod_overview_ui <- function(id){
               width = 225,
               tags$div(style = "text-align: center", tags$b("PCoA Parameters")),
               uiOutput(ns('pcoa_dist_ui')),
-              actionButton(ns('pcoa_calculate'), 'Calculate')
+              withBusyIndicatorUI(
+                actionButton(ns('pcoa_calculate'), 'Calculate')  
+              )
             )
           ),
         
@@ -101,8 +105,11 @@ mod_overview_ui <- function(id){
                                           'average','median','centroid'),
                               selected = 'ward.D2'),
                   uiOutput(ns('dist_method_ui')),
-                  actionButton(ns('hmap_calculate'), 'Calculate')
-                  ))
+                  withBusyIndicatorUI(
+                    actionButton(ns('hmap_calculate'), 'Calculate')  
+                  )
+                )
+              )
             )
         ## end of side bar------------------------------------------------------
         )),
@@ -216,12 +223,15 @@ mod_overview_server <- function(input, output, session, improxy){
   })
   bridge$pca_input <- reactiveValues()
   observeEvent(input$pca_calculate, {
-    if(improxy$work_db$transform_method != 'percent') {
-      # pass pca reactive inputs to submodule
-      bridge$pca_input$pca_calculate <- input$pca_calculate
-      bridge$pca_input$pca_scale <- input$pca_scale
-      callModule(mod_ov_pca_server, "ov_pca_ui_1", param = bridge)
-    }
+    withBusyIndicatorServer('pca_calculate', 'overview_ui_1', {
+      if(improxy$work_db$transform_method != 'percent') {
+        # pass pca reactive inputs to submodule
+        bridge$pca_input$pca_calculate <- input$pca_calculate
+        bridge$pca_input$pca_scale <- input$pca_scale
+        callModule(mod_ov_pca_server, "ov_pca_ui_1", param = bridge)
+      }  
+    })
+    
   })
 
   # PCoA server-----------------------------------------------------------------
@@ -239,7 +249,10 @@ mod_overview_server <- function(input, output, session, improxy){
     bridge$pcoa_input$pcoa_dist <- input$pcoa_dist
     bridge$pcoa_input$pcoa_calculate <- input$pcoa_calculate
   })
-  callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", param = bridge)
+  withBusyIndicatorServer('pcoa_calculate', 'overview_ui_1', {
+    callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", param = bridge)  
+  })
+  
 
   # Alpha diversity server------------------------------------------------------
 
@@ -261,7 +274,10 @@ mod_overview_server <- function(input, output, session, improxy){
     bridge$hmap_input$dist_method <- input$dist_method
     bridge$hmap_input$hmap_calculate <- input$hmap_calculate
   })
-  callModule(mod_ov_hmap_server, "ov_hmap_ui_1", param = bridge)
+  withBusyIndicatorServer('hmap_calculate','overview_ui_1', {
+    callModule(mod_ov_hmap_server, "ov_hmap_ui_1", param = bridge)  
+  })
+  
 }
 
 ## To be copied in the UI

@@ -22,12 +22,12 @@ withBusyIndicatorUI <- function(button) {
     color: red;
     }
     "
-
+  
   id <- button[['attribs']][['id']]
   div(
     shinyjs::useShinyjs(),
     singleton(tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+      # tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
       tags$style(withBusyIndicatorCSS)
     )),
     `data-for-btn` = id,
@@ -57,14 +57,15 @@ withBusyIndicatorUI <- function(button) {
 #' Corresponds with \code{withBustyIndicatorUI} function.
 #' Copied from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
 #' 
-#' @param buttonID
-#' @param expr
+#' @param buttonID button id
+#' @param expr code executed when button clicked
 
-withBusyIndicatorServer <- function(buttonId, expr) {
+withBusyIndicatorServer <- function(buttonId, mod_name, expr) {
   # UX stuff: show the "busy" message, hide the other messages, disable the button
-  loadingEl <- sprintf("[data-for-btn=%s] .btn-loading-indicator", buttonId)
-  doneEl <- sprintf("[data-for-btn=%s] .btn-done-indicator", buttonId)
-  errEl <- sprintf("[data-for-btn=%s] .btn-err", buttonId)
+  loadingEl <- sprintf("[data-for-btn=%s-%s] .btn-loading-indicator", mod_name, buttonId)
+  doneEl <- sprintf("[data-for-btn=%s-%s] .btn-done-indicator", mod_name, buttonId)
+  errEl <- sprintf("[data-for-btn=%s-%s] .btn-err", mod_name, buttonId)
+
   shinyjs::disable(buttonId)
   shinyjs::show(selector = loadingEl)
   shinyjs::hide(selector = doneEl)

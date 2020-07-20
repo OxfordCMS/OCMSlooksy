@@ -46,7 +46,9 @@ mod_setup_ui <- function(id){
                                        'Include select samples' = 'include',
                                        'Exclude select samples' = 'exclude'), 
                            selected = 'all'),
-              actionButton(ns('submit_sample'), "Filter samples")
+              withBusyIndicatorUI(
+                actionButton(ns('submit_sample'), "Filter samples")  
+              )
             )),
           
           # filter asvs---------------------------------------------------------
@@ -72,7 +74,10 @@ mod_setup_ui <- function(id){
                                   'selection' = 'asv_by_select'),
                       selected = character(0))
                     )),
-              actionButton(ns('submit_asv'), "Filter features"))),
+              withBusyIndicatorUI(
+                actionButton(ns('submit_asv'), "Filter features")))  
+              ),
+              
             
           # transform counts----------------------------------------------------
           conditionalPanel(
@@ -89,9 +94,10 @@ mod_setup_ui <- function(id){
                                              'log10 of percent abundance' = 'log10',
                                              'percent abundance' = 'percent'),
                                  selected = 'clr'),
-            actionButton(ns('submit_transform'), "Transform Counts")
+              withBusyIndicatorUI(
+                actionButton(ns('submit_transform'), "Transform Counts")    
+              )
             )
-           
           )
           )),
       
@@ -325,8 +331,12 @@ mod_setup_server <- function(input, output, session, improxy){
 
   # filter samples in data set
   met_filtered <- eventReactive(input$submit_sample, {
+    withBusyIndicatorServer('submit_sample', "setup_ui_1", {
+      Sys.sleep(1)
       met() %>%
         filter(sampleID %in% sample_include())
+    })
+      
     })
   
   
@@ -697,13 +707,17 @@ mod_setup_server <- function(input, output, session, improxy){
   
   # update asv_filtered
   asv_filtered2 <- eventReactive(input$submit_asv, {
-    if(secondary_check()) {
-      asv_filtered() %>%
-        filter(!sampleID %in% empty_sample())
-    }
-    else {
-      asv_filtered()
-    }
+    
+    withBusyIndicatorServer('submit_asv', "setup_ui_1", {
+      if(secondary_check()) {
+        asv_filtered() %>%
+          filter(!sampleID %in% empty_sample())
+      }
+      else {
+        asv_filtered()
+      }  
+    })
+    
   })
   
   # update met_filtered
@@ -758,51 +772,53 @@ mod_setup_server <- function(input, output, session, improxy){
 
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)
-
-    asv_df <- asv_filtered2() %>%
-      spread(sampleID, read_count) %>%
-      as.data.frame()
-    rownames(asv_df) <- asv_df$featureID
-    asv_df <- asv_df[, colnames(asv_df) != 'featureID']
-
-    if(input$transform_method == 'clr') {
-      ## generate Monte Carlo samples from Dirichlet distribution
-      ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
-      ## use geometric mean abundance of features
-
-      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = met_filtered2()$sampleID,
-                                   useMC = TRUE)
-      clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
-                             function(m){t(apply(m,1,median))})
-      ## samples in columns
-      clr_df <- data.frame(matrix(unlist(clr_instance),
-                                  ncol = length(clr_instance),
-                                  byrow = FALSE,
-                                  dimnames = list(colnames(clr_instance[[1]]),
-                                                  names(clr_instance))),
-                           stringsAsFactors=FALSE)
-      out <- clr_df
-    }
-    if(input$transform_method == 'log10') {
-      out <- apply(asv_df, 2, function(x) log10(x + 1*10^-6))
-    }
-    if(input$transform_method == 'percent') {
-      calc <- asv_filtered2() %>%
-        group_by(sampleID) %>%
-        mutate(sample_total = sum(read_count),
-               samp_rel_abund = read_count / sample_total * 100) %>%
-        ungroup() %>%
-        select(-read_count, -sample_total) %>%
-        spread(sampleID, samp_rel_abund)
-      
-      out <- as.data.frame(calc %>% select(-featureID))
-      rownames(out) <- calc$featureID
     
-    }
-    if(input$transform_method == 'none') {
-      out <- asv_df
-    }
-    out
+    withBusyIndicatorServer('submit_transform', 'setup_ui_1', {
+      asv_df <- asv_filtered2() %>%
+        spread(sampleID, read_count) %>%
+        as.data.frame()
+      rownames(asv_df) <- asv_df$featureID
+      asv_df <- asv_df[, colnames(asv_df) != 'featureID']
+      
+      if(input$transform_method == 'clr') {
+        ## generate Monte Carlo samples from Dirichlet distribution
+        ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
+        ## use geometric mean abundance of features
+        
+        asv_clr <- ALDEx2::aldex.clr(asv_df, conds = met_filtered2()$sampleID,
+                                     useMC = TRUE)
+        clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
+                               function(m){t(apply(m,1,median))})
+        ## samples in columns
+        clr_df <- data.frame(matrix(unlist(clr_instance),
+                                    ncol = length(clr_instance),
+                                    byrow = FALSE,
+                                    dimnames = list(colnames(clr_instance[[1]]),
+                                                    names(clr_instance))),
+                             stringsAsFactors=FALSE)
+        out <- clr_df
+      }
+      if(input$transform_method == 'log10') {
+        out <- apply(asv_df, 2, function(x) log10(x + 1*10^-6))
+      }
+      if(input$transform_method == 'percent') {
+        calc <- asv_filtered2() %>%
+          group_by(sampleID) %>%
+          mutate(sample_total = sum(read_count),
+                 samp_rel_abund = read_count / sample_total * 100) %>%
+          ungroup() %>%
+          select(-read_count, -sample_total) %>%
+          spread(sampleID, samp_rel_abund)
+        
+        out <- as.data.frame(calc %>% select(-featureID))
+        rownames(out) <- calc$featureID
+        
+      }
+      if(input$transform_method == 'none') {
+        out <- asv_df
+      }
+      out  
+    })
   })
 
   output$preview_transform <- DT::renderDataTable({

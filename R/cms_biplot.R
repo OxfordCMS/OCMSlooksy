@@ -178,7 +178,7 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
                                                       1L:2L]), ]
       }
       else {
-        hulls <- plot.data %>% dplyr::group_by_(frame.colour) %>% 
+        hulls <- plot.data %>% dplyr::group_by(!!sym(frame.colour)) %>% 
           dplyr::do(.[grDevices::chull(.[, 1L:2L]), ])
       }
       mapping <- aes_string(colour = frame.colour, fill = frame.colour)

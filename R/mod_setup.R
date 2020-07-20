@@ -46,7 +46,9 @@ mod_setup_ui <- function(id){
                                        'Include select samples' = 'include',
                                        'Exclude select samples' = 'exclude'), 
                            selected = 'all'),
-              actionButton(ns('submit_sample'), "Filter samples")
+              withBusyIndicatorUI(
+                actionButton(ns('submit_sample'), "Filter samples")  
+              )
             )),
           
           # filter asvs---------------------------------------------------------
@@ -72,7 +74,10 @@ mod_setup_ui <- function(id){
                                   'selection' = 'asv_by_select'),
                       selected = character(0))
                     )),
-              actionButton(ns('submit_asv'), "Filter features"))),
+              withBusyIndicatorUI(
+                actionButton(ns('submit_asv'), "Filter features")))  
+              ),
+              
             
           # transform counts----------------------------------------------------
           conditionalPanel(
@@ -82,14 +87,17 @@ mod_setup_ui <- function(id){
               style = 'text-align: center',
               tags$b('Input controls')),
             fixedPanel(
-              radioButtons(ns('transform_method'), "Transformation method:",
+              radioButtons(ns('transform_method'),
+                           tags$div(title = "CLR transforamtion may take a few minutes for large datasets", "Transformation method:"),
                                  choices = c('none' = 'none', 
                                              'centre log-ratio' = 'clr',
-                                             'additive log-ratio' = 'alr'),
+                                             'log10 of percent abundance' = 'log10',
+                                             'percent abundance' = 'percent'),
                                  selected = 'clr'),
-              actionButton(ns('submit_transform'), "Transform Counts")
+              withBusyIndicatorUI(
+                actionButton(ns('submit_transform'), "Transform Counts")    
+              )
             )
-           
           )
           )),
       
@@ -97,10 +105,10 @@ mod_setup_ui <- function(id){
       dashboardBody(
         box(width = '100%', br(),br(), br(),
             
-            fluidRow(width = 12,
-                    h3('Check Box'),
-                    verbatimTextOutput(ns('check'))),
-            
+            # fluidRow(width = 12,
+            #         h3('Check Box'),
+            #         verbatimTextOutput(ns('check'))),
+            # 
             tabItems(
               # main page-------------------------------------------------------
               tabItem(
@@ -119,15 +127,32 @@ mod_setup_ui <- function(id){
                        tags$div(
                          "It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
                 br(), br(),
-                hidden(div(id = ns('sample_filter_div'),
-                   column(width = 8,
-                          DT::dataTableOutput(ns('sample_options_ui'))),
-                   column(width = 4,
-                          wellPanel(tags$b('Selected samples:'),
-                          htmlOutput(ns('sample_select')))))),
-                column(width = 12,
-                       h3(textOutput(ns('preview_sample_title'))),
-                       DT::dataTableOutput(ns('preview_sample')))),
+                fluidRow(
+                  column(width = 8,
+                    hidden(div(
+                      id = ns('sample_filter_div'),
+                      column(width = 12,
+                        DT::dataTableOutput(ns('sample_options_ui')) 
+                      )
+                    )),
+                    column(
+                      width = 12,
+                      h3(textOutput(ns('preview_sample_title'))),
+                      DT::dataTableOutput(ns('preview_sample')) %>% 
+                        shinycssloaders::withSpinner()
+                    )
+                  ),
+                  hidden(div(
+                    id = ns('sample_filter_selcted_div'),
+                    column(
+                      width = 4,
+                      wellPanel(tags$b('Selected samples:'),
+                                htmlOutput(ns('sample_select'))
+                                )
+                    )
+                  ))
+                )
+              ),
               
               # filter asv------------------------------------------------------
               tabItem(
@@ -140,49 +165,92 @@ mod_setup_ui <- function(id){
                     tags$em(
                       tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering features at this stage should only be done if you have additional reasoning for omitting certain sequences or features"),
                     br()),
-                
-                div(id = ns('asv_filter_div'),
-                column(width = 12,
-                  hidden(
-                   div(id = ns('asv_option_count'),
-                       column(width = 5, br(),
-                              wellPanel(
-                                h3('Filter features based on read count threshold'),
-                                radioButtons(
-                                  ns('cutoff_method'), 'Set filter cutoff by:',
-                                  c('Read count' = 'abs_count',
-                                    'Percent of total read count of each sample' = 'percent_sample',
-                                    'Percent of total read count of dataset' = 'percent_total'),
-                                  selected = character(0)))),
-                       column(width = 5, br(),
-                         hidden(
-                           div(id = ns('cutoff_limit'),
-                               wellPanel(
-                                 tags$div('min: 0', br(),
-                                    'max:', 
-                                    textOutput(ns('cutoff_max'), inline = TRUE)),
-                                 br(),
-                                 uiOutput(ns('asv_cutoff_ui')),
-                                 tags$b(textOutput(ns('asv_cutoff_msg')))))))
-                       )),
-                hidden(
-                 div(id = ns('asv_option_select'),
-                     column(
-                       width = 12,
-                          h3('Filter features based on selection'),
-                          DT::dataTableOutput(ns('asv_table_select'))
-                     ))))),
-                       
-                column(width = 12, br(),
-                       hidden(
-                         div(id = ns('asv_remove_div'),
-                             wellPanel(tags$b('features to be removed:'),
-                                htmlOutput(ns('asv_remove')))
-                            ))),
-                column(width = 12,
-                       h3(textOutput(ns('preview_asv_title'))),
-                       DT::dataTableOutput(ns('preview_asv')))
-              )),
+                ), # end column 1 description text
+                div(
+                  id = ns('asv_filter_div'),
+                  column(width = 12, # begin asv_option_count column 
+                    hidden(div(
+                      id = ns('asv_option_count'),
+                      column(
+                        width = 3, br(),
+                        wellPanel(
+                          h3('Filter features based on read count threshold'),
+                          radioButtons(
+                            ns('cutoff_method'), 'Set filter cutoff by:',
+                            c('Read count' = 'abs_count',
+                              'Percent of total read count of each sample' = 'percent_sample',
+                              'Percent of total read count of dataset' = 'percent_total'),
+                            selected = 'abs_count')
+                        )
+                      ),
+                      column(
+                        width = 4, br(),
+                        hidden(div(
+                          id = ns('cutoff_limit'),
+                          wellPanel(
+                            tags$div('min: 0', br(),
+                              'max:', 
+                              textOutput(ns('cutoff_max'), inline = TRUE)),
+                            br(),
+                            uiOutput(ns('asv_cutoff_ui')),
+                            uiOutput(ns('prevalence_ui')),
+                            tags$b(textOutput(ns('asv_cutoff_msg')) %>%
+                                     shinycssloaders::withSpinner()),
+                            checkboxInput(ns("show_prev_plot"), "Show read prevalence plot")
+                          )
+                        )) # end cutoff_limit
+                      ),
+                      column(
+                        width = 5, br(),
+                        hidden(div(
+                          id = ns('prev_read_plot_div'),
+                          tabsetPanel(
+                            type = "tabs",
+                            tabPanel("Aggregated view", 
+                                     plotlyOutput(ns('prev_agg_plot')) %>% 
+                                       shinycssloaders::withSpinner()),
+                            tabPanel("Expanded view",
+                                     plotlyOutput(ns('prev_read_plot')) %>% 
+                                       shinycssloaders::withSpinner())
+                          )
+                        ))
+                      )
+                    )) # end asv_option_count
+                  ), # end asv_option_count column
+                ), # end asv_filter_div
+                column(
+                  width = 12,
+                  hidden(div(
+                    id = ns('asv_option_select'),
+                    h3('Filter features based on selection'),
+                    DT::dataTableOutput(ns('asv_table_select')) %>% 
+                      shinycssloaders::withSpinner()
+                  )) # end asv_option_select
+                ), 
+                column(
+                  width = 12, br(),
+                  hidden(div(
+                    id = ns('asv_remove_div'),
+                    wellPanel(textOutput(ns('asv_remove')))
+                  )) # end asv_remove_div
+                ),
+                column(
+                  width = 12, 
+                  hidden(div(
+                    id = ns('secondary_check_div'),
+                    wellPanel(
+                      tags$b(textOutput(ns('secondary_filter'))),
+                      htmlOutput(ns('secondary_filter_samples'))
+                    )
+                  ))
+                ),
+                column(
+                  width = 12,
+                  h3(textOutput(ns('preview_asv_title'))),
+                  DT::dataTableOutput(ns('preview_asv'))  %>% 
+                    shinycssloaders::withSpinner()
+                )
+              ), # end tabItem
               
               # asv transformation----------------------------------------------
               tabItem(
@@ -192,7 +260,8 @@ mod_setup_ui <- function(id){
                        tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link].", 
                                 br(), 
                                 "Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data. Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."),
-                       DT::dataTableOutput(ns('preview_transform')))
+                       DT::dataTableOutput(ns('preview_transform')) %>%
+                         shinycssloaders::withSpinner())
               )
             )
         )
@@ -211,23 +280,20 @@ mod_setup_server <- function(input, output, session, improxy){
   ns <- session$ns
   
   # import data into module
-  data_set <- reactive({improxy$data_db})
-  
-  met <- reactive(data_set()$metadata)
-  asv <- reactive(data_set()$merged_abundance_id)
-  tax <- reactive(data_set()$merged_taxonomy)
-  
-  # format data tables tidy coding----------------------------------------------
-  format_asv <- reactive({
-    asv() %>%
-      gather('sampleID', 'read_count', -featureID)
-  })
+  met <- reactive(improxy$data_db$metadata)
+  asv <- reactive(improxy$data_db$merged_abundance_id)
+  tax <- reactive(improxy$data_db$merged_taxonomy)
   
   # subset samples--------------------------------------------------------------
   # show sample table
   observeEvent(input$sample_select_prompt, {
     toggle("sample_filter_div", condition = input$sample_select_prompt != 'all')
   })
+  observeEvent(input$sample_select_prompt, {
+    toggle("sample_filter_selcted_div", 
+           condition = input$sample_select_prompt != 'all')
+  })
+  
   
   output$sample_options_ui <- DT::renderDataTable({
     out <- met()
@@ -264,66 +330,85 @@ mod_setup_server <- function(input, output, session, improxy){
   })
 
   # filter samples in data set
-  working_meta <- eventReactive(input$submit_sample, {
+  met_filtered <- eventReactive(input$submit_sample, {
+    withBusyIndicatorServer('submit_sample', "setup_ui_1", {
+      Sys.sleep(1)
       met() %>%
         filter(sampleID %in% sample_include())
     })
+      
+    })
   
-  observeEvent(input$submit_sample, {
-    output$preview_sample_title <- renderText({
-      'Samples included in analysis:'
-    })
-    
-    output$preview_sample <- DT::renderDataTable({
-      DT::datatable(working_meta(), extensions = 'Buttons', 
-                    options = list(scrollX = TRUE, 
-                                   dom = 'Blfrtip', buttons = c('copy','csv')))
-    })
+  
+  output$preview_sample_title <- renderText({
+    req(input$submit_sample)
+    'Samples included in analysis:'
   })
+  
+  output$preview_sample <- DT::renderDataTable({
+    req(input$submit_sample)
+    DT::datatable(met_filtered(), extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, 
+                                 pageLength = 30,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+  
   
   # update ASV with filtered samples
-  asv_filt_samp <- eventReactive(input$submit_sample, {
-    format_asv() %>%
-      filter(sampleID %in% unique(working_meta()$sampleID))
+  samp_filtered <- eventReactive(input$submit_sample, {
+    improxy$asv_gather %>%
+      filter(sampleID %in% unique(met_filtered()$sampleID))
   })
-  
-  output$check <- renderPrint({
-  })
+
   # subset ASVs-----------------------------------------------------------------
-  
+
   # control UI based on filter method--------------------------------------
   # sidebar - filter yes/no
   observeEvent(input$asv_select_prompt, {
     toggle("asv_filter_options_ui", condition = input$asv_select_prompt == 'some')
     toggle('asv_filter_div', condition = input$asv_select_prompt == 'some')
   })
-  
+
   # main panel
   # by read count
   observeEvent(input$asv_filter_options, {
-    toggle(id = 'asv_option_count', 
-           condition = stringr::str_detect(input$asv_filter_options, 'asv_by_count'))
+    toggle(id = 'asv_option_count',
+           condition = grepl('asv_by_count', input$asv_filter_options))
     show(id = "cutoff_limit")
   })
   
-  
+  observeEvent(input$show_prev_plot, {
+    toggle(id = 'prev_read_plot_div', condition = input$show_prev_plot == TRUE)
+  })
+
   # by selected ASV
   observeEvent(input$asv_filter_options, {
     toggle(id = 'asv_option_select',
-           condition = stringr::str_detect(input$asv_filter_options, 'asv_by_select'))
-    toggle(id = 'asv_remove_div', condition = length(input$asv_filter_options) > 0)
+           condition = grepl('asv_by_select', input$asv_filter_options))
+    toggle(id = 'asv_remove_div',
+           condition = grepl('asv_by_select', input$asv_filter_options))
   })
-  
+
+  observeEvent(input$submit_asv, {
+    toggle(id = 'secondary_check_div', condition = secondary_check() == TRUE)
+  })
+  # ui for prevalence threshold
+  output$prevalence_ui <- renderUI({
+    nsample <- length(unique(samp_filtered()$sampleID))
+    numericInput(ns('prevalence'),
+                 "Feature prevalence (# of samples):",
+                 min = 1, max = nsample, value = round(nsample * 0.05))
+  })
   # ui for  cut-off threshold
   ui_entry <- eventReactive(input$cutoff_method, {
-    
+    req(input$cutoff_method)
     if(input$cutoff_method == 'abs_count') {
       label <- 'Read count cut-off:'
-      max_cutoff <- max(asv_filt_samp()$read_count)
+      max_cutoff <- max(samp_filtered()$read_count)
       step <- 1000
       default_value <- 1
 
-      msg <- 'Removing all sequences with a read count of less than REPLACE'
+      msg <- 'Keeping REPLACE1/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2 in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
     }
     if(input$cutoff_method == 'percent_sample') {
       label <- 'Read count cut-off (% of sample total):'
@@ -331,7 +416,7 @@ mod_setup_server <- function(input, output, session, improxy){
       step <- 0.01
       default_value = 0.01
 
-      msg <- 'Removing all seqeunces with a read count that is less than REPLACE% of sample total read count'
+      msg <- 'Keeping REPLACE1/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2% of sample total read count in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
     }
     if(input$cutoff_method == 'percent_total') {
       label <- 'Read count cut-off (% of dataset total):'
@@ -339,182 +424,459 @@ mod_setup_server <- function(input, output, session, improxy){
       step <- 0.01
       default_value = 0.01
 
-      msg <- 'Removing all sequences with a read count that is less than REPLACE% of dataset total read count'
+      msg <- 'Keeping REPLACE1/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2% of dataset total read count in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
     }
-    
-    list('label' = label, 'max_cutoff' = max_cutoff, 'step' = step, 
-         'default_value' = default_value, 'msg' = msg) 
+
+    list('label' = label, 'max_cutoff' = max_cutoff, 'step' = step,
+         'default_value' = default_value, 'msg' = msg)
   })
 
   output$asv_cutoff_ui <- renderUI({
-    
+    req(input$cutoff_method)
     numericInput(ns('asv_cutoff'), label = ui_entry()$label,
                  value = ui_entry()$default_value, step = ui_entry()$step,
                  min = 0, max = ui_entry()$max_cutoff)
   })
-  
+
   output$cutoff_max <- renderText({
     req(input$cutoff_method)
     ui_entry()$max_cutoff})
+
   output$asv_cutoff_msg <- renderText({
-    stringr::str_replace(ui_entry()$msg, 'REPLACE', as.character(input$asv_cutoff))
+    req(input$cutoff_method)
+    tot_feat <- samp_filtered() %>% filter(read_count > 0)
+    tot_feat <- length(unique(tot_feat$featureID))
+    rel_feat <- length(to_keep()) / tot_feat * 100
+    rel_feat <- round(rel_feat, 1)
+    tot_samp <- length(unique(met_filtered()$sampleID))
+    rel_samp <- as.numeric(input$prevalence) / tot_samp * 100
+    rel_samp <- round(rel_samp, 1)
+    out <- gsub("REPLACE1", as.character(length(to_keep())), ui_entry()$msg)
+    out <- gsub("TOT_FEAT", as.character(tot_feat), out)
+    out <- gsub("REL_FEAT", as.character(rel_feat), out)
+    out <- gsub("REL_FEAT", as.character(rel_feat), out)
+    out <- gsub('REPLACE2', as.character(input$asv_cutoff), out)
+    out <- gsub("REPLACE3", as.character(input$prevalence), out)
+    out <- gsub("TOT_SAMP", as.character(tot_samp), out)
+    out <- gsub("REL_SAMP", as.character(rel_samp), out)
   })
 
   # by selecting ASVs
   output$asv_table_select <- DT::renderDataTable({
+    req(input$asv_filter_options)
+
+
     out <- tax() %>%
-      left_join(asv(), 'featureID') %>%
+      left_join(samp_filtered(), 'featureID') %>%
       select(-Taxon, -sequence) %>%
+      spread(sampleID, read_count) %>%
       arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
+
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+
+    DT::datatable(out, filter = 'top',
+                  extensions = list(c('Buttons', 'FixedColumns')),
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE,
+                    dom = 'Blfrtip',
+                    buttons = list(c('copy','csv'),
+                                   list(extend = 'colvis')),
+                    filter = 'top',
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    )))
+  })
+
+
+  # prepare asv dataframe-------------------------------------------------------
+  working_asv <- reactive({
     
-    DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
+    if(input$asv_select_prompt == 'some') {
+      dataset_total <- sum(samp_filtered()$read_count)
+
+      out <- samp_filtered() %>%
+        # calculate relative abundance as dataset total
+        mutate(ds_rel_abund = read_count / dataset_total * 100) %>%
+        # calculate relative abundance as sample total
+        group_by(sampleID) %>%
+        mutate(sample_total = sum(read_count)) %>%
+        group_by(sampleID, featureID) %>%
+        mutate(samp_rel_abund = read_count / sample_total * 100) %>%
+        ungroup() 
+      out
+
+    }
+    else {
+      samp_filtered()
+    }
   })
   
-
-  # define ASVs to be removed---------------------------------------------------
-  to_remove <- reactive({
-    
+  # define ASVs to keep---------------------------------------------------------
+  to_keep <- reactive({
+    req(input$asv_filter_options)
     if(input$asv_filter_options == 'asv_by_count') {
-      req(input$cutoff_method)
-      
+      req(input$cutoff_method, input$asv_cutoff, input$prevalence)
+
       # count cut-off
       if(input$cutoff_method == 'abs_count') {
-        
-        out <- asv_filt_samp() %>%
-          filter(read_count < input$asv_cutoff)
+
+        out <- working_asv() %>%
+          group_by(featureID) %>%
+          mutate(prev_observed = sum(read_count >= input$asv_cutoff)) %>%
+          filter(read_count >= input$asv_cutoff & prev_observed >= input$prevalence)
       }
       # cut-off based on percent of sample total
       if(input$cutoff_method == 'percent_sample') {
-        out <- asv_filt_samp() %>%
-          group_by(sampleID) %>%
-          mutate(sample_total = sum(read_count),
-                 rel_abund = read_count / sample_total * 100) %>%
-          filter(rel_abund < input$asv_cutoff) %>%
-          select(-sample_total, -rel_abund)
-        
+        out <- working_asv() %>%
+          group_by(featureID) %>%
+          mutate(prev_observed = sum(samp_rel_abund >= input$asv_cutoff)) %>%
+          filter(samp_rel_abund >= input$asv_cutoff & prev_observed >= input$prevalence)
+
       }
       # cut-off based on percent of dataset total
       if(input$cutoff_method == 'percent_total') {
-        
-        dataset_total <- sum(asv_filt_samp()$read_count)
-        
-        out <- asv_filt_samp() %>%
-          mutate(rel_abund = read_count / dataset_total * 100) %>%
-          filter(rel_abund < input$asv_cutoff) %>%
-          select(-rel_abund)
+        out <- working_asv() %>%
+          group_by(featureID) %>%
+          mutate(prev_observed = sum(ds_rel_abund >= input$asv_cutoff)) %>%
+          filter(ds_rel_abund >= input$asv_cutoff & prev_observed >= input$prevalence)
       }
     }
 
     # filter ASV based on selection---------------------------------------------
     if(input$asv_filter_options == 'asv_by_select') {
       req(input$asv_table_select_rows_selected)
-      
+
       out <- tax() %>%
-        left_join(asv(), 'featureID') %>%
-        select(-sequence, -Taxon) %>%
+        left_join(samp_filtered(), 'featureID') %>%
+        select(-Taxon, -sequence) %>%
+        spread(sampleID, read_count) %>%
         arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
-        slice(c(input$asv_table_select_rows_selected)) %>%
+        slice(-c(input$asv_table_select_rows_selected)) %>%
         gather('sampleID', 'read_count', -featureID)
     }
 
     unique(out$featureID)
   })
-  
+
   # show ASVs removed-----------------------------------------------------------
   output$asv_remove <- renderText({
-    HTML(paste(to_remove(), collapse = "<br/>"))
+    req(input$asv_filter_options, input$asv_table_select_rows_selected)
+    featID <- unique(samp_filtered()$featureID)
+    sprintf("Removing %s Features", length(featID[!featID %in% to_keep()]))
   })
   
+  # # check
+  # output$check <- renderPrint({
+  #   head(asv_filtered2())
+  # })
   
+  # giving preview on read and prevalence
+  output$prev_agg_plot <- renderPlotly({
+    scaleFUN <- function(x) sprintf("%.0f", x)
+    
+    req(input$asv_filter_options)
+    
+    if(input$cutoff_method == 'abs_count') {
+      y = 'agg_count'
+      ylab <- 'Aggregated Read count'
+    }
+    if(input$cutoff_method == 'percent_total') {
+      y = 'agg_ds_rel'
+      ylab <- 'Aggregated Relative abundance\n(% of total reads)'
+    }
+    if(input$cutoff_method == 'percent_sample') {
+      y = 'agg_samp_rel'
+      ylab <- 'Aggregated Relative abundance\n(% of sample)'
+    }
 
-  # filter ASVs based on set cutoff---------------------------------------------
-  working_asv <- eventReactive(input$submit_asv, {
-    req(input$asv_select_prompt)
+    pdata <- working_asv() %>% 
+      group_by(featureID) %>%
+      # number of samples in which asv meets read cutoff
+      mutate(prev_observed = sum(read_count >= input$asv_cutoff)) %>%
+      group_by(featureID) %>%
+      summarise(prev_observed = prev_observed,
+                agg_count = sum(read_count),
+                agg_samp_rel = sum(samp_rel_abund),
+                agg_ds_rel = sum(ds_rel_abund)) %>%
+      mutate(colour = ifelse(featureID %in% to_keep(), 
+                             'to keep', 'to remove')) %>%
+      distinct()
+      
+    p <- ggplot(pdata, aes_string(x = 'prev_observed', y = y, colour = 'colour')) +
+      geom_point(aes(text=sprintf("featureID: %s", featureID)), alpha = 0.5, size = 2) +
+      xlab('ASV prevalence (# of samples)') +
+      ylab(ylab) +
+      scale_x_continuous(labels = scaleFUN, limits = c(0, nrow(met_filtered()))) +
+      scale_y_continuous(trans = 'log10') +
+      theme_bw(12) +
+      theme(legend.position = 'bottom')
+    
+    ggplotly(p) %>%
+      layout(legend = list(orientation = "h", x = -0.5, y = -1))
+  })
+  
+  output$prev_read_plot <- renderPlotly({
+    scaleFUN <- function(x) sprintf("%.0f", x)
+    
+    req(input$asv_filter_options)
+    
+    if(input$cutoff_method == 'abs_count') {
+      y = 'read_count'
+      ylab <- 'Read count'
+    }
+    if(input$cutoff_method == 'percent_total') {
+      y = 'ds_rel_abund'
+      ylab <- 'Relative abundance\n(% of total reads)'
+    }
+    if(input$cutoff_method == 'percent_sample') {
+      y = 'samp_rel_abund'
+      ylab <- 'Relative abundance\n(% of sample)'
+    }
+
+    pdata <- working_asv() %>% 
+      group_by(featureID) %>%
+      # number of samples in which asv meets read cutoff
+      mutate(prev_observed = sum(read_count >= input$asv_cutoff),
+             colour = ifelse(featureID %in% to_keep(), 'to keep', 'to remove')) %>%
+      distinct()
+    
+    p <- ggplot(pdata, aes_string(x = 'prev_observed', y = y, colour = 'colour')) +
+      geom_point(aes(text=sprintf("featureID: %s<br>sampleID: %s", 
+                                  featureID, sampleID)), 
+                 alpha = 0.5, size = 2) +
+      xlab('ASV prevalence (# of samples)') +
+      ylab(ylab) +
+      scale_x_continuous(labels = scaleFUN, limits = c(0, nrow(met_filtered()))) +
+      scale_y_continuous(trans = 'log10') +
+      theme_bw(12) +
+      theme(legend.position = 'bottom')
+    ggplotly(p) %>%
+      layout(legend = list(orientation = "h", x = -0.5, y = -1))
+  })
+  
+  # filter ASVs based on set cutoff/selection-----------------------------------
+  asv_filtered <- eventReactive(input$submit_asv, {
+
     if(input$asv_select_prompt == 'some') {
-      asv_filt_samp() %>%
-        filter(!featureID %in% to_remove())  
+      working_asv() %>%
+        filter(featureID %in% to_keep())  %>%
+        select(-ds_rel_abund, -samp_rel_abund, -sample_total)
     }
     else {
-      asv_filt_samp()
+      working_asv()
     }
   })
+  
+  
+  # secondary check for samples with no reads-----------------------------------
+  sample_total <- reactive({
+    asv_filtered() %>%
+      group_by(sampleID) %>%
+      summarise(sample_total = sum(read_count))
+  })
+  secondary_check <- reactive({
+    any(sample_total()$sample_total == 0)
+  })
+  
+  # identify empty samples
+  empty_sample <- reactive({
+    out <- sample_total() %>%
+      filter(sample_total == 0)
+    out$sampleID
+  })
+  
+  n_empty <- reactive({length(empty_sample())})
+  
+  output$secondary_filter <- renderText({
+    sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:", n_empty())
+  })
+  
+  output$secondary_filter_samples <- renderUI({
+    HTML(paste(empty_sample(), collapse = '<br/>'))
+  })
+  
+  # update asv_filtered
+  asv_filtered2 <- eventReactive(input$submit_asv, {
     
-  observeEvent(input$submit_asv, {
-    output$preview_asv_title <- renderText({
-      'Features included in analysis'
+    withBusyIndicatorServer('submit_asv', "setup_ui_1", {
+      if(secondary_check()) {
+        asv_filtered() %>%
+          filter(!sampleID %in% empty_sample())
+      }
+      else {
+        asv_filtered()
+      }  
     })
     
-    output$preview_asv <- DT::renderDataTable({
-      out <- tax() %>%
-        right_join(working_asv() %>% spread(sampleID, read_count), 
-                  'featureID') %>%
-        select(-Taxon, -sequence) %>%
-        arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
-      
-      DT::datatable(out, extensions = 'Buttons', 
-                    options = list(scrollX = TRUE, 
-                                   dom = 'Blfrtip', buttons = c('copy','csv')))
-    })
+  })
+  
+  # update met_filtered
+  met_filtered2 <- eventReactive(input$submit_asv, {
+    if(secondary_check()) {
+      met_filtered() %>%
+        filter(!sampleID %in% empty_sample())
+    }
+    else {
+      met_filtered()
+    }
   })
 
-  
+  output$preview_asv_title <- renderText({
+    req(input$submit_asv)
+    'Features included in analysis'
+  })
+
+  output$preview_asv <- DT::renderDataTable({
+    req(input$submit_asv)
+    out <- tax() %>%
+      right_join(asv_filtered2() %>% 
+                   spread(sampleID, read_count), 'featureID') %>%
+      select(-Taxon, -sequence) %>%
+      arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
+
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')),
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE,
+                    dom = 'Blfrtip',
+                    buttons = list(c('copy','csv'),
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    )))
+  })
+
+
   # transform ASVs--------------------------------------------------------------
+
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)
     
-    asv_df <- working_asv() %>% 
-      spread(sampleID, read_count) %>% 
-      as.data.frame()
-    rownames(asv_df) <- asv_df$featureID
-    asv_df <- asv_df[, colnames(asv_df) != 'featureID']
-    
-    if(input$transform_method == 'clr') {
-      ## generate Monte Carlo samples from Dirichlet distribution
-      ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
-      ## use geometric mean abundance of features
+    withBusyIndicatorServer('submit_transform', 'setup_ui_1', {
+      asv_df <- asv_filtered2() %>%
+        spread(sampleID, read_count) %>%
+        as.data.frame()
+      rownames(asv_df) <- asv_df$featureID
+      asv_df <- asv_df[, colnames(asv_df) != 'featureID']
       
-      asv_clr <- ALDEx2::aldex.clr(asv_df, conds = working_meta()$sampleID)
-      clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
-                             function(m){t(apply(m,1,median))})
-      ## samples in columns
-      clr_df <- data.frame(matrix(unlist(clr_instance), ncol = length(clr_instance),
-                                  byrow = FALSE,
-                                  dimnames = list(colnames(clr_instance[[1]]),
-                                                  names(clr_instance))),
-                           stringsAsFactors=FALSE)
-      out <- clr_df
+      if(input$transform_method == 'clr') {
+        ## generate Monte Carlo samples from Dirichlet distribution
+        ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
+        ## use geometric mean abundance of features
+        
+        asv_clr <- ALDEx2::aldex.clr(asv_df, conds = met_filtered2()$sampleID,
+                                     useMC = TRUE)
+        clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
+                               function(m){t(apply(m,1,median))})
+        ## samples in columns
+        clr_df <- data.frame(matrix(unlist(clr_instance),
+                                    ncol = length(clr_instance),
+                                    byrow = FALSE,
+                                    dimnames = list(colnames(clr_instance[[1]]),
+                                                    names(clr_instance))),
+                             stringsAsFactors=FALSE)
+        out <- clr_df
+      }
+      if(input$transform_method == 'log10') {
+        out <- apply(asv_df, 2, function(x) log10(x + 1*10^-6))
+      }
+      if(input$transform_method == 'percent') {
+        calc <- asv_filtered2() %>%
+          group_by(sampleID) %>%
+          mutate(sample_total = sum(read_count),
+                 samp_rel_abund = read_count / sample_total * 100) %>%
+          ungroup() %>%
+          select(-read_count, -sample_total) %>%
+          spread(sampleID, samp_rel_abund)
+        
+        out <- as.data.frame(calc %>% select(-featureID))
+        rownames(out) <- calc$featureID
+        
+      }
+      if(input$transform_method == 'none') {
+        out <- asv_df
+      }
+      out  
+    })
+  })
+
+  output$preview_transform <- DT::renderDataTable({
+    req(input$submit_transform, input$transform_method)
+
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(asv_transform()) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(asv_transform()) # index of columns to show
+      vis_val <- TRUE
     }
     else {
-      out <- asv_df
+      col_ind <- 59:ncol(asv_transform()) # index of columns to hide
+      vis_val <- FALSE
     }
-    out
+
+    DT::datatable(asv_transform(),
+                  extensions = list(c('Buttons', 'FixedColumns')),
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE,
+                    dom = 'Blfrtip',
+                    buttons = list(c('copy','csv'),
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    ))) %>%
+      DT::formatRound(column = colnames(asv_transform()), digits = 3)
   })
-  
-  output$preview_transform <- DT::renderDataTable({
-    DT::datatable(asv_transform(), extensions = 'Buttons', 
-                  options = list(scrollX = TRUE, 
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
-  })
+
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
-    req(input$sample_select_prompt, input$asv_select_prompt)
+    req(input$sample_select_prompt, input$asv_select_prompt,
+        input$transform_method)
     # keep in wide format to be consistent with db format
-    
-    list(metadata = working_meta(),
-         asv = working_asv() %>% spread(sampleID, read_count),
-         t_asv = asv_transform(),
-         tax = tax() %>% 
-           filter(featureID %in% working_asv()$featureID)
+    tax_filtered <- tax() %>%
+      filter(featureID %in% asv_filtered2()$featureID)
+    list(met = met_filtered2(),
+         asv = asv_filtered2() %>% spread(sampleID, read_count),
+         asv_transform = asv_transform(),
+         transform_method = input$transform_method,
+         tax = tax_filtered,
+         asv_gather = asv_filtered2(),
+         asv_tax = asv_filtered2() %>% inner_join(tax_filtered, 'featureID'),
+         asv_met = asv_filtered2() %>% inner_join(met_filtered2(), 'sampleID'),
+         work = asv_filtered2() %>%
+           inner_join(tax_filtered %>% mutate_all(as.character), 'featureID') %>%
+           inner_join(met_filtered2(), 'sampleID')
          )
   })
-  # jump to next tab
-  observeEvent(input$next_tab, {
-    updateTabsetPanel(session, "tabs",
-                      selected = "overview")
-  })
+
   # return dataset
   cross_module <- reactiveValues()
-  observe({cross_module$data_db <- working_set()})
+  observe({
+    req(input$submit_sample, input$submit_asv, input$submit_transform)
+    cross_module$work_db <- working_set()
+  })
   return(cross_module)
 }
     

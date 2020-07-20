@@ -13,10 +13,11 @@
 #' @keywords internal
 #' @export 
 #' @importFrom shiny NS tagList 
+#' @import htmlwidgets
 mod_ov_pca_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     
     h1('Principle Component Analysis'),
     tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data."),
@@ -24,7 +25,8 @@ mod_ov_pca_ui <- function(id){
     hidden(div(
       id = ns('pca_summary_div'), 
       h2('Summary of PCA'),
-      DT::dataTableOutput(ns('summary_pca'))
+      DT::dataTableOutput(ns('summary_pca'))  %>%
+        shinycssloaders::withSpinner()
     )),
     
     hidden(div(
@@ -34,20 +36,64 @@ mod_ov_pca_ui <- function(id){
        tags$div(style = 'text_align: center', h3("Plot Parameters")),
        fluidRow(
          # Plot controls
-         column(width = 6,
-                div(style = "display: inline-block;vertical-align: top",
-                    uiOutput(ns('xPC_ui'))),
-                div(style = "display: inline-block;vertical-align: top",
-                    uiOutput(ns('yPC_ui'))),
-                div(style = "display: inline-block;vertical-align: top",
-                    checkboxInput(ns('show_loading'), "Show loadings", TRUE)),
-                div(style = "display: inline-block;vertical-align: top",
-                    checkboxInput(ns('load_arrow'), 'Show loading arrows', TRUE))
+         column(width = 3,
+                uiOutput(ns('xPC_ui')),
+                uiOutput(ns('yPC_ui'))),
+         column(
+           width = 3,
+           checkboxInput(ns('show_loading'), "Show loadings", TRUE),
+           checkboxInput(ns('load_arrow'), 'Show loading arrows', TRUE),
+           checkboxInput(ns('show_ellipse'),"Show Ellipse", value = TRUE)
          ),
-         column(width = 12, hr()),
+         
+         conditionalPanel(
+           condition = paste0("input['", ns('show_ellipse'), "'] == true"),  
+           column(
+             width = 3,
+             h4("Ellipse aesthetics"),
+             selectInput(ns('pca_ell_type'), "Type of ellipse",
+                         choices = c('t-distribution' = 't',
+                                     'normal distribution' = 'norm',
+                                     'Euclidean distance' = 'euclid'),
+                         selected = 'norm')
+           ),
+           column(
+             width = 3,
+             selectInput(ns('pca_ell_line'), "Linetype",
+                         choices = c('solid','dashed','longdash','dotdash'),
+                         selected = 'solid'),
+             numericInput(ns('pca_ell_ci'), "Confidence Interval",
+                          min = 0.1, max = 0.99, value = 0.95, 
+                          step = 0.05))
+          ),
+       ),
+       fluidRow(
+         conditionalPanel(
+           condition = paste0("input['", ns('show_loading'), "'] == true"),
+           column(width = 3,
+                  # loading point aesthetics
+                  h4('Loading points aesthetics'),
+                  uiOutput(ns('load_pt_colour_ui')),
+                  uiOutput(ns('load_pt_shape_ui')),
+                  sliderInput(ns('load_pt_size'), 'Point size:',
+                              min = 0.1, max = 5, value = 3, step = 0.5),
+                  sliderInput(ns('load_pt_alpha'), 'Point transparency:',
+                              min = 0.1, max = 1, value = 1, step = 0.1)
+           ),
+           # loading label aesthetics
+           column(width = 3,
+                  h4('Loading labels aethetics'),
+                  uiOutput(ns('load_label_ui')),
+                  uiOutput(ns('load_lab_colour_ui')),
+                  sliderInput(ns('load_lab_size'), 'Label size:',
+                              min = 0.1, max = 5, value = 3, step = 0.5),
+                  sliderInput(ns('load_lab_alpha'), 'Label transparency:',
+                              min = 0.1, max = 1, value = 1, step = 0.1)
+           )
+         ),
          column(width = 3,
                 # score point aesthetics
-                h3("Score points aesthetics"),
+                h4("Score points aesthetics"),
                 uiOutput(ns('score_pt_colour_ui')),
                 uiOutput(ns('score_pt_shape_ui')),
                 sliderInput(ns('score_pt_size'), 'Point size:',
@@ -58,37 +104,14 @@ mod_ov_pca_ui <- function(id){
          ),
          # score label aesthetics
          column(width = 3,
-                h3("Score labels aesthetics"),
+                h4("Score labels aesthetics"),
                 uiOutput(ns('score_label_ui')),
                 uiOutput(ns('score_lab_colour_ui')),
                 sliderInput(ns('score_lab_size'), 'Label size:',
                             min = 0.1, max = 5, value = 3, step = 0.5),
                 sliderInput(ns('score_lab_alpha'), 'Label transparency:',
                             min = 0.1, max = 1, value = 1, step = 0.1)
-         ),
-         
-         hidden(div(id=ns('loading_div'),
-                    column(width = 3,
-                           # loading point aesthetics
-                           h3('Loading points aesthetics'),
-                           uiOutput(ns('load_pt_colour_ui')),
-                           uiOutput(ns('load_pt_shape_ui')),
-                           sliderInput(ns('load_pt_size'), 'Point size:',
-                                       min = 0.1, max = 5, value = 3, step = 0.5),
-                           sliderInput(ns('load_pt_alpha'), 'Point transparency:',
-                                       min = 0.1, max = 1, value = 1, step = 0.1)
-                    ),
-                    # loading label aesthetics
-                    column(width = 3,
-                           h3('Loading labels aethetics'),
-                           uiOutput(ns('load_label_ui')),
-                           uiOutput(ns('load_lab_colour_ui')),
-                           sliderInput(ns('load_lab_size'), 'Label size:',
-                                       min = 0.1, max = 5, value = 3, step = 0.5),
-                           sliderInput(ns('load_lab_alpha'), 'Label transparency:',
-                                       min = 0.1, max = 1, value = 1, step = 0.1)
-                    )
-         ))
+         )
       ))
     )),
     column(
@@ -119,7 +142,8 @@ mod_ov_pca_ui <- function(id){
         )),
         column(width = 11, style = 'padding:0px;',
             shinyjqui::jqui_resizable(
-              plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')))
+              plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')
+            ))
       )
   )
 }
@@ -141,10 +165,6 @@ mod_ov_pca_server <- function(input, output, session, param){
     show('pca_body_div')
   })
   
-  observeEvent(input$show_loading, {
-    toggle('loading_div')
-  })
-  
   ## render controls - PCA------------------------------------------------------
   ### choose PCs to plot
   output$xPC_ui <- renderUI({
@@ -158,80 +178,76 @@ mod_ov_pca_server <- function(input, output, session, param){
   ### score point aesthetics
   output$score_pt_colour_ui <- renderUI({
     selectInput(ns('score_pt_colour'), 'Point colour:', 
-                choices = c('none', colnames(met())), selected = 'none')
+                choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
   output$score_pt_shape_ui <- renderUI({
     selectInput(ns('score_pt_shape'), 'Point shape:', 
-                choices = c('none', colnames(met())), selected = 'none')
+                choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
   
   ### score label aethetics
   output$score_label_ui <- renderUI({
     selectInput(ns('score_label_by'), 'Label scores by:', 
-                choices = c('none', colnames(met())), selected = 'none')
+                choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
   output$score_lab_colour_ui <- renderUI({
     selectInput(ns('score_lab_colour'), 'Label colour:', 
-                choices = c('none', colnames(met())), selected = 'none')
+                choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
   
   ### loading points aesthetics
   output$load_pt_colour_ui <- renderUI({
     selectInput(ns('load_pt_colour'), 'Point colour:', 
-                choices = c('none', colnames(tax())), selected = 'none')
+                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   output$load_pt_shape_ui <- renderUI({
     selectInput(ns('load_pt_shape'), 'Point shape:', 
-                choices = c('none', colnames(tax())), selected = 'none')
+                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   ### loading labels aesthetics
   output$load_label_ui <- renderUI({
     selectInput(ns('load_label_by'), 'Label loadings by:', 
-                choices = c('none', colnames(tax())), selected = 'none')
+                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   output$load_lab_colour_ui <- renderUI({
     selectInput(ns('load_lab_colour'), 'Label colour:', 
-                choices = c('none', colnames(tax())), selected = 'none')
+                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   output$load_lab_shape_ui <- renderUI({
     selectInput(ns('load_lab_shape'), 'Label shape:', 
-                choices = c('none', colnames(tax())), selected = 'none')
+                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   
   
   # unpack data from parent module----------------------------------------------
-  met <- reactive(param$met)
-  asv <- reactive(param$asv)
-  tax <- reactive(param$tax)
-  asv_transform <- reactive(param$asv_transform)
-  
   # unpack pca inputs
   pca_scale <- reactive(param$pca_input$pca_scale)
   pca_calculate <- reactive(param$pca_input$pca_calculate)
   
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
   # calculate pca---------------------------------------------------------------
 
   # centre and scale
   asv_scale <- eventReactive(pca_calculate(), {
+    req(pca_scale())
     if(pca_scale() == 'UV') {
-      apply(asv_transform(), 2, function(x) (x - mean(x)) / sd(x))
+      apply(param$work_db$asv_transform, 2, function(x) (x - mean(x)) / sd(x))
     }
     else if(pca_scale() == 'pareto') {
-      apply(asv_transform(), 2, function(x) (x - mean(x)) / sqrt(x))
+      apply(param$work_db$asv_transform, 2, function(x) (x - mean(x)) / sqrt(x))
     }
     else if(pca_scale() == 'vast') {
-      apply(asv_transform(), 2, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
+      apply(param$work_db$asv_transform, 2, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
-      asv_transform()
+      param$work_db$asv_transform
     }
   })
 
   # performing pca
-  d_pcx <- eventReactive(pca_calculate(), {
+  d_pcx <- reactive({
     ## samples in rows
     ## centring and scaling done outside of prcomp
     prcomp(t(asv_scale()), center = FALSE, scale. = FALSE)
@@ -245,8 +261,8 @@ mod_ov_pca_server <- function(input, output, session, param){
     out$sampleID <- rownames(out)
     out <- out %>%
       select(sampleID, xPC(), yPC()) %>%
-      left_join(met(), 'sampleID')
-    out <- out[,c(xPC(), yPC(), colnames(met()))]
+      left_join(param$work_db$met, 'sampleID')
+    out <- out[,c(xPC(), yPC(), colnames(param$work_db$met))]
     out
   })
 
@@ -254,14 +270,14 @@ mod_ov_pca_server <- function(input, output, session, param){
     out <- as.data.frame(d_pcx()$rotation)
     out$featureID <- rownames(out)
     out <- out %>% select('featureID', xPC(), yPC()) %>%
-      left_join(tax(), 'featureID')
-    out <- out[, c(xPC(), yPC(), colnames(tax()))]
+      left_join(param$work_db$tax, 'featureID')
+    out <- out[, c(xPC(), yPC(), colnames(param$work_db$tax))]
     out
   })
 
 
   # summary of pca
-  pcx_summary <- eventReactive(pca_calculate(), {
+  pcx_summary <- reactive({
     summary_pcx <- summary(d_pcx())
     summary_df <- unclass(summary_pcx)[['importance']]
 
@@ -275,10 +291,9 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   output$summary_pca <- DT::renderDataTable({
-    pcx_summary() %>%
-      DT::datatable(extensions = 'Buttons',
-                    options = list(scrollX = TRUE,
-                                   dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
+    DT::datatable(pcx_summary(), extensions = 'Buttons',
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
 
@@ -336,59 +351,53 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   load_pt_shape <- eventReactive(input$load_pt_shape, {
-    req(input$show_loading)
     if(input$load_pt_shape == 'none') 2
     else input$load_pt_shape
   })
 
   load_pt_size <- reactive({
-    req(input$show_loading)
     input$load_pt_size
   })
   load_pt_alpha <- reactive({
-    req(input$show_loading)
     input$load_pt_alpha
   })
   load_arrow <- reactive({
-    req(input$show_loading)
     input$load_arrow
   })
 
   ## loading label parameters
   load_label_by <- eventReactive(input$load_label_by, {
-    req(input$show_loading)
     if(input$load_label_by == 'none') NULL
     else input$load_label_by
   })
 
   show_load_label <- eventReactive(input$load_label_by, {
-    req(input$show_loading)
     if(input$load_label_by == 'none') FALSE
     else show_load_label <- TRUE
   })
 
   load_lab_colour <- eventReactive(input$load_lab_colour, {
-    req(input$show_loading)
     if(input$load_lab_colour == 'none') 'darkred'
     else input$load_lab_colour
   })
 
   load_lab_size <- reactive({
-    req(input$show_loading)
     input$load_lab_size
   })
 
   load_lab_alpha <- reactive({
-    req(input$show_loading)
     input$load_lab_alpha
   })
 
   p_biplot <- reactive({
-    req(pca_calculate())
-
-    p_biplot <- OCMSExplorer:::cms_biplot(
+    
+    p_biplot <- cms_biplot(
       score_data(), load_data(),
       xPC = input$xPC, yPC = input$yPC,
+      # ellipse
+      frame = input$show_ellipse, frame.type = input$pca_ell_type, 
+      frame.line = input$pca_ell_line, frame.colour = score_pt_colour(),
+      frame.level = input$pca_ell_ci,
       # score point
       colour = score_pt_colour(), shape = score_pt_shape(),
       size = score_pt_size(), alpha = score_pt_alpha(),

@@ -2,11 +2,45 @@ Package: OCMSExplorer
 Title: OCMSExplorer
 Version: 0.0.0.9000
 Authors@R: person('Sandi', 'Yen', email = 'sandi.yen@kennedy.ox.ac.uk', role = c('cre', 'aut'))
-Description: Shiny app to browse and explore 16S rRNA data analyzed by OCMS
+Description: Shiny app to browse and explore 16S rRNA data analyzed by OCMS.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+biocViews:
 Imports: 
-    shiny, 
-    golem
-RoxygenNote: 7.0.2
+    ALDEx2,
+    ape,
+    cluster,
+    clusterSim,
+    cowplot,
+    DBI,
+    DT,
+    datasets,
+    dplyr,
+    forcats,
+    ggdendro,
+    ggfortify,
+    ggplot2,
+    ggpubr,
+    golem,
+    golem,
+    heatmaply,
+    htmltools,
+    htmlwidgets,
+    plotly,
+    propr,
+    RColorBrewer,
+    readr,
+    RSQLite,
+    shiny,
+    shinycssloaders,
+    shinyFiles,
+    shinyWidgets,
+    shinydashboard,
+    shinyjqui,
+    shinyjs,
+    tidyr,
+    vegan,
+    vroom,
+    pkgload
+RoxygenNote: 7.1.0

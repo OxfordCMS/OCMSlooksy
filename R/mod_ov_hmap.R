@@ -13,15 +13,21 @@
 #' @keywords internal
 #' @export 
 #' @importFrom shiny NS tagList 
+#' @import cowplot
+#' @import htmlwidgets
+#' @import shinyWidgets
+#' @import readr
 mod_ov_hmap_ui <- function(id){
   ns <- NS(id)
   tagList(
     h1('Heirarchical Clustering'),
     tags$div("Heirarchical clustering is influenced by the linkage method used to measure the distance between clusters of observations. The linkage methods differ in the criteria that is used to determine the distance of sets of observations. The criteria are based on the distance between individual observations within a set. Choice in distance method also affects the clustering outcome, which measures the distance between a pair of observations. Distance metrics fall into three categories: agglomerative, divisive, and dissimilarity."),
+    # wellPanel(verbatimTextOutput(ns('check'))),
     hidden(div(
       id = ns('hmap_body_div'),
       column(
         width = 12,
+        
         column(
           width = 3, br(), br(),
           wellPanel(
@@ -58,7 +64,8 @@ mod_ov_hmap_ui <- function(id){
                         list(icon('file-archive'), "All"),
                         size = 'xs', style = 'minimal')),
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('sample_dendro_plot'), width = '100%')))),
+            plotlyOutput(ns('sample_dendro_plot'), width = '100%')
+          ))),
       column(
         width = 12,
         column(
@@ -96,7 +103,8 @@ mod_ov_hmap_ui <- function(id){
                          list(icon('file-archive'), "All"),
                          size = 'xs', style = 'minimal')),
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('asv_dendro_plot'), width = '100%')))),
+            plotlyOutput(ns('asv_dendro_plot'), width = '100%')
+          ))),
       
       h2('Heat map'), br(), br(),
       wellPanel(  
@@ -145,7 +153,8 @@ mod_ov_hmap_ui <- function(id){
             column(
               width = 11, style = 'padding:0px;',
               shinyjqui::jqui_resizable(
-                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto'))))
+                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto')
+              )))
     ))
   )
 }
@@ -160,18 +169,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
   ns <- session$ns
   
   # unpack data from parent module----------------------------------------------
-  met <- reactive(param$met)
-  asv <- reactive(param$asv)
-  tax <- reactive(param$tax)
-  asv_transform <- reactive(param$asv_transform)
-  
   # unpack alpha inputs
   hclust_method <- reactive(param$hmap_input$hclust_method)
   dist_method <- reactive(param$hmap_input$dist_method)
   hmap_calculate <- reactive(param$hmap_input$hmap_calculate)
   
   met_var <- reactive({
-    out <- colnames(met())
+    out <- colnames(param$work_db$met)
     out <- out[out != 'sampleID']
   })
   
@@ -183,7 +187,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # render controls - heat map--------------------------------------------------
   output$hmap_samp_label_ui <- renderUI({
     selectInput(ns('hmap_samp_label'), "Label:",
-                choices = colnames(met()), selected = 'sampleID')
+                choices = colnames(param$work_db$met), selected = 'sampleID')
   })
   output$hmap_samp_colour_ui <- renderUI({
     radioButtons(ns('hmap_samp_colour'), "Show sample metadata:",
@@ -193,27 +197,29 @@ mod_ov_hmap_server <- function(input, output, session, param){
   
   output$hmap_asv_label_ui <- renderUI({
     selectInput(ns('hmap_asv_label'), "Label:",
-                choices = colnames(tax()), selected = 'featureID')
+                choices = colnames(param$work_db$tax), selected = 'featureID')
   })
   
   output$hmap_asv_colour_ui <- renderUI({
-    choices <- c('none', colnames(tax()))
+    choices <- c('none', colnames(param$work_db$tax))
     choices <- choices[!choices %in% c('sequence','featureID','Taxon')]
     radioButtons(ns('hmap_asv_colour'), "Show taxonomy level:",
                  choices = choices, selected = 'none')
   })
   
   # calculate heatmap-----------------------------------------------------------
+
   # calculate sample clustering
   samp_hclust <- reactive({
     req(hmap_calculate())
-    hclust(vegan::vegdist(t(asv_transform()), method = dist_method()), 
+    hclust(vegan::vegdist(t(param$work_db$asv_transform), 
+                          method = dist_method()), 
            method = hclust_method())
   })
   
   samp_ddata <- reactive({
     req(hmap_calculate())
-    OCMSExplorer:::dendro_data_k(samp_hclust(), input$hmap_samp_k)
+    dendro_data_k(samp_hclust(), input$hmap_samp_k)
   })
   
   # sample dendrogram
@@ -221,12 +227,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
     req(input$hmap_samp_k, input$hmap_samp_colour)
     if(input$hmap_samp_colour == 'none') category <- NULL
     else category <- input$hmap_samp_colour
-    p <- OCMSExplorer:::plot_ggdendro(
+    p <- plot_ggdendro(
       samp_ddata(),
       direction = 'lr',
       branch.size = 0.5,
-      metadata = met(),
+      metadata = param$work_db$met,
       category = category,
+      nudge.label = 0.01,
       label.category = input$hmap_samp_label,
       id = 'sampleID')
     p
@@ -295,13 +302,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
   
   asv_hclust <- reactive({
     req(hmap_calculate())
-    hclust(vegan::vegdist(asv_transform(), method = dist_method()),
+    hclust(vegan::vegdist(param$work_db$asv_transform, method = dist_method()),
            method = hclust_method())
   })
   
   asv_ddata <- reactive({
     req(hmap_calculate())
-    OCMSExplorer:::dendro_data_k(asv_hclust(), input$hmap_asv_k)
+    dendro_data_k(asv_hclust(), input$hmap_asv_k)
   })
   
   # asv dendrogram
@@ -310,12 +317,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
     if(input$hmap_asv_colour == 'none') category <- NULL
     else category <- input$hmap_asv_colour
     
-    p <- OCMSExplorer:::plot_ggdendro(
+    p <- plot_ggdendro(
       asv_ddata(),
       direction = 'lr',
       branch.size = 0.5,
-      metadata = tax(),
+      metadata = param$work_db$tax,
       label.category = input$hmap_asv_label,
+      nudge.label = 0.01,
       category = category,
       id = 'featureID')
   })
@@ -383,19 +391,19 @@ mod_ov_hmap_server <- function(input, output, session, param){
   hmap_data <- reactive({
     
     if(input$sample_as_x) {
-      hmap_data <- asv_transform() # taxon in rows, samples in columns
-      rownames(hmap_data) <- tax()[, input$hmap_tax_label]
+      hmap_data <- param$work_db$asv_transform # taxon in rows, samples in columns
+      rownames(hmap_data) <- param$work_db$tax[, input$hmap_tax_label]
     }
     else {
-      hmap_data <- t(asv_transform())
-      colnames(hmap_data) <- tax()[, input$hmap_tax_label]
+      hmap_data <- t(param$work_db$asv_transform)
+      colnames(hmap_data) <- param$work_db$tax[, input$hmap_tax_label]
     }
     hmap_data
   })
-  
-  output$check <- renderPrint({
-    
-  })
+
+  # output$check <- renderPrint({
+  #   hmap_data()
+  # })
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(
@@ -414,17 +422,34 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # plot heat map
   output$hmap_plot <- renderPlotly({
     req(hmap_calculate())
-    heatmaply(hmap(), node_type = 'heatmap', colors = 'RdYlBu',
-              key.title = 'Normalized\nRelative Abundance') 
+    
+    if(param$work_db$transform_method == 'none') {
+      key_title <- 'Read Count'
+    }
+    else if(param$work_db$transform_method == 'percent') {
+      key_title <- 'Relative Abundance (%)'
+    }
+    else {
+      key_title <- 'Normalized\nRelative Abundance'
+    }
+    heatmaply(hmap(), node_type = 'heatmap', 
+              scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+                low = "blue",
+                high = "red"),
+              key.title = key_title) 
   })
   
   output$dl_hmap_html <- downloadHandler(
     fname <- function() {"ov_hmap.html"},
     content <- function(file) {
-      htmlwidgets::saveWidget(heatmaply(hmap(), 
-                                        node_type = 'heatmap', colors = 'RdYlBu',
-                                        key.title = 'Normalized\nRelative Abundance'), 
-                              file)
+      htmlwidgets::saveWidget(heatmaply(
+        hmap(), 
+        node_type = 'heatmap', 
+        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+          low = "blue",
+          high = "red"),
+        key.title = 'Normalized\nRelative Abundance'),
+        file)
     }
   )
   
@@ -451,7 +476,13 @@ mod_ov_hmap_server <- function(input, output, session, param){
       tmpdir <- tempdir()
       setwd(tempdir())
       to_zip <- c("ov_hmap.html","ov_hmap.csv", "ov_hmap.rds")
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_hmap())), to_zip[2])
+      htmlwidgets::saveWidget(heatmaply(
+        hmap(), 
+        node_type = 'heatmap', 
+        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+          low = "blue",
+          high = "red"),
+        key.title = 'Normalized\nRelative Abundance'), to_zip[2])
       write.csv(asv_ddata(), to_zip[3])
       saveRDS(p_hmap(), to_zip[4])
       

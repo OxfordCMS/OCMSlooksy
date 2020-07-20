@@ -1,7 +1,7 @@
 #' dendro_data_k
 #' 
 #' Extract dendrogram data for plot customized dendrogram. 
-#' following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 dendro_data_k <- function(hc, k) {
   
@@ -33,7 +33,7 @@ dendro_data_k <- function(hc, k) {
 #' set_label_param
 #' 
 #' set parameters of labels for plotting customized dendrogram. 
-#' following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 set_labels_params <- function(nbLabels,
                               direction = c("tb", "bt", "lr", "rl"),
@@ -47,7 +47,7 @@ set_labels_params <- function(nbLabels,
   } else {
     angle       <-  rep(0, nbLabels)
     hjust       <-  0
-    if (direction %in% c("tb", "bt")) { angle <- angle + 45 }
+    if (direction %in% c("tb", "bt")) { angle <- angle + 90 }
     if (direction %in% c("tb", "rl")) { hjust <- 1 }
   }
   return(list(angle = angle, hjust = hjust, vjust = 0))
@@ -56,7 +56,7 @@ set_labels_params <- function(nbLabels,
 #' plot_ggdendro
 #' 
 #' use ggplot to make customized dendrogram.
-#' following \link{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 plot_ggdendro <- function(hcdata,
                           metadata,
@@ -66,14 +66,14 @@ plot_ggdendro <- function(hcdata,
                           label.size  = 3,
                           label.category = NULL,
                           nudge.label = 0.01,
-                          expand.y    = 0.1,
+                          expand.y    = 0.5,
                           category = NULL,
                           id = 'sampleID') {
   
   direction <- match.arg(direction) # if fan = FALSE
   ymax      <- round(max(segment(hcdata)$y))
-  ymin <- -1
-  ybreaks   <- seq(ymin, ymax, 5)
+  ymin <- round(min(segment(hcdata)$yend))
+  ybreaks   <- seq(-1, ymax, ymax*0.1)
   
   # set dendrogram labels
   if(!is.null(label.category) & label.category != id) {
@@ -100,21 +100,22 @@ plot_ggdendro <- function(hcdata,
                  size         =  branch.size)
   
   # labels
-  labelParams <- OCMSExplorer:::set_labels_params(nrow(hcdata$labels), direction, fan)
+  labelParams <- set_labels_params(nrow(hcdata$labels), direction, fan)
   hcdata$labels$angle <- labelParams$angle
   
   if(is.null(category)) {
     hcdata$labels$y <- -0.1
   }
   else {
-    hcdata$labels$y <- -0.6
+    hcdata$labels$y <- -1 - max(segment(hcdata)$y) * 0.05
   }
+
   p <- p +
     geom_text(data        =  ggdendro::label(hcdata),
               aes(x       =  x,
                   y       =  y,
                   label   =  new_label,
-                  colour  =  factor(clust),
+                  # colour  =  factor(clust),
                   angle   =  angle),
               vjust       =  labelParams$vjust,
               hjust       =  labelParams$hjust,
@@ -135,8 +136,10 @@ plot_ggdendro <- function(hcdata,
       scale_linetype_discrete(guide = FALSE)
   }
   else{
-    p <- p + scale_colour_discrete(name = 'cluster', labels = nclust) +
-      scale_linetype_discrete(guide = FALSE)
+    p <- p + 
+      scale_linetype_discrete(guide = FALSE) +
+      scale_colour_manual(name = 'cluster', labels = nclust,
+                         values = cms_palette(max(segment(hcdata)$clust) + 1))
   }
   
   # categorical data
@@ -145,12 +148,13 @@ plot_ggdendro <- function(hcdata,
       dplyr::rename(rowID = !!id) %>%
       tidyr::gather('met_cat', 'value', -rowID) %>%
       dplyr::filter(met_cat == category)  %>%
-      dplyr::mutate(shift_y = -0.3) %>%
+      dplyr::mutate(shift_y = 0 - max(segment(hcdata)$y) * 0.03) %>%
       dplyr::inner_join(ggdendro::label(hcdata), c('rowID' = 'label'))
     
     p <- p +
       geom_tile(data = cat_data, 
-                aes_string(x = 'x', y = 'shift_y', fill = 'value'), height = 0.5) +
+                aes_string(x = 'x', y = 'shift_y', fill = 'value'), 
+                height = max(segment(hcdata)$y) * 0.03) +
       scale_fill_discrete(name = category)
   }
   
@@ -158,7 +162,6 @@ plot_ggdendro <- function(hcdata,
     p <- p + scale_fill_discrete(guide = FALSE)
   }
 
-  
   ## orientation
   if (fan) {
     p <- p +

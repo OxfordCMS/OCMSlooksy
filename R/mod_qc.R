@@ -17,9 +17,10 @@
 #' @import dplyr
 #' @import tidyr
 #' @import shinyFiles
-#' @import shinyWidgets
 #' @import shinyjqui
-#' 
+#' @import htmlwidgets
+#' @import readr
+#' @import shinyWidgets
 mod_qc_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -35,11 +36,10 @@ mod_qc_ui <- function(id){
           menuItem('dada2 Filtering', tabName = 'dada2_filter'),
           menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
           menuItem('Sequence Prevalence', tabName = 'asv_prevalence'),
-          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab',
-                   actionButton(ns('rare_calculate'), "Calculate")),
+          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab'),
           menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
           menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
-      
+          
           conditionalPanel(
             condition = "input.menu === 'group_distribution_tab'",
             br(), hr(),
@@ -51,354 +51,433 @@ mod_qc_ui <- function(id){
               uiOutput(ns('sample_select_ui'))
             )
           )
-      )),
+      )), 
       # dashboard---------------------------------------------------------------
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
-          
-          fluidRow(
-            box(width = 12, h3('Check'),
-                verbatimTextOutput(ns('check')))),
+          # fluidRow(
+          #   box(width = 12, h3('Check'),
+          #       verbatimTextOutput(ns('check')))),
           tabItems(
-              # main page---------------------------------------------------------
-              tabItem(
-                tabName = 'info_tab_qc',
-                column(width = 12, h1("QC Report"),
-                tags$div("Raw sequences were processed through the OCMS 16S rRNA gene pipeline to assure all sequences used during analysis have been quality controlled. This report outlines the processing steps that occured, and depicts the changes applied to the dataset through this process."))
-              ),
+            # main page---------------------------------------------------------
+            tabItem(
+              tabName = 'info_tab_qc',
+              column(width = 12, h1("QC Report"),
+              tags$div("Raw sequences were processed through the OCMS 16S rRNA gene pipeline to assure all sequences used during analysis have been quality controlled. This report outlines the processing steps that occured, and depicts the changes applied to the dataset through this process."))
+            ),
             # filtering-----------------------------------------------------------
             tabItem(
               tabName = 'dada2_filter',
               fluidRow(
-                column(width = 12,
-                      h1("Filtering Reads"),
-                      tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
-                      br(),
-                      h3("Filtering parameters applied:"),
-                      DT::dataTableOutput(ns('filter_yml')),
-                      h3("Filtering Effects"),
-                      column(width = 1, style = 'padding:0px;', dropdown(
-                        size = 'xs', icon = icon('save'), inline = TRUE, 
-                        style = 'material-circle', width = 160,
-                        animate = animateOptions(
-                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                        
-                        downloadBttn(ns('dl_filt_original'), 
-                                     list(icon('file-image'), "Original plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_filt_html'), 
-                                     list(icon('file-code'), "Interactive plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_filt_data'), 
-                                     list(icon('file-alt'), "Plot data"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_filt_rds'), 
-                                     list(icon('file-prescription'), "RDS"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_filt_all'), 
-                                     list(icon('file-archive'), "All"),
-                                     size = 'xs', style = 'minimal')
-                      )),
-                      column(width = 11, style = 'padding:0px;', 
-                             jqui_resizable(
-                               plotlyOutput(ns('plot_filt'), width = '100%', height = 'auto'))
-                      )))
-              ),
+                column(
+                  width = 12,
+                  h1("Filtering Reads"),
+                  tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
+                  br(),
+                  h3("Filtering parameters applied:"),
+                  DT::dataTableOutput(ns('filter_yml')),
+                  h3("Filtering Effects"),
+                  column(
+                    width = 1, style = 'padding:0px;', 
+                    dropdown(
+                      size = 'xs', icon = icon('save'), inline = TRUE, 
+                      style = 'material-circle', width = 160,
+                      animate = animateOptions(
+                        enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                        exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                      
+                      downloadBttn(ns('dl_filt_original'), 
+                                   list(icon('file-image'), "Original plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_filt_html'), 
+                                   list(icon('file-code'), "Interactive plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_filt_data'), 
+                                   list(icon('file-alt'), "Plot data"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_filt_rds'), 
+                                   list(icon('file-prescription'), "RDS"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_filt_all'), 
+                                   list(icon('file-archive'), "All"),
+                                   size = 'xs', style = 'minimal')
+                    )
+                  ),
+                  column(
+                    width = 11, style = 'padding:0px;', 
+                    jqui_resizable(
+                      plotlyOutput(ns('plot_filt'), width = '100%', 
+                                 height = 'auto') %>%
+                        shinycssloaders::withSpinner()
+                    )
+                  )
+                ) # end column 12
+              ) # end fluidRow
+            ),
             # denoising-----------------------------------------------------------
             tabItem(
               tabName = 'dada2_denoise',
               fluidRow(
-                column(width = 12,
-                      h1("Denoising Sequences"),
-                      tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
-                      br(),
-                      h3("Denoising parameters applied:"),
-                      DT::dataTableOutput(ns('denoise_yml')),
-                      br(),
-                      h3('Denoising Effects'),
-                      column(width = 1, style = 'padding:0px;', dropdown(
-                        size = 'xs', icon = icon('save'), inline = TRUE, 
-                        style = 'material-circle', width = 160,
-                        animate = animateOptions(
-                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                        
-                        downloadBttn(ns('dl_nochim_original'), 
-                                     list(icon('file-image'), "Original plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nochim_html'), 
-                                     list(icon('file-code'), "Interactive plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nochim_data'), 
-                                     list(icon('file-alt'), "Plot data"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nochim_rds'), 
-                                     list(icon('file-prescription'), "RDS"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nochim_all'), 
-                                     list(icon('file-archive'), "All"),
-                                     size = 'xs', style = 'minimal')
-                      )),
-                      column(width = 11, style = 'padding:0px;', 
-                             jqui_resizable(
-                               plotlyOutput(ns('plot_nochim'), width = '100%', height = 'auto'))
-                      )))
-              ),
+                column(
+                  width = 12,
+                  h1("Denoising Sequences"),
+                  tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
+                  br(),
+                  h3("Denoising parameters applied:"),
+                  DT::dataTableOutput(ns('denoise_yml')),
+                  br(),
+                  h3('Denoising Effects'),
+                  column(
+                    width = 1, style = 'padding:0px;', 
+                    dropdown(
+                      size = 'xs', icon = icon('save'), inline = TRUE, 
+                      style = 'material-circle', width = 160,
+                      animate = animateOptions(
+                        enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                        exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                      
+                      downloadBttn(ns('dl_nochim_original'), 
+                                   list(icon('file-image'), "Original plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nochim_html'), 
+                                   list(icon('file-code'), "Interactive plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nochim_data'), 
+                                   list(icon('file-alt'), "Plot data"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nochim_rds'), 
+                                   list(icon('file-prescription'), "RDS"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nochim_all'), 
+                                   list(icon('file-archive'), "All"),
+                                   size = 'xs', style = 'minimal')
+                    )
+                  ),
+                  column(
+                    width = 11, style = 'padding:0px;', 
+                    jqui_resizable(
+                      plotlyOutput(ns('plot_nochim'), 
+                                   width = '100%', height = 'auto') %>%
+                        shinycssloaders::withSpinner()
+                    )
+                  )
+                ) # end column 12
+              ) # end fluidRow
+            ), # end tabitem
             
             # featureID Prevalence------------------------------------------------------
             tabItem(
               tabName = 'asv_prevalence',
               fluidRow(
-                column(width = 12,
-                      h1("Number of features called per sample and their prevalence"),
-                      tags$div("A useful metric is the number of features that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of features per sample we also plot the prevalence of these features i.e. the proportion of samples that each feature is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of spurious features i.e. low prevalence and low abundance."),
-                      column(width = 1, style = 'padding:0px;', dropdown(
+                column(
+                  width = 12,
+                  h1("Number of features called per sample and their prevalence"),
+                  tags$div("A useful metric is the number of features that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of features per sample we also plot the prevalence of these features i.e. the proportion of samples that each feature is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of spurious features i.e. low prevalence and low abundance."),
+                  column(
+                    width = 1, style = 'padding:0px;', 
+                    dropdown(
+                      size = 'xs', icon = icon('save'), inline = TRUE, 
+                      style = 'material-circle', width = 160,
+                      animate = animateOptions(
+                        enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                        exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                      
+                      downloadBttn(ns('dl_nasv_original'), 
+                                   list(icon('file-image'), "Original plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nasv_html'), 
+                                   list(icon('file-code'), "Interactive plot"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nasv_data'), 
+                                   list(icon('file-alt'), "Plot data"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nasv_rds'), 
+                                   list(icon('file-prescription'), "RDS"),
+                                   size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_nasv_all'), 
+                                   list(icon('file-archive'), "All"),
+                                   size = 'xs', style = 'minimal')
+                    )
+                  ),
+                  column(
+                    width = 11, style = 'padding:0px;',
+                    jqui_resizable(
+                      plotlyOutput(ns('plot_nasv'), 
+                                   width = '100%', height = 'auto') %>%
+                        shinycssloaders::withSpinner()
+                    )
+                  ),
+                  br(),
+                  column(
+                    width = 6, style = 'padding:0px;', 
+                    h4('Distribution of Feature Prevalence'),
+                    column(
+                      width = 1, style = 'padding:0px;', 
+                      dropdown(
+                        size = 'xs', icon = icon('save'), inline = TRUE, 
+                        style = 'material-circle', width = 160,
+                        animate = animateOptions(
+                         enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                         exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                        downloadBttn(ns('dl_preval_original'), 
+                                  list(icon('file-image'), "Original plot"),
+                                  size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_preval_html'), 
+                                    list(icon('file-code'), "Interactive plot"),
+                                    size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_preval_data'), 
+                                    list(icon('file-alt'), "Plot data"),
+                                    size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_preval_rds'), 
+                                      list(icon('file-prescription'), "RDS"),
+                                      size = 'xs', style = 'minimal'), br(),
+                        downloadBttn(ns('dl_preval_all'), 
+                                    list(icon('file-archive'), "All"),
+                                    size = 'xs', style = 'minimal'))
+                    ),
+                    column(
+                      width = 10, style = 'padding:0px;', 
+                      jqui_resizable(
+                        plotlyOutput(
+                          ns('plot_prevalence'), 
+                          width = '100%', height = 'auto') %>%
+                          shinycssloaders::withSpinner()
+                      )
+                    )
+                  ), # end column 6
+                  column(
+                    width = 6, 
+                    h4('Prevalence of features with respects to Relative Abundance'),
+                    column(
+                      width = 1, style = 'padding:0px;', 
+                      dropdown(
                         size = 'xs', icon = icon('save'), inline = TRUE, 
                         style = 'material-circle', width = 160,
                         animate = animateOptions(
                           enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
                           exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                        
-                        downloadBttn(ns('dl_nasv_original'), 
+                        downloadBttn(ns('dl_spur_original'), 
                                      list(icon('file-image'), "Original plot"),
                                      size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nasv_html'), 
+                        downloadBttn(ns('dl_spur_html'), 
                                      list(icon('file-code'), "Interactive plot"),
                                      size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nasv_data'), 
+                        downloadBttn(ns('dl_spur_data'), 
                                      list(icon('file-alt'), "Plot data"),
                                      size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nasv_rds'), 
+                        downloadBttn(ns('dl_spur_rds'), 
                                      list(icon('file-prescription'), "RDS"),
                                      size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_nasv_all'), 
+                        downloadBttn(ns('dl_spur_all'), 
                                      list(icon('file-archive'), "All"),
                                      size = 'xs', style = 'minimal')
-                      )),
-                      column(width = 11, style = 'padding:0px;',
-                             jqui_resizable(
-                               plotlyOutput(ns('plot_nasv'), width = '100%', height = 'auto'))),
-                      br(),
-                      column(width = 6, style = 'padding:0px;', 
-                        h4('Distribution of Feature Prevalence'),
-                        column(width = 1, style = 'padding:0px;', 
-                          dropdown(
-                            size = 'xs', icon = icon('save'), inline = TRUE, 
-                            style = 'material-circle', width = 160,
-                           animate = animateOptions(
-                             enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                             exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                           
-                           downloadBttn(ns('dl_preval_original'), 
-                                        list(icon('file-image'), "Original plot"),
-                                        size = 'xs', style = 'minimal'), br(),
-                           downloadBttn(ns('dl_preval_html'), 
-                                        list(icon('file-code'), "Interactive plot"),
-                                        size = 'xs', style = 'minimal'), br(),
-                           downloadBttn(ns('dl_preval_data'), 
-                                        list(icon('file-alt'), "Plot data"),
-                                        size = 'xs', style = 'minimal'), br(),
-                           downloadBttn(ns('dl_preval_rds'), 
-                                        list(icon('file-prescription'), "RDS"),
-                                        size = 'xs', style = 'minimal'), br(),
-                           downloadBttn(ns('dl_preval_all'), 
-                                        list(icon('file-archive'), "All"),
-                                        size = 'xs', style = 'minimal'))
-                        ),
-                        column(width = 10, style = 'padding:0px;', 
-                          jqui_resizable(
-                            plotlyOutput(
-                              ns('plot_prevalence'), width = '100%', height = 'auto'))
-                        )
-                      ),
-                      column(width = 6, 
-                             h4('Prevalence of features with respects to Relative Abundance'),
-                             column(width = 1, style = 'padding:0px;', dropdown(
-                               size = 'xs', icon = icon('save'), inline = TRUE, 
-                               style = 'material-circle', width = 160,
-                               animate = animateOptions(
-                                 enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                                 exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                               
-                               downloadBttn(ns('dl_spur_original'), 
-                                            list(icon('file-image'), "Original plot"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_spur_html'), 
-                                            list(icon('file-code'), "Interactive plot"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_spur_data'), 
-                                            list(icon('file-alt'), "Plot data"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_spur_rds'), 
-                                            list(icon('file-prescription'), "RDS"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_spur_all'), 
-                                            list(icon('file-archive'), "All"),
-                                            size = 'xs', style = 'minimal')
-                             )),
-                             column(width=10, style = 'padding:0px;',
-                                    jqui_resizable(
-                                      plotlyOutput(ns('plot_spurious'), 
-                                                   width = '100%', height = 'auto'))))
-                      ))
-              ),
+                      )
+                    ),
+                    column(
+                      width=10, style = 'padding:0px;',
+                      jqui_resizable(
+                        plotlyOutput(ns('plot_spurious'), 
+                                     width = '100%', height = 'auto') %>%
+                          shinycssloaders::withSpinner()
+                      )
+                    )
+                  ) # end column 6
+                ) # end column 12
+              ) # end fluidRow
+            ), # end tabitem
             # rarefaction curve of number seq vs number of asv------------------
             tabItem(
               tabName = 'rarefaction_tab',
               column(width = 12,
                 h1("featureID Rarefaction"),
                 tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
-                actionButton(ns('rare_calculate'), 'Calculate'),
-                uiOutput(ns('rare_colour_ui')),
-                checkboxInput(ns('rare_se'), 'Show standard error', value = FALSE),
                 jqui_resizable(
                   plotlyOutput(ns('plot_rarefaction'),
-                               width = '100%', height = 'auto') %>% 
-                    shinycssloaders::withSpinner())
+                               width = '100%', height = 'auto') %>%
+                    shinycssloaders::withSpinner()
+                )
               )
             ),
             # taxonomy overview-------------------------------------------------
             tabItem(
               tabName = 'tax_distribution_tab',
               fluidRow(
-                column(width = 12,
-                      h1("Taxonomy Distribution"),
-                      tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
-                      br(),
-                      h3("Taxonomy assigment parameters applied:"),
-                      DT::dataTableOutput(ns('taxonomy_yml')),
-                      br(),
-                    
-                      column(width = 4,
-                             br(), br(),
-                             wellPanel(
-                               # taxonomy level
-                               radioButtons(ns('tax_level'), 'Taxonomic level',
-                                            c('featureID','Kingdom','Phylum',
-                                              'Class', 'Order', 'Family', 
-                                              'Genus','Species', 'Taxon'),
-                                            selected = 'featureID')),
-                             br(),
-                             tags$b('Number of samples:'),
-                             textOutput(ns('n_sample'), inline = TRUE),
-                             br(),
-                             tags$b('Number of Features:'), 
-                             textOutput(ns('n_asv'), inline = TRUE),
-                             br(),
-                             tags$b('Reference database:'), 
-                             textOutput(ns('ref_tax'), inline = TRUE)),
-                      column(width = 8,
-                             h2('Table of Distribution of Taxa'),
-                             DT::dataTableOutput(ns('tax_distrib_table'))),
-                      column(width = 12,
-                             h2('Distribution of Taxa'),
-                             column(width = 1, style = 'padding:0px;', dropdown(
-                               size = 'xs', icon = icon('save'), inline = TRUE, 
-                               style = 'material-circle', width = 160,
-                               animate = animateOptions(
-                                 enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                                 exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                               
-                               downloadBttn(ns('dl_taxdistr_original'), 
-                                            list(icon('file-image'), "Original plot"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_taxdistr_html'), 
-                                            list(icon('file-code'), "Interactive plot"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_taxdistr_data'), 
-                                            list(icon('file-alt'), "Plot data"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_taxdistr_rds'), 
-                                            list(icon('file-prescription'), "RDS"),
-                                            size = 'xs', style = 'minimal'), br(),
-                               downloadBttn(ns('dl_taxdistr_all'), 
-                                            list(icon('file-archive'), "All"),
-                                            size = 'xs', style = 'minimal')
-                             )),
-                             column(width = 11, style = 'padding:0px;',
-                                    jqui_resizable(
-                                      plotlyOutput(ns('tax_distribution'), 
-                                                   width = '100%', height = 'auto')))),
-                      column(width = 12,
-                             h2('Percent assigned:'),
-                             jqui_resizable(
-                               plotlyOutput(ns('perc_assigned'), width = '100%', height = 'auto'))))
-                      
-              )),
+                column(
+                  width = 12,
+                  h1("Taxonomy Distribution"),
+                  tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
+                  br(),
+                  h3("Taxonomy assigment parameters applied:"),
+                  DT::dataTableOutput(ns('taxonomy_yml')) %>%
+                    shinycssloaders::withSpinner(),
+                  br(),
+                ),
+                column(
+                  width = 4,
+                  br(), br(),
+                  wellPanel(
+                   # taxonomy level
+                   radioButtons(ns('tax_level'), 'Taxonomic level',
+                                c('Kingdom','Phylum',
+                                  'Class', 'Order', 'Family', 
+                                  'Genus','Species'),
+                                selected = 'Phylum')),
+                  br(),
+                  tags$b('Number of samples:'),
+                  textOutput(ns('n_sample'), inline = TRUE),
+                  br(),
+                  tags$b('Number of Features:'), 
+                  textOutput(ns('n_asv'), inline = TRUE),
+                  br()
+                ),
+                column(
+                  width = 8,
+                  h2('Table of Distribution of Taxa'),
+                  DT::dataTableOutput(ns('tax_distrib_table')) %>%
+                    shinycssloaders::withSpinner()
+                ),
+                column(
+                  width = 12,
+                  h2('Distribution of Taxa'),
+                  column(
+                    width = 1, style = 'padding:0px;', 
+                    dropdown(
+                      size = 'xs', icon = icon('save'), inline = TRUE, 
+                      style = 'material-circle', width = 160,
+                      animate = animateOptions(
+                        enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                        exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                      downloadBttn(ns('dl_taxdistr_original'), 
+                                list(icon('file-image'), "Original plot"),
+                                size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_taxdistr_html'), 
+                                  list(icon('file-code'), "Interactive plot"),
+                                  size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_taxdistr_data'), 
+                                  list(icon('file-alt'), "Plot data"),
+                                  size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_taxdistr_rds'), 
+                                  list(icon('file-prescription'), "RDS"),
+                                  size = 'xs', style = 'minimal'), br(),
+                      downloadBttn(ns('dl_taxdistr_all'), 
+                                   list(icon('file-archive'), "All"),
+                                   size = 'xs', style = 'minimal')
+                       )
+                  ),
+                  column(width = 11, style = 'padding:0px;',
+                         jqui_resizable(
+                           plotlyOutput(ns('tax_distribution'), 
+                                        width = '100%', height = 'auto') %>%
+                             shinycssloaders::withSpinner()
+                           )
+                  )
+                ),
+                column(
+                  width = 12,
+                  h2('Percent assigned:'),
+                  jqui_resizable(
+                    plotlyOutput(ns('perc_assigned'), width = '100%', 
+                                 height = 'auto') %>%
+                      shinycssloaders::withSpinner()
+                    )
+                )
+              ) # end fluidRow
+            ), # end tabitem
             
             # Read count distribution---------------------------------------------
             tabItem(
               tabName = 'group_distribution_tab',
               fluidRow(
-                column(width = 12,
-                      h1('Read Count Distribution'),
-                      tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
-                      br(),
-                      tags$b('Total read counts across sample or sample groups'),
-                      column(width = 1, style = 'padding:0px;', dropdown(
-                        size = 'xs', icon = icon('save'), inline = TRUE, 
-                        style = 'material-circle', width = 160,
-                        animate = animateOptions(
-                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                        
-                        downloadBttn(ns('dl_grpdistr_original'), 
-                                     list(icon('file-image'), "Original plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_grpdistr_html'), 
-                                     list(icon('file-code'), "Interactive plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_grpdistr_data'), 
-                                     list(icon('file-alt'), "Plot data"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_grpdistr_rds'), 
-                                     list(icon('file-prescription'), "RDS"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_grpdistr_all'), 
-                                     list(icon('file-archive'), "All"),
-                                     size = 'xs', style = 'minimal')
-                      )),
-                      column(width = 11, style = 'padding:0px;',
-                             jqui_resizable(
-                               plotlyOutput(ns('group_distribution'), width = '100%', height = 'auto'))),
-                      br(),
-                      tags$div("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
-                      br(),
-                      tags$b("Distribution of average read counts across sample groups"),
-                      column(width = 1, style = 'padding:0px;', dropdown(
-                        size = 'xs', icon = icon('save'), inline = TRUE, 
-                        style = 'material-circle', width = 160,
-                        animate = animateOptions(
-                          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-                        
-                        downloadBttn(ns('dl_samdistr_original'), 
-                                     list(icon('file-image'), "Original plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_samdistr_html'), 
-                                     list(icon('file-code'), "Interactive plot"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_samdistr_data'), 
-                                     list(icon('file-alt'), "Plot data"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_samdistr_rds'), 
-                                     list(icon('file-prescription'), "RDS"),
-                                     size = 'xs', style = 'minimal'), br(),
-                        downloadBttn(ns('dl_samdistr_all'), 
-                                     list(icon('file-archive'), "All"),
-                                     size = 'xs', style = 'minimal')
-                      )),
-                      column(width = 11, style = 'padding:0px;',
-                             jqui_resizable(
-                               plotlyOutput(ns('sample_distribution'), 
-                                            width = '100%', height = 'auto'))))
-              ))
-          )
-        )
-      )
-    )
-  )
+                column(
+                  width = 12,
+                  h1('Read Count Distribution'),
+                  tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
+                  br(),
+                  tags$b('Total read counts across sample or sample groups')
+                ),
+                column(
+                  width = 1, style = 'padding:0px;', 
+                  dropdown(
+                    size = 'xs', icon = icon('save'), inline = TRUE, 
+                    style = 'material-circle', width = 160,
+                    animate = animateOptions(
+                      enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                      exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                    
+                    downloadBttn(ns('dl_grpdistr_original'), 
+                                 list(icon('file-image'), "Original plot"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_grpdistr_html'), 
+                                 list(icon('file-code'), "Interactive plot"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_grpdistr_data'), 
+                                 list(icon('file-alt'), "Plot data"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_grpdistr_rds'), 
+                                 list(icon('file-prescription'), "RDS"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_grpdistr_all'), 
+                                 list(icon('file-archive'), "All"),
+                                 size = 'xs', style = 'minimal')
+                  )
+                ),
+                column(
+                  width = 11, style = 'padding:0px;',
+                  jqui_resizable(
+                    plotlyOutput(ns('group_distribution'), 
+                                 width = '100%', height = 'auto') %>%
+                      shinycssloaders::withSpinner()
+                    )
+                ),
+                column(
+                  width = 12, 
+                  br(),
+                  tags$div("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
+                  br(),
+                  tags$b("Distribution of average read counts across sample groups")
+                ),
+                column(
+                  width = 1, style = 'padding:0px;', 
+                  dropdown(
+                    size = 'xs', icon = icon('save'), inline = TRUE, 
+                    style = 'material-circle', width = 160,
+                    animate = animateOptions(
+                      enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                      exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+                    
+                    downloadBttn(ns('dl_samdistr_original'), 
+                                 list(icon('file-image'), "Original plot"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_samdistr_html'), 
+                                 list(icon('file-code'), "Interactive plot"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_samdistr_data'), 
+                                 list(icon('file-alt'), "Plot data"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_samdistr_rds'), 
+                                 list(icon('file-prescription'), "RDS"),
+                                 size = 'xs', style = 'minimal'), br(),
+                    downloadBttn(ns('dl_samdistr_all'), 
+                                 list(icon('file-archive'), "All"),
+                                 size = 'xs', style = 'minimal')
+                  )
+                ),
+                column(
+                  width = 11, style = 'padding:0px;',
+                  jqui_resizable(
+                    plotlyOutput(ns('sample_distribution'), 
+                                 width = '100%', height = 'auto') %>%
+                      shinycssloaders::withSpinner()
+                  )
+                )
+              ) # end column 12
+            ) # end fluidrow
+          ) # end tabitem
+          
+        ) # end tabitems
+      ) # end box
+    ) # end dashboard body
+  ) # end taglist
 }
     
 # Module Server
@@ -410,34 +489,19 @@ mod_qc_ui <- function(id){
 mod_qc_server <- function(input, output, session, improxy){
   ns <- session$ns 
   
-  # Check
-  output$check <- renderPrint({
-    data_set()$merged_filter_summary
-  })
 
   # reading in tables ----------------------------------------------------------
-  data_set <- reactive({improxy$data_db})
-  
   qc_filtered <- reactive({
-    df <- data_set()$merged_filter_summary
+    df <- improxy$data_db$merged_filter_summary
     df$reads.in <- df$reads.in - df$reads.out
     df
   })
   
-  qc_nochim <- reactive({data_set()$merged_qc_summary})
-  yml <- reactive({data_set()$parameter_table})
-  asv <- reactive({data_set()$merged_abundance_id})
-  met <- reactive({data_set()$metadata})
-  tax <- reactive({data_set()$merged_taxonomy})
-
-  # combine tables into working dataframe
-  work <- reactive({
-    asv() %>%
-      gather('sampleID','read_count', -featureID) %>%
-      inner_join(tax(), by = 'featureID') %>%
-      select(-sequence) %>%
-      mutate(read_count = as.numeric(read_count))
-  })
+  qc_nochim <- reactive({improxy$data_db$merged_qc_summary})
+  yml <- reactive({improxy$data_db$parameter_table})
+  asv <- reactive({improxy$data_db$merged_abundance_id})
+  met <- reactive({improxy$data_db$metadata})
+  tax <- reactive({improxy$data_db$merged_taxonomy})
   
   
   # Render reactive widgets-----------------------------------------------------
@@ -447,20 +511,7 @@ mod_qc_server <- function(input, output, session, improxy){
                  choices = choices, selected = 'sampleID')
   })
   
-  # render rarefaction ui
-  output$rare_colour_ui <- renderUI({
-    selectInput(ns('rare_colour'), "Colour curves by:",
-                choices = c('none', colnames(met())),
-                selected = 'none')
-  })
-  
   # Filtering-------------------------------------------------------------------
-  # define reads.in as the difference between the starting number and the finishing number. This enables visualisation in a stacked bar chart
-  # Check
-  output$check <- renderPrint({
-    yml() %>%
-      filter(task == 'trim')
-  })
   output$filter_yml <- DT::renderDataTable({
     
     # add dada2 function that corresponds to yml parameters
@@ -477,14 +528,14 @@ mod_qc_server <- function(input, output, session, improxy){
   
   pdata_filt <- reactive({
     qc_filtered() %>%
+      mutate(reads.in = reads.in + reads.out) %>%
       gather(key = 'variable', value = 'value', -sample) %>%
       group_by(variable) %>%
-      mutate(sample = forcats::fct_reorder(sample, -value))
+      mutate(sample = forcats::fct_reorder(sample,-value))
   })
   p_filt <- reactive({
-    p <- ggplot(pdata_filt(), aes(x=reorder(sample, as.numeric(sample)),
-                           y=value, fill=variable)) +
-      geom_bar(stat="identity") +
+    p <- ggplot(pdata_filt(), aes(x=sample, y=value)) +
+      geom_point(aes(colour = variable), alpha = 0.6) +
       scale_fill_manual(name = NULL, values=c("red4", "blue4")) +
       theme_bw(12) +
       theme(axis.text.x=element_text(angle=90)) +
@@ -661,11 +712,12 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
+
   # prevalence of ASVs across samples-----------------------------------------
   pdata_nasv <- reactive({
-    work() %>%
+    improxy$asv_gather %>%
+      filter(read_count > 0) %>%
       group_by(sampleID) %>%
-      distinct(sampleID, featureID) %>%
       summarize(n_asv = n()) %>%
       ungroup() %>%
       mutate(sampleID = fct_reorder(sampleID, -n_asv))
@@ -732,40 +784,29 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
-  # calculate prevalence
-  pprev <- function(d){
-    
-    # total number of samples
-    nsamples <- length(unique(d$sampleID))
-    
-    # count number of samples with count > 0
-    df <- d %>%
-      filter(read_count > 0) 
-    prev <- (nrow(df)/nsamples)*100
-    prev.df <- data.frame(featureID=unique(d$featureID), Prevalence=prev)
-    return(prev.df)
-  }
-  
   prevalence <- reactive({
-    work() %>%
+    
+    n_sample <- length(met()$sampleID)
+    improxy$asv_gather %>%
+      filter(read_count > 0) %>%
       group_by(featureID) %>%
-      do(pprev(.))
+      summarize(n_observe = n(), 
+                Prevalence = n_observe / n_sample)
   })
   
   # tally frequency of prevalence values
   pdata_preval <- reactive({
-    pdata <- as.data.frame(table(prevalence()$Prevalence))
-    pdata$Var1 <- as.numeric(as.character(pdata$Var1))
-    pdata
+    hist_table <- hist(prevalence()$Prevalence, plot = FALSE)
+    out <- data.frame(bin_mid = hist_table$mids,
+                      n_asv = hist_table$counts)
+    out
   })
   
   p_preval <- reactive({
-    p <- ggplot(pdata_preval(), aes(x = Var1, y = Freq)) +
-      geom_bar(stat = 'identity') +
-      xlab('Prevalence of featureID across Samples (%)') +
+    p <- ggplot(pdata_preval(), aes(x = bin_mid, y = n_asv)) +
+      geom_point() +
+      xlab('Feature Prevalence') +
       ylab('Number of ASVs') +
-      scale_x_continuous(breaks = seq(0,100, 10), labels = seq(0, 100, 10),
-                         limits = c(-2,102)) +
       theme_bw(12)
     p
   })
@@ -822,7 +863,7 @@ mod_qc_server <- function(input, output, session, improxy){
   )
 
   pdata_spur <- reactive({
-    work() %>%
+    improxy$asv_met %>%
       group_by(sampleID) %>%
       mutate(tot_count = sum(read_count),
              rel_abund = read_count / tot_count * 100) %>%
@@ -836,12 +877,13 @@ mod_qc_server <- function(input, output, session, improxy){
   p_spur <- reactive({
     p <- ggplot(pdata_spur(), aes(x = avg_abund, y = Prevalence)) +
       geom_point(size = 3, alpha = 0.6) +
-      scale_y_continuous(limits=c(0,100)) +
+      scale_y_continuous(limits=c(0,1)) +
       xlab('Mean Relative Abundance (%)') +
-      ylab('Prevalence of features across Samples (%)') +
+      ylab('Feature Prevalence') +
       theme_bw(12)
     p
   })
+  
   output$plot_spurious <- renderPlotly({
     ggplotly(p_spur())
   })
@@ -894,11 +936,17 @@ mod_qc_server <- function(input, output, session, improxy){
   )
   
   # rarefaction curve-----------------------------------------------------------
-  rare_df <- eventReactive(input$rare_calculate, {
+  
+  # Check
+  # output$check <- renderPrint({
+  #   names(improxy)
+  # })
+  
+  rare_df <- reactive({
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
     mat <- as.matrix(mat)
-    OCMSExplorer:::cms_rarefy(t(mat))
+    cms_rarefy(mat)
   })
 
   output$plot_rarefaction <- renderPlotly({
@@ -906,29 +954,13 @@ mod_qc_server <- function(input, output, session, improxy){
     pdata <- rare_df() %>%
       inner_join(met(), 'sampleID')
     
-    p <- ggplot(pdata, aes_string(x = 'sample_size', y = 'species_richness'))
-    
-    if(input$rare_colour == 'none') {
-      p <- p + geom_line(colour = 'black') 
-      
-      if(input$rare_se) {
-        p <- p + 
-          geom_ribbon(aes_string(ymin = "species_richness - std_error", 
-                                 ymax = "species_ricnhess + std_error"), 
-                                 color = NULL, fill = 'grey50', alpha = 0.2)
-      }
-    }
-    else {
-      p <- p + geom_line(aes_string(colour = input$rare_colour))
-      
-      if(input$rare_se) {
-        p <- p + 
-          geom_ribbon(aes_string(ymin = "species_richness - std_error", 
-                                 ymax = "species_ricnhess + std_error", 
-                                 color = NULL, fill = input$rare_color), 
-                      alpha = 0.2)
-      }
-    }
+    p <- ggplot(pdata, aes(x=Depth, y=Richness, color=sampleID)) +
+      geom_line() +
+      guides(color = FALSE)
+      # geom_label not compatible with plotly
+      # geom_label(aes(label=sampleID, colour = sampleID),
+      #            fill = alpha(c("white"), 0.2), 
+      #            nudge_y = max(rare_df()$Richness)*0.01)
     
     p <- p +
       theme_bw(12) +
@@ -956,14 +988,14 @@ mod_qc_server <- function(input, output, session, improxy){
   # customize count data based on selected taxonomic level
 
   output$n_sample <- renderText({length(unique(met()$sampleID))})
-  output$ref_tax <- renderText({random_text(nwords = 1)})
   
   tax_distrb_df <- eventReactive(input$tax_level, {
-    work() %>%
+    tot_count <- sum(improxy$asv_gather$read_count)
+    improxy$asv_tax %>%
       group_by(.data[[input$tax_level]]) %>%
       select(.data[[input$tax_level]], read_count) %>%
       summarise(agg_count = sum(read_count)) %>%
-      mutate(agg_perc = agg_count / sum(work()$read_count) * 100) %>%
+      mutate(agg_perc = agg_count / tot_count * 100) %>%
       mutate(agg_perc = round(agg_perc, 2)) %>%
       ungroup() %>%
       distinct(.data[[input$tax_level]], agg_count, agg_perc)
@@ -984,7 +1016,7 @@ mod_qc_server <- function(input, output, session, improxy){
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
   
-  p_taxdistr <- reactive({
+  p_taxdistr <- eventReactive(input$tax_level, {
     ggplot(tax_distrb_df(), 
                 aes(x = 1, y = agg_perc, fill = !!as.symbol(input$tax_level),
                     colour = !!as.symbol(input$tax_level))) +
@@ -1049,13 +1081,17 @@ mod_qc_server <- function(input, output, session, improxy){
       setwd(mydir)
     }
   )
+  
+
   # evaluate number ASVs assigned to taxonomy level
   n_assigned <- reactive({
     
-    df <- select(tax(), -sequence, -featureID, -Taxon)
-    out <- data.frame(tax_class = colnames(df),
-                      n_NA = apply(df, 2, function(x) sum(is.na(unique(x)))),
-                      n_ass = apply(df, 2, function(x) sum(!is.na(unique(x)))))
+    out <- tax() %>% 
+      select(-sequence, -Taxon) %>%
+      gather('tax_class', 'assignment', -featureID) %>%
+      group_by(tax_class) %>%
+      summarise(n_NA = sum(is.na(assignment)),
+                n_ass = sum(!is.na(assignment)))
     out
   })
   
@@ -1064,8 +1100,9 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(n_asv = n_NA + n_ass,
              perc_assigned = n_ass / n_asv * 100,
              tax_class = factor(tax_class, 
-                                levels = c('Kingdom','Phylum','Class','Order',
-                                           'Family','Genus','Species')))
+                                levels = c('Kingdom','Phylum','Class',
+                                           'Order','Family','Genus',
+                                           'Species')))
     
     p <- ggplot(pdata, aes(x = tax_class, y = perc_assigned)) +
       geom_bar(stat = 'identity') +
@@ -1079,8 +1116,7 @@ mod_qc_server <- function(input, output, session, improxy){
   # read count distribution of samples------------------------------------------
 
   pdata_grpdistr <- reactive({
-    work() %>%
-      inner_join(met(), 'sampleID') %>%
+    improxy$asv_met %>%
       group_by(.data[[input$sample_select]]) %>%
       summarize(group_tot = sum(read_count))
   })
@@ -1147,7 +1183,10 @@ mod_qc_server <- function(input, output, session, improxy){
     }
   )
   
-
+  # for speed, aggregate counts in sqlite
+  query <- reactive({
+    sprintf("SELECT * FROM merged_abundance_id INNER_JOIN")
+  })
   pdata_samdistr <- reactive({
     asv() %>%
       gather('sampleID', 'read_count', -featureID) %>%
@@ -1161,7 +1200,8 @@ mod_qc_server <- function(input, output, session, improxy){
       mutate(group_tot = sum(read_count), avg = mean(sample_tot),
              x = as.numeric(selected_var), xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
       select(-read_count, -featureID) %>%
-      distinct() 
+      distinct() %>%
+      ungroup()
   })
   
   

@@ -8,7 +8,7 @@
 #' @param output internal
 #' @param session internal
 #'
-#' @rdname mod_explore
+#' @rdname mod_overview
 #'
 #' @keywords internal
 #' @export 
@@ -29,9 +29,8 @@ mod_overview_ui <- function(id){
           menuItem('Task Info', tabName = 'info_tab_overview', 
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('Relative Abundance', tabName = 'bar_tab'),
-          menuItem('Multivariate Analysis'),
-                   menuSubItem('PCA', tabName = 'pca_tab'),
-                   menuSubItem('PCoA', tabName = 'pcoa_tab'),
+          uiOutput(ns('pca_menu_ui')),
+          menuItem('PCoA', tabName = 'pcoa_tab'),
           menuItem('\u03B1-Diversity Analysis', tabName = 'alpha_tab'),
           menuItem('Cluster Analysis', tabName = 'hmap_tab'),
           
@@ -46,7 +45,7 @@ mod_overview_ui <- function(id){
                             choices = c('featureID','Kingdom','Phylum',
                                         'Class', 'Order', 'Family','Genus',
                                         'Species', 'Taxon'),
-                            selected = 'featureID'),
+                            selected = 'Phylum'),
                 radioButtons(ns('bar_y'), 'Response measure:',
                              c('Relative abundance' = 'rel_abund',
                                'Read count' = 'cnt_abund')))
@@ -58,15 +57,12 @@ mod_overview_ui <- function(id){
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b('PCA Parameters')),
-              radioButtons(ns('pca_scale'), "Scale",
-                           choices = c("none" = "none",
-                                       "unit-variance scaling" = 'UV',
-                                       "pareto scaling" = 'pareto',
-                                       "vast scaling" = 'vast'),
-                           selected = 'UV'),
-              actionButton(ns('pca_calculate'), "Calculate")
+              uiOutput(ns('pca_scale_ui')),
+              withBusyIndicatorUI(
+                actionButton(ns('pca_calculate'), "Calculate")  
               )
-            ),
+            )
+          ),
           # PCoA controls------------------------------------------------------- 
           conditionalPanel(
             condition = "input.menu === 'pcoa_tab'",
@@ -74,44 +70,25 @@ mod_overview_ui <- function(id){
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b("PCoA Parameters")),
-              selectInput(ns('pcoa_dist'), "Distance Metric",
-                          choices = c("manhattan", "euclidean", "canberra", 
-                                      "clark", "bray", "kulczynski", "jaccard", 
-                                      "gower", "altGower", "morisita", "horn",
-                                      "mountford", "raup", "binomial", "chao", 
-                                      "cao", "mahalanobis"),
-                          selected = 'euclidean'),
-              actionButton(ns('pcoa_calculate'), 'Calculate')
+              uiOutput(ns('pcoa_dist_ui')),
+              withBusyIndicatorUI(
+                actionButton(ns('pcoa_calculate'), 'Calculate')  
+              )
             )
           ),
         
           # # Alpha-diversity-------------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'alpha_tab'",
-            div(id = ns('alpha_param_div'),
-                br(), hr(),
-                fixedPanel(
-                  width = 225,
-                  tags$div(style = "text-align: center", 
-                           tags$b("\u03B1-Diversity Parameters")),
-                  selectInput(ns('alpha_method'), "Diversity Metric",
-                    choices = list(
-                      `Entropy Measures` = 
-                        list("Shannon-Weaver Index (H)"="shannon",
-                             "Simpson Index (D1)" = "simpson"),
-                      `Diversity Measures` =
-                        list("Shannon (H'), q = 1" = "shannon_d",
-                             "Inverse Simpson (D2), q = 2" = "invsimpson",
-                             "Species Richness (S), q = 0" = "richness",
-                             "Species Evenness (J)" = "evenness"))),
-                  # checkboxGroupInput(ns('alpha_test'), "Statistical Test",
-                  #              c("ANOVA" = "anova",
-                  #                "Kruskal-Wallis" = 'kw',
-                  #                "Effect size" = "effect_size")),
-                  # checkboxInput(ns('alpha_paired'), "Paired data", FALSE),
-                  actionButton(ns('alpha_calculate'), "Calculate")
-                ))
-            ),
+          # conditionalPanel(
+          #   condition = "input.menu === 'alpha_tab'",
+          #   div(id = ns('alpha_param_div'),
+          #       br(), hr(),
+          #       fixedPanel(
+          #         width = 225,
+          #         tags$div(style = "text-align: center",
+          #                  tags$b("\u03B1-Diversity Parameters")),
+          #         actionButton(ns('alpha_calculate'), "Calculate")
+          #       ))
+          #   ),
 
           # Heat map--------------------------------------------------------------
           conditionalPanel(
@@ -123,18 +100,15 @@ mod_overview_ui <- function(id){
                   tags$div(style = "text-align: center",
                            tags$b("Heirchical Cluster Parameters")),
                   selectInput(ns('hclust_method'), "Linkage method",
-                              choices = c('complete','ward.D','ward.D2','single',
-                                          'average','mcquitty','median','centroid'),
-                              selected = 'complete'),
-                  selectInput(ns('dist_method'), "Distance method",
-                              choices = c("manhattan", "euclidean", "canberra", 
-                                          "clark", "bray", "kulczynski", "jaccard", 
-                                          "gower", "altGower", "morisita", "horn",
-                                          "mountford", "raup", "binomial", "chao", 
-                                          "cao", "mahalanobis"),
-                              selected = 'euclidean'),
-                  actionButton(ns('hmap_calculate'), 'Calculate')
-                  ))
+                              choices = c('complete','ward.D2',
+                                          'average','median','centroid'),
+                              selected = 'ward.D2'),
+                  uiOutput(ns('dist_method_ui')),
+                  withBusyIndicatorUI(
+                    actionButton(ns('hmap_calculate'), 'Calculate')  
+                  )
+                )
+              )
             )
         ## end of side bar------------------------------------------------------
         )),
@@ -143,7 +117,7 @@ mod_overview_ui <- function(id){
         box(
           width = '100%', br(), br(), br(),
           
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           
           tabItems(
             # main page---------------------------------------------------------
@@ -161,7 +135,7 @@ mod_overview_ui <- function(id){
             # PCA body----------------------------------------------------------    
             tabItem(
               tabName = 'pca_tab',
-              mod_ov_pca_ui(ns("ov_pca_ui_1"))
+                mod_ov_pca_ui(ns("ov_pca_ui_1"))
             ),
             
             #PCoA body----------------------------------------------------------
@@ -179,48 +153,44 @@ mod_overview_ui <- function(id){
               tabName = 'hmap_tab',
               mod_ov_hmap_ui(ns("ov_hmap_ui_1"))
               )
-            # end of dashboard body---------------------------------------------
-          )
+          ) # end of tab items
         )
-      )
+      ) # end of dashboard body---------------------------------------------
     )
   )
 }
 
 # Module Server
 
-#' @rdname mod_explore
+#' @rdname mod_overview
 #' @export
 #' @keywords internal
 
 mod_overview_server <- function(input, output, session, improxy){
   ns <- session$ns
   
-  # import data into module-----------------------------------------------------
-  working_set <- reactive(improxy$data_db)
-  
-  met <- reactive(working_set()$metadata)
-  asv <- reactive(working_set()$asv)
-  asv_transform <- reactive(working_set()$t_asv)
-  tax <- reactive(working_set()$tax)
-  
+  # output$check <- renderPrint({
+  # 
+  # })
+  output$pca_menu_ui <- renderUI({
+    if(improxy$work_db$transform_method != 'percent') {
+      sidebarMenu(menuItem('PCA', tabName = 'pca_tab'))
+    }
+  })
 
   # store data in reactiveValues to pass onto submodule-------------------------
   bridge <- reactiveValues()
   observe({
-    bridge$met <- improxy$data_db$metadata
-    bridge$asv <- improxy$data_db$asv
-    bridge$asv_transform <- improxy$data_db$t_asv
-    bridge$tax <- improxy$data_db$tax
+    bridge$work_db <- improxy$work_db
   })
-  
+
   # bar plot server-------------------------------------------------------------
   # render controls bar plot
   output$bar_x_ui <- renderUI({
-    selectInput(ns('bar_x'), "x-axis", choices = colnames(met()),
+    selectInput(ns('bar_x'), "x-axis", choices = colnames(improxy$work_db$met),
                 selected = 'sampleID')
   })
-  
+
   # pass bar reactive inputs to submodule
   bridge$bar_input <- reactiveValues()
   observe({
@@ -231,40 +201,82 @@ mod_overview_server <- function(input, output, session, improxy){
 
   # call overview submodule for bar plot
   callModule(mod_ov_bar_server, "ov_bar_ui_1", param = bridge)
-  
+
   # PCA server------------------------------------------------------------------
-  # pass pca reactive inputs to submodule
-  bridge$pca_input <- reactiveValues()
-  observe({
-    bridge$pca_input$pca_calculate <- input$pca_calculate
-    bridge$pca_input$pca_scale <- input$pca_scale
+  output$pca_scale_ui <- renderUI({
+    if(any(improxy$work_db$asv_transform < 0)) {
+      choices <- c("none" = "none",
+                   "unit-variance scaling" = 'UV',
+                   "vast scaling" = 'vast')
+    }
+    else {
+      choices <- c("none" = "none",
+                   "unit-variance scaling" = 'UV',
+                   "pareto scaling" = 'pareto',
+                   "vast scaling" = 'vast')
+    }
+
+    radioButtons(ns('pca_scale'), "Scale",
+                 choices = choices,
+                 selected = 'UV')
   })
-  callModule(mod_ov_pca_server, "ov_pca_ui_1", param = bridge)
-  
+  bridge$pca_input <- reactiveValues()
+  observeEvent(input$pca_calculate, {
+    withBusyIndicatorServer('pca_calculate', 'overview_ui_1', {
+      if(improxy$work_db$transform_method != 'percent') {
+        # pass pca reactive inputs to submodule
+        bridge$pca_input$pca_calculate <- input$pca_calculate
+        bridge$pca_input$pca_scale <- input$pca_scale
+        callModule(mod_ov_pca_server, "ov_pca_ui_1", param = bridge)
+      }  
+    })
+    
+  })
+
   # PCoA server-----------------------------------------------------------------
+  output$pcoa_dist_ui <- renderUI({
+    if(improxy$work_db$transform_method == 'percent') choices <- 'bray'
+    else choices <- c("manhattan", "euclidean", "canberra")
+
+    selectInput(ns('pcoa_dist'), "Distance method",
+                choices = choices,
+                selected = choices[1])
+  })
+
   bridge$pcoa_input <- reactiveValues()
   observe({
     bridge$pcoa_input$pcoa_dist <- input$pcoa_dist
     bridge$pcoa_input$pcoa_calculate <- input$pcoa_calculate
   })
-  callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", param = bridge)
-  
-  # Alpha diversity server------------------------------------------------------
-  bridge$alpha_input <- reactiveValues()
-  observe({
-    bridge$alpha_input$alpha_method <- input$alpha_method
-    bridge$alpha_input$alpha_calculate <- input$alpha_calculate
+  withBusyIndicatorServer('pcoa_calculate', 'overview_ui_1', {
+    callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", param = bridge)  
   })
-  callModule(mod_ov_alpha_server, "ov_alpha_ui_1", param = bridge)
   
+
+  # Alpha diversity server------------------------------------------------------
+
+  callModule(mod_ov_alpha_server, "ov_alpha_ui_1", param = bridge)
+
   # Heatmap server--------------------------------------------------------------
+  output$dist_method_ui <- renderUI({
+    if(improxy$work_db$transform_method == 'percent') choices <- 'bray'
+    else choices <- c("manhattan", "euclidean", "canberra", "bray")
+
+    selectInput(ns('dist_method'), "Distance method",
+                choices = choices,
+                selected = choices[1])
+  })
+
   bridge$hmap_input <- reactiveValues()
   observe({
     bridge$hmap_input$hclust_method <- input$hclust_method
     bridge$hmap_input$dist_method <- input$dist_method
     bridge$hmap_input$hmap_calculate <- input$hmap_calculate
   })
-  callModule(mod_ov_hmap_server, "ov_hmap_ui_1", param = bridge)
+  withBusyIndicatorServer('hmap_calculate','overview_ui_1', {
+    callModule(mod_ov_hmap_server, "ov_hmap_ui_1", param = bridge)  
+  })
+  
 }
 
 ## To be copied in the UI

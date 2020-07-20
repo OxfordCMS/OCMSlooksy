@@ -40,9 +40,9 @@ mod_intro_ui <- function(id){
 mod_intro_server <- function(input, output, session, parent_session){
   ns <- session$ns
   
-  observeEvent(input$next_tab, {
-    updateTabsetPanel(session = parent_session, "tabs", selected = "import")
-  })
+  # observeEvent(input$next_tab, {
+  #   updateTabsetPanel(session = parent_session, "tabs", selected = "import")
+  # })
 }
 
 ## To be copied in the UI

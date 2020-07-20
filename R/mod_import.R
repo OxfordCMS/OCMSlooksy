@@ -15,11 +15,11 @@
 #' @importFrom shiny NS tagList 
 #' @import shinyjs
 #' @import shinydashboard
-#' @import stringr
 #' @import dplyr
 #' @import forcats
 #' @import DBI
-#' @import validate
+#' @import RSQLite
+#' @import vroom
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -46,29 +46,20 @@ mod_import_ui <- function(id){
                    br(),
                    
                    # Launch data
-                   actionButton(ns('launch'), 'Launch Dataset'),
+                   withBusyIndicatorUI(
+                     actionButton(ns('launch'), 'Launch Dataset', class = "btn-primary")
+                   ),
                    br(), hr()),
           
           menuItemOutput(ns('metadata_menu')),
           menuItemOutput(ns('asv_menu')),
-          menuItemOutput(ns('tax_menu')),
-          
-          conditionalPanel(
-            condition = "input.menu === 'asv_menu_tab'",
-            br(), hr(),
-            div(style="text-align: center",
-                tags$b('Input controls')),
-            fixedPanel(
-              radioButtons(ns('tax_level'), 'Taxonomic level',
-                           c('featureID', 'Kingdom','Phylum', 'Class',
-                             'Order', 'Family','Genus', 'Species', 'Taxon'),
-                           selected = 'featureID')))
-        )),
+          menuItemOutput(ns('tax_menu'))
+      )),
       
       dashboardBody(
         box(width = "100%",
             br(),br(), br(),
-        #   
+
         # fluidRow(
         #   box(width = 12, h3('Check'),
         #       verbatimTextOutput(ns('check')))),
@@ -88,8 +79,7 @@ mod_import_ui <- function(id){
               br(),
               div(style="font-weight: bold",
                   textOutput(ns('import_status')))
-              ),
-           
+            )
           ),
           # Preview of metadata-------------------------------------------------
           tabItem(
@@ -97,7 +87,9 @@ mod_import_ui <- function(id){
             fluidRow(
               column(width = 12,
                      h1('Preview of metadata'),
-                     DT::DTOutput(ns('metadata_preview'))))),
+                     DT::dataTableOutput(ns('metadata_preview'))  %>%
+                       shinycssloaders::withSpinner()
+                    ))),
           
           # Preview of read count-----------------------------------------------
           tabItem(
@@ -105,13 +97,17 @@ mod_import_ui <- function(id){
             fluidRow(
               column(width = 12,
                      h1('Preview of sequence counts'),
-                     DT::DTOutput(ns('asv_preview')))),
+                     DT::dataTableOutput(ns('asv_preview'))  %>%
+                       shinycssloaders::withSpinner()
+                    )),
             ),
           tabItem(
             tabName = 'tax_menu_tab',
             column(width = 12,
                    h1('Preview of taxonomy'),
-                   DT::DTOutput(ns('tax_preview'))))
+                   DT::dataTableOutput(ns('tax_preview'))  %>%
+                     shinycssloaders::withSpinner()
+                  ))
           )
         )
       )
@@ -169,21 +165,21 @@ mod_import_server <- function(input, output, session, parent_session) {
       table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                     'merged_filter_summary','merged_qc_summary') # need ymltable
       
-      validate(
-        # data_set contains necessary tables
-        need(any(table_ls %in% names(data_ls)),
-             "database file missing necessary table(s)."),
-        # metadata must have sampleID as a identifier
-        need("sampleID" %in% colnames(data_ls$metadata), 
-             "Metadata must include 'sampleID'."),
-        # sampleID must be unique
-        need(!any(duplicated(data_ls$metadata$sampleID)),
-             "Sample identifiers (sampleID) must be unique."),
-        # sampleID matches merge_abundance_id samples exactly
-        need(identical(sort(data_ls$metadata$sampleID),
-                       sort(colnames(data_ls[['merged_abundance_id']])[2:ncol(data_ls[['merged_abundance_id']])])),
-             "sampleID in metadata do not match samples in uploaded database."),
-        errorClass = 'importError')
+      # shiny::validate(
+      #   # data_set contains necessary tables
+      #   need(any(table_ls %in% names(data_ls)),
+      #        "database file missing necessary table(s)."),
+      #   # metadata must have sampleID as a identifier
+      #   need("sampleID" %in% colnames(data_ls$metadata), 
+      #        "Metadata must include 'sampleID'."),
+      #   # sampleID must be unique
+      #   need(!any(duplicated(data_ls$metadata$sampleID)),
+      #        "Sample identifiers (sampleID) must be unique."),
+      #   # sampleID matches merge_abundance_id samples exactly
+      #   need(identical(sort(as.character(data_ls$metadata$sampleID)),
+      #                  sort(colnames(data_ls[['merged_abundance_id']])[2:ncol(data_ls[['merged_abundance_id']])])),
+      #        "holdup! sampleID in metadata do not match samples in uploaded database."),
+      #   errorClass = 'importError')
       data_ls
     }
     
@@ -198,7 +194,7 @@ mod_import_server <- function(input, output, session, parent_session) {
     table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                   'merged_filter_summary','merged_qc_summary') # need ymltable
     output$import_status <- renderText({
-      validate(
+      shiny::validate(
         # data_set contains necessary tables
         need(any(table_ls %in% names(data_set())),
              "database file missing necessary table(s)."),
@@ -209,9 +205,9 @@ mod_import_server <- function(input, output, session, parent_session) {
         need(!any(duplicated(data_set()$metadata$sampleID)),
              "Sample identifiers (sampleID) must be unique."),
         # sampleID matches merge_abundance_id samples exactly
-        need(identical(sort(data_set()$metadata$sampleID),
+        need(identical(sort(as.character(data_set()$metadata$sampleID)),
                        sort(colnames(data_set()[['merged_abundance_id']])[2:ncol(data_set()[['merged_abundance_id']])])),
-             "sampleID in metadata do not match samples in uploaded database."),
+             "Uh oh! sampleID in metadata do not match samples in uploaded database."),
         errorClass = 'importError'
       )
       if(class(data_set()) == 'list') {
@@ -220,60 +216,64 @@ mod_import_server <- function(input, output, session, parent_session) {
     })
   })
   
-  # # Check
+  # Check
   # output$check <- renderPrint({
   # 
   # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
-    
-    # show menu items
-    output$metadata_menu <- renderMenu({
-      menuItem('Metadata Preview', tabName = 'metadata_menu_tab', selected = TRUE)
+    withBusyIndicatorServer("launch", 'import_ui_1', {
+      Sys.sleep(1)
+      # show menu items
+      output$metadata_menu <- renderMenu({
+        menuItem('Metadata Preview', tabName = 'metadata_menu_tab', selected = TRUE)
+      })
+      
+      output$asv_menu <- renderMenu({
+        menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
+      })
+      
+      output$tax_menu <- renderMenu({
+        menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
+      })
     })
     
-    output$asv_menu <- renderMenu({
-      menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
-    })
-    
-    output$tax_menu <- renderMenu({
-      menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
-    })
   })  
 
-  asv <- reactive({
-    req(input$launch)
+  asv <- eventReactive(input$launch, {
     data_set()$merged_abundance_id
   })
-  met <- reactive({
-    req(input$launch)
+  met <- eventReactive(input$launch, {
     data_set()$metadata
   })
-  tax <- reactive({
-    req(input$launch)
+  tax <- eventReactive(input$launch, {
     data_set()$merged_taxonomy
   })
 
-  # combine tables into working dataframe
-  work <- reactive({
+  # combine tables into working dataframes to reduce loading times downstream
+  asv_gather <- eventReactive(input$launch, {
     asv() %>%
-      gather('sampleID','read_count', -featureID) %>%
+      gather('sampleID','read_count', -featureID)
+  })
+  
+  asv_tax <- eventReactive(input$launch, {
+    asv_gather() %>%
       inner_join(tax(), by = 'featureID') %>%
       select(-sequence) %>%
       mutate(read_count = as.numeric(read_count)) %>%
       ungroup()
   })
-
-  # customize count data based on selected taxonomic level--------------------
-  # keep featureid and seqeuence of most abundant taxon being aggregated
-  wip <- reactive({
-    work() %>%
-      select(.data[[input$tax_level]], sampleID, read_count) %>%
-      group_by(.data[[input$tax_level]], sampleID) %>%
-      summarise(agg_count = sum(read_count)) %>%
-      ungroup()
+  
+  asv_met <- eventReactive(input$launch, {
+    asv_gather() %>%
+      inner_join(met(), by = 'sampleID')
   })
-
+  
+  work <- eventReactive(input$launch, {
+    asv_tax() %>% inner_join(met(), by = 'sampleID')
+  })
+  
+  
   # Summary of metadata-------------------------------------------------------
   output$metadata_preview <- DT::renderDT({
     DT::datatable(met(), extensions = 'Buttons',
@@ -283,28 +283,56 @@ mod_import_server <- function(input, output, session, parent_session) {
 
   # preview of count table----------------------------------------------------
   output$asv_preview <- DT::renderDT({
-    out <- wip() %>%
-      spread(sampleID, agg_count)
-    DT::datatable(out, extensions = 'Buttons',
-                  options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+    out <- asv_tax() %>%
+      spread(sampleID, read_count)
+    
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 58) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 59:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')), 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = list(c('copy','csv'), 
+                                   list(extend = 'colvis')),
+                    fixedColumns=list(leftColumns = 2),
+                    columnDefs = list(
+                      list(targets = col_ind, visible = vis_val)
+                    )))
   })
 
   output$tax_preview <- DT::renderDT({
-    DT::datatable(tax(), extensions = "Buttons",
-                  options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+    
+    DT::datatable(tax(), extensions = 'Buttons', 
+                  options = list(
+                    pageLength = 30,
+                    scrollX = TRUE, 
+                    dom = 'Blfrtip', 
+                    buttons = c('copy','csv')))
   })
 
   # jump to next tab------------------------------------------------------------
-  observeEvent(input$next_tab, {
-    updateTabsetPanel(session, "tabs", selected = "prepare")
-  })
+  # observeEvent(input$next_tab, {
+  #   updateTabsetPanel(session, "tabs", selected = "prepare")
+  # })
 
   # return dataset
   cross_module = reactiveValues()
   observe({
     cross_module$data_db <- data_set()
+    # adding long data formats to data list to be passed along in modules
+    cross_module$asv_gather <- asv_gather()
+    cross_module$asv_tax <- asv_tax()
+    cross_module$asv_met <- asv_met()
+    cross_module$work <- work()
   })
   return(cross_module)
 

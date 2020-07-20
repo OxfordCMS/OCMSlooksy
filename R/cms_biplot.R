@@ -44,8 +44,9 @@
 #' @param label.show.legend show legend labels. default NA
 #' @param frame frame clusters based on confidence interval estimation default FALSE
 #' @param frame.type type of CI estimation. must one of: \code{convex, t, norm or euclid} default NULL
-#' @param fram.colour frame colour. default \code{colour}
+#' @param frame.colour frame colour. default \code{colour}
 #' @param frame.level frame lineweight. default \code{0.95}
+#' @param frame.line frame linetype. default \code{'solid'}
 #' @param frame.alpha frame alpha. default \code{0.2}
 #' @param xlim x-axis limits default \code{c(NA, NA)}
 #' @param ylim y-axis limits default \code{c(NA, NA)}
@@ -77,9 +78,10 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
                         loadings.label.lineheight = NULL, 
                         loadings.label.hjust = NULL, loadings.label.vjust = NULL, 
                         loadings.label.repel = FALSE, label.show.legend = NA, 
-                        frame = FALSE, frame.type = NULL, frame.colour = colour, 
-                        frame.level = 0.95, frame.alpha = 0.2, xlim = c(NA, NA), 
-                        ylim = c(NA, NA), log = "", main = NULL, 
+                        frame = FALSE, frame.type = NULL, frame.colour = colour,
+                        frame.line = 'solid', frame.level = 0.95, 
+                        frame.alpha = 0.2, xlim = c(NA, NA), ylim = c(NA, NA),
+                        log = "", main = NULL, 
                         xlab = NULL, ylab = NULL, asp = NULL, ...) 
 {
   # score data
@@ -176,7 +178,7 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
                                                       1L:2L]), ]
       }
       else {
-        hulls <- plot.data %>% dplyr::group_by_(frame.colour) %>% 
+        hulls <- plot.data %>% dplyr::group_by(!!sym(frame.colour)) %>% 
           dplyr::do(.[grDevices::chull(.[, 1L:2L]), ])
       }
       mapping <- aes_string(colour = frame.colour, fill = frame.colour)
@@ -184,10 +186,13 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
                                      alpha = frame.alpha)
     }
     else if (frame.type %in% c("t", "norm", "euclid")) {
-      mapping <- aes_string(colour = frame.colour, fill = frame.colour)
-      p <- p + ggplot2::stat_ellipse(mapping = mapping, 
-                                     level = frame.level, type = frame.type, geom = "polygon", 
-                                     alpha = frame.alpha)
+      p <- p + ggfortify:::geom_factory(ggplot2::stat_ellipse, plot.data, 
+                                        colour = frame.colour, 
+                                        group = frame.colour, 
+                                        level = frame.level,
+                                        type = frame.type, 
+                                        alpha = loadings.alpha, 
+                                        linetype = frame.line)
     }
     else {
       stop("frame.type must be convex, t, norm or euclid")

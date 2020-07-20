@@ -99,10 +99,10 @@ mod_setup_ui <- function(id){
       dashboardBody(
         box(width = '100%', br(),br(), br(),
             
-            fluidRow(width = 12,
-                    h3('Check Box'),
-                    verbatimTextOutput(ns('check'))),
-            
+            # fluidRow(width = 12,
+            #         h3('Check Box'),
+            #         verbatimTextOutput(ns('check'))),
+            # 
             tabItems(
               # main page-------------------------------------------------------
               tabItem(
@@ -565,10 +565,10 @@ mod_setup_server <- function(input, output, session, improxy){
     sprintf("Removing %s Features", length(featID[!featID %in% to_keep()]))
   })
   
-  # check
-  output$check <- renderPrint({
-    head(asv_filtered2())
-  })
+  # # check
+  # output$check <- renderPrint({
+  #   head(asv_filtered2())
+  # })
   
   # giving preview on read and prevalence
   output$prev_agg_plot <- renderPlotly({

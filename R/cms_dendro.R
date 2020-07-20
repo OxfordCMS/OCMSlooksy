@@ -154,7 +154,7 @@ plot_ggdendro <- function(hcdata,
     p <- p +
       geom_tile(data = cat_data, 
                 aes_string(x = 'x', y = 'shift_y', fill = 'value'), 
-                height = max(segment(hcdata)$y) * 0.02) +
+                height = max(segment(hcdata)$y) * 0.03) +
       scale_fill_discrete(name = category)
   }
   

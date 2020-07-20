@@ -866,7 +866,7 @@ mod_setup_server <- function(input, output, session, improxy){
          asv_tax = asv_filtered2() %>% inner_join(tax_filtered, 'featureID'),
          asv_met = asv_filtered2() %>% inner_join(met_filtered2(), 'sampleID'),
          work = asv_filtered2() %>%
-           inner_join(tax_filtered, 'featureID') %>%
+           inner_join(tax_filtered %>% mutate_all(as.character), 'featureID') %>%
            inner_join(met_filtered2(), 'sampleID')
          )
   })

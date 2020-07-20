@@ -29,9 +29,8 @@ mod_overview_ui <- function(id){
           menuItem('Task Info', tabName = 'info_tab_overview', 
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('Relative Abundance', tabName = 'bar_tab'),
-          menuItem('Multivariate Analysis'),
-                   uiOutput(ns('pca_menu_ui')),
-                   menuSubItem('PCoA', tabName = 'pcoa_tab'),
+          uiOutput(ns('pca_menu_ui')),
+          menuItem('PCoA', tabName = 'pcoa_tab'),
           menuItem('\u03B1-Diversity Analysis', tabName = 'alpha_tab'),
           menuItem('Cluster Analysis', tabName = 'hmap_tab'),
           
@@ -46,7 +45,7 @@ mod_overview_ui <- function(id){
                             choices = c('featureID','Kingdom','Phylum',
                                         'Class', 'Order', 'Family','Genus',
                                         'Species', 'Taxon'),
-                            selected = 'featureID'),
+                            selected = 'Phylum'),
                 radioButtons(ns('bar_y'), 'Response measure:',
                              c('Relative abundance' = 'rel_abund',
                                'Read count' = 'cnt_abund')))
@@ -175,7 +174,7 @@ mod_overview_server <- function(input, output, session, improxy){
   # })
   output$pca_menu_ui <- renderUI({
     if(improxy$work_db$transform_method != 'percent') {
-      sidebarMenu(menuSubItem('PCA', tabName = 'pca_tab'))
+      sidebarMenu(menuItem('PCA', tabName = 'pca_tab'))
     }
   })
 

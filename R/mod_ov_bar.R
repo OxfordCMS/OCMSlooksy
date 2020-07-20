@@ -73,9 +73,7 @@ mod_ov_bar_server <- function(input, output, session, param){
   bar_y <- reactive(param$bar_input$bar_y)
   bar_x <- reactive(param$bar_input$bar_x)
   
-  # output$check <- renderPrint({
-  #   
-  # })
+
 
   # calculate output bar plot---------------------------------------------------
   
@@ -106,25 +104,55 @@ mod_ov_bar_server <- function(input, output, session, param){
     }
   })
   
+  # output$check <- renderPrint({
+  # 
+  # })
+  
   pdata <- reactive({
     bar_data() %>%
       distinct(!!sym(bar_tax()), !!sym(bar_x()), !!sym(bar_y()))
   })
   
+  
   output$bar_table <- DT::renderDataTable({
     out <- pdata() %>% spread(!!sym(bar_x()), !!sym(bar_y()))
+    x_name <- colnames(out)
+    x_name <- !grep(bar_tax(), x_name)
+    
+    # by default, only show first 50 samples + 8 tax columns
+    if(ncol(out) <= 51) {
+      # if less than 50 samples, show all
+      col_ind <- 1:ncol(out) # index of columns to show
+      vis_val <- TRUE
+    }
+    else {
+      col_ind <- 52:ncol(out) # index of columns to hide
+      vis_val <- FALSE
+    }
+    
     
     if(bar_y() == 'rel_abund') {
       DT::datatable(out,  extensions = 'Buttons',
-                    options = list(scrollX = TRUE,
-                                   dom = 'Blfrtip',
-                                   buttons = c('copy','csv'))) %>%
-        DT::formatRound(column = param$work_db$met[,bar_x()], digits = 3)
+                    options = list(
+                      pageLength = 30,
+                      scrollX = TRUE,
+                      dom = 'Blfrtip',
+                      buttons = list(c('copy','csv'), list(extend = 'colvis')),
+                      columnDefs = list(
+                        list(targets = col_ind, visible = vis_val)
+                      ))) %>%
+        DT::formatRound(column = x_name, digits = 3)
     }
     else {
-      DT::datatable(out, extensions = 'Buttons',
-                    options = list(scrollX = TRUE,
-                                   dom = 'Blfrtip', buttons = c('copy','csv')))
+      DT::datatable(out,extensions = 'Buttons',
+                    options = list(
+                      pageLength = 30,
+                      scrollX = TRUE,
+                      dom = 'Blfrtip',
+                      buttons = list(c('copy','csv'), list(extend = 'colvis')),
+                      columnDefs = list(
+                        list(targets = col_ind, visible = vis_val)
+                      )))
     }
     
   })

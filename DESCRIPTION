@@ -30,7 +30,6 @@ Imports:
     plotly,
     propr,
     RColorBrewer,
-    readr,
     RSQLite,
     shiny,
     shinycssloaders,

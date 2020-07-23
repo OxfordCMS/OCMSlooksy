@@ -126,12 +126,13 @@ mod_setup_ui <- function(id){
                        h1('Filter Samples'), br(),
                        tags$div(
                          "It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
-                br(), br(),
-                fluidRow(
+                
+                fluidRow(br(), br(),
                   column(width = 8,
                     hidden(div(
                       id = ns('sample_filter_div'),
                       column(width = 12,
+                        p("Select samples to include/exclude from the table and click 'Filter samples' to apply changes"), br(),
                         DT::dataTableOutput(ns('sample_options_ui')) 
                       )
                     )),
@@ -146,6 +147,7 @@ mod_setup_ui <- function(id){
                     id = ns('sample_filter_selcted_div'),
                     column(
                       width = 4,
+                      br(),
                       wellPanel(tags$b('Selected samples:'),
                                 htmlOutput(ns('sample_select'))
                                 )
@@ -160,7 +162,7 @@ mod_setup_ui <- function(id){
                 column(width = 12,
                   h1('Filter Features'),
                   tags$div(
-                    "It may be desirable to perform analysis on a subset of features if certain taxa are considered contamination, or are no longer relevant to the current research question.",
+                    "It may be desirable to perform analysis on a subset of features (e.g. sequences) if certain taxa are considered contamination, or are no longer relevant to the current research question.",
                     br(),br(),
                     tags$em(
                       tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering features at this stage should only be done if you have additional reasoning for omitting certain sequences or features"),
@@ -171,6 +173,12 @@ mod_setup_ui <- function(id){
                   column(width = 12, # begin asv_option_count column 
                     hidden(div(
                       id = ns('asv_option_count'),
+                      br(),
+                      p("There are three methods by which sequences can be filtered. For all three methods, the cut-off threshold is taken into consideration with the prevalence of sequences across the samples*."), br(), 
+                      p("1) 'Read count' sets the filter threshold at a specific read count, such that a given sequence must be observed greater than or equal to the cut-off count."),
+                      p("2) 'Percent of sample total' looks at read counts as abundances relative to the sample total. This is useful for when you want to keep features that make up at least x% in your samples."),
+                      p("3) 'Percent of dataset total' looks at read counts as abundances relative to the dataset total. This is useful for when you want to keep features that make up at least x% in your dataset."), br(),
+                      p("*Sequence prevalence is calculated as the number of samples in which sequence abundance is greater than or equal to the cut-off threshold."),
                       column(
                         width = 3, br(),
                         wellPanel(
@@ -223,6 +231,7 @@ mod_setup_ui <- function(id){
                   hidden(div(
                     id = ns('asv_option_select'),
                     h3('Filter features based on selection'),
+                    p("Select the features that you wish to", strong("exclude"),"from subsequent analyses. You can filter the rows using the search fields at the top of each column, or using the search bar at the top right corner of the table. Multiple rows can be selected at once by clicking the first row, then holding the shift button while clicking the last row. The number of columns shown is limited to 50 samples, be default. To show more samples, click on 'Column visibility' to get a dropdown menu of the samples and select the ones you wish to display. Click 'Filter features' to apply changes."), br(),
                     DT::dataTableOutput(ns('asv_table_select')) %>% 
                       shinycssloaders::withSpinner()
                   )) # end asv_option_select
@@ -257,9 +266,13 @@ mod_setup_ui <- function(id){
                 tabName = 'transform_asv',
                 column(width = 12,
                        h1('Transform Read Counts'),
-                       tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link].", 
-                                br(), 
-                                "Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data. Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."),
+                       tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link]."),
+                       br(), 
+                       p("Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data."),
+                       br(),
+                       p("Other forms of transformation include log10 of percent abundance (of the sample) and percent abundance (of the sample). Note that choosing percent abundance (without any log transformation) limits the analysis options available in subsequent analyses."),
+                       br(),
+                       p("Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."), br(),
                        DT::dataTableOutput(ns('preview_transform')) %>%
                          shinycssloaders::withSpinner())
               )
@@ -395,9 +408,11 @@ mod_setup_server <- function(input, output, session, improxy){
   # ui for prevalence threshold
   output$prevalence_ui <- renderUI({
     nsample <- length(unique(samp_filtered()$sampleID))
+    default <- round(nsample * 0.05)
+    if(default < 1) default <- 1
     numericInput(ns('prevalence'),
                  "Feature prevalence (# of samples):",
-                 min = 1, max = nsample, value = round(nsample * 0.05))
+                 min = 1, max = nsample, value = default)
   })
   # ui for  cut-off threshold
   ui_entry <- eventReactive(input$cutoff_method, {

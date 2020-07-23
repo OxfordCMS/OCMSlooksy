@@ -41,28 +41,7 @@ mod_ov_hmap_ui <- function(id){
         column(
           width = 7,
           h3('Sample dendrogram'),
-          dropdown(
-           size = 'xs', icon = icon('save'), inline = TRUE, 
-           style = 'material-circle',
-           animate = animateOptions(
-             enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-             exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-           
-           downloadBttn(ns('dl_dend_samp_original'), 
-                        list(icon('file-image'), "Original plot"),
-                        size = 'xs', style = 'minimal'), br(),
-           downloadBttn(ns('dl_dend_samp_html'), 
-                        list(icon('file-code'), "Interactive plot"),
-                        size = 'xs', style = 'minimal'), br(),
-           downloadBttn(ns('dl_dend_samp_data'), 
-                        list(icon('file-alt'), "Plot data"),
-                        size = 'xs', style = 'minimal'), br(),
-           downloadBttn(ns('dl_dend_samp_rds'), 
-                        list(icon('file-prescription'), "RDS"),
-                        size = 'xs', style = 'minimal'), br(),
-           downloadBttn(ns('dl_dend_samp_all'), 
-                        list(icon('file-archive'), "All"),
-                        size = 'xs', style = 'minimal')),
+          mod_download_ui(ns('download_samdendro')),
           shinyjqui::jqui_resizable(
             plotlyOutput(ns('sample_dendro_plot'), width = '100%')
           ))),
@@ -81,27 +60,7 @@ mod_ov_hmap_ui <- function(id){
         column(
           width = 7,
           h3('Taxonomy dendrogram'),
-          dropdown(
-            size = 'xs', icon = icon('save'), inline = TRUE, 
-            style = 'material-circle',
-            animate = animateOptions(
-              enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-              exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-            downloadBttn(ns('dl_dend_asv_original'), 
-                         list(icon('file-image'), "Original plot"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_dend_asv_html'), 
-                         list(icon('file-code'), "Interactive plot"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_dend_asv_data'), 
-                         list(icon('file-alt'), "Plot data"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_dend_asv_rds'), 
-                         list(icon('file-prescription'), "RDS"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_dend_asv_all'), 
-                         list(icon('file-archive'), "All"),
-                         size = 'xs', style = 'minimal')),
+          mod_download_ui(ns('download_asvdendro')),
           shinyjqui::jqui_resizable(
             plotlyOutput(ns('asv_dendro_plot'), width = '100%')
           ))),
@@ -130,34 +89,40 @@ mod_ov_hmap_ui <- function(id){
         width = 12,
         column(
           width = 1, style = 'padding:0px;', 
-          dropdown(
-            size = 'xs', icon = icon('save'), inline = TRUE, 
-            style = 'material-circle', width = 160,
-            animate = animateOptions(
-              enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-              exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-            
-            downloadBttn(ns('dl_hmap_html'), 
-                         list(icon('file-code'), "Interactive plot"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_hmap_data'), 
-                         list(icon('file-alt'), "Plot data"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_hmap_rds'), 
-                         list(icon('file-prescription'), "RDS"),
-                         size = 'xs', style = 'minimal'), br(),
-            downloadBttn(ns('dl_hmap_all'), 
-                         list(icon('file-archive'), "All"),
-                         size = 'xs', style = 'minimal')
-            )),
-            column(
-              width = 11, style = 'padding:0px;',
-              shinyjqui::jqui_resizable(
-                plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto')
-              )))
+          mod_download_ui(ns('download_hmap'))
+          # dropdown(
+          #   size = 'xs', icon = icon('save'), inline = TRUE,
+          #   style = 'material-circle', width = 160,
+          #   animate = animateOptions(
+          #     enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+          #     exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+          #   
+          #   myDownloadBttn(ns('dl_hmap_html'), icon_name = 'file-code',
+          #                label = "Interactive lot",
+          #                size = 'xs', style = 'minimal'), br(),
+          #   myDownloadBttn(ns('dl_hmap_data'), icon_name = 'file-alt',
+          #                label = "Plot data",
+          #                size = 'xs', style = 'minimal'), br(),
+          #   myDownloadBttn(ns('dl_hmap_rds'), icon_name = 'file-prescription',
+          #                label = "RDS",
+          #                size = 'xs', style = 'minimal'), br(),
+          #   myDownloadBttn(ns('dl_hmap_all'), icon_name = "file-archive",
+          #                label = "All",
+          #                size = 'xs', style = 'minimal')
+          # )
+        ),
+        column(
+          width = 11, style = 'padding:0px;',
+          shinyjqui::jqui_resizable(
+            plotlyOutput(ns('hmap_plot'), width = '100%', height = 'auto')
+          )
+        )
+      )
     ))
   )
 }
+
+
     
 # Module Server
     
@@ -251,52 +216,17 @@ mod_ov_hmap_server <- function(input, output, session, param){
     grid::grid.draw(p_legend)
   })
   
-  output$dl_dend_samp_original <- downloadHandler(
-    fname <- function() {"ov_dend_samp.tiff"}, 
-    content <- function(file) {ggsave(file, plot=p_dend_samp())}
-  )
+  # download data
+  for_download1 <- reactiveValues()
+  observe({
+    req(param$hmap_input$hclust_method, param$hmap_input$dist_method, 
+        param$hmap_input$hmap_calculate)
+    for_download1$figure <- p_dend_samp()
+    for_download1$fig_data <- samp_ddata()
+  })
   
-  output$dl_dend_samp_html <- downloadHandler(
-    fname <- function() {"ov_dend_samp.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_samp())), file)
-    }
-  )
-  
-  output$dl_dend_samp_data <- downloadHandler(
-    fname <- function() {"ov_dend_samp.csv"}, 
-    content <- function(file) {
-      readr::write_csv(samp_ddata(), file)
-    }
-  )
-  
-  output$dl_dend_samp_rds <- downloadHandler(
-    fname <- function() {"ov_dend_samp.rds"},
-    content <- function(file) {
-      saveRDS(p_dend_samp(), file)
-    }
-  )
-  
-  output$dl_dend_samp_all <- downloadHandler(
-    fname <- function() {"ov_dend_samp.zip"},
-    content <- function(file) {
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- c("ov_dend_samp.tiff", "ov_dend_samp.html",
-                  "ov_dend_samp.csv", "ov_dend_samp.rds")
-      ggsave(to_zip[1], plot=p_dend_samp())
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_samp())), to_zip[2])
-      write.csv(samp_ddata(), to_zip[3])
-      saveRDS(p_dend_samp(), to_zip[4])
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
+  callModule(mod_download_server, "download_samdendro", bridge = for_download1,
+             'sample_dendrogram', dl_options = c('png','html','RDS','zip'))
   
   # calculate asv clustering
   
@@ -339,54 +269,19 @@ mod_ov_hmap_server <- function(input, output, session, param){
     grid::grid.draw(p_legend)
   })
   
+  # download data
+  for_download2 <- reactiveValues()
+  observe({
+    req(param$hmap_input$hclust_method, param$hmap_input$dist_method, 
+        param$hmap_input$hmap_calculate)
+    for_download2$figure <- p_dend_asv()
+    for_download2$fig_data <- asv_ddata()
+  })
   
-  output$dl_dend_asv_original <- downloadHandler(
-    fname <- function() {"ov_dend_asv.tiff"}, 
-    content <- function(file) {ggsave(file, plot=p_dend_asv())}
-  )
+  callModule(mod_download_server, "download_asvdendro", bridge = for_download2,
+             'feature_dendrogram', dl_options = c('png','html','RDS','zip'))
   
-  output$dl_dend_asv_html <- downloadHandler(
-    fname <- function() {"ov_dend_asv.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_asv())), file)
-    }
-  )
-  
-  output$dl_dend_asv_data <- downloadHandler(
-    fname <- function() {"ov_dend_asv.csv"}, 
-    content <- function(file) {
-      readr::write_csv(asv_ddata(), file)
-    }
-  )
-  
-  output$dl_dend_asv_rds <- downloadHandler(
-    fname <- function() {"ov_dend_asv.rds"},
-    content <- function(file) {
-      saveRDS(p_dend_asv(), file)
-    }
-  )
-  
-  output$dl_dend_asv_all <- downloadHandler(
-    fname <- function() {"ov_dend_asv.zip"},
-    content <- function(file) {
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- c("ov_dend_asv.tiff", "ov_dend_asv.html",
-                  "ov_dend_asv.csv", "ov_dend_asv.rds")
-      ggsave(to_zip[1], plot=p_dend_asv())
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_dend_asv())), to_zip[2])
-      write.csv(asv_ddata(), to_zip[3])
-      saveRDS(p_dend_asv(), to_zip[4])
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
-  
+  # heatmap---------------------------------------------------------------------
   # set heatmap orientation
   hmap_data <- reactive({
     
@@ -419,8 +314,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
     )
   })
   
-  # plot heat map
-  output$hmap_plot <- renderPlotly({
+  hmaply_plot <- reactive({
     req(hmap_calculate())
     
     if(param$work_db$transform_method == 'none') {
@@ -436,61 +330,88 @@ mod_ov_hmap_server <- function(input, output, session, param){
               scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
                 low = "blue",
                 high = "red"),
-              key.title = key_title) 
+              key.title = key_title)
+  })
+  # plot heat map
+  output$hmap_plot <- renderPlotly({
+    hmaply_plot()
   })
   
-  output$dl_hmap_html <- downloadHandler(
-    fname <- function() {"ov_hmap.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(heatmaply(
-        hmap(), 
-        node_type = 'heatmap', 
-        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-          low = "blue",
-          high = "red"),
-        key.title = 'Normalized\nRelative Abundance'),
-        file)
-    }
-  )
+  # download data
+  for_download3 <- reactiveValues()
+  observe({
+    req(param$hmap_input$hclust_method, param$hmap_input$dist_method, 
+        param$hmap_input$hmap_calculate)
+    for_download3$figure <- hmaply_plot()
+    for_download3$fig_data <- hmap_data() %>% 
+      as.data.frame() %>%
+      mutate(featureID = rownames(hmap_data()))
+  })
   
-  output$dl_hmap_data <- downloadHandler(
-    fname <- function() {"ov_hmap.csv"}, 
-    content <- function(file) {
-      readr::write_csv(hmap_data(), file)
-    }
-  )
+  callModule(mod_download_server, "download_hmap", bridge = for_download3,
+             'heatmap', dl_options = c('html','csv','RDS','zip'))
   
-  output$dl_hmap_rds <- downloadHandler(
-    fname <- function() {"ov_hmap.rds"},
-    content <- function(file) {
-      saveRDS(hmap(), file)
-    }
-  )
   
-  output$dl_hmap_all <- downloadHandler(
-    fname <- function() {"ov_hmap.zip"},
-    content <- function(file) {
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- c("ov_hmap.html","ov_hmap.csv", "ov_hmap.rds")
-      htmlwidgets::saveWidget(heatmaply(
-        hmap(), 
-        node_type = 'heatmap', 
-        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
-          low = "blue",
-          high = "red"),
-        key.title = 'Normalized\nRelative Abundance'), to_zip[2])
-      write.csv(asv_ddata(), to_zip[3])
-      saveRDS(p_hmap(), to_zip[4])
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
+  # 
+  # 
+  # 
+  # to_zip <- reactive({
+  #   sprintf("heatmap_%s.%s", Sys.Date(), c("html","csv", "RDS", "zip"))
+  # })
+  # 
+  # # download data
+  # output$dl_hmap_html <- downloadHandler(
+  #   filename = function() {
+  #     to_zip()[grepl('html', to_zip())]
+  #   },
+  #   content = function(file) {
+  #     htmlwidgets::saveWidget(hmaply_plot(), file)
+  #   },
+  #   contentType = 'text/html'
+  # )
+  # 
+  # output$dl_hmap_data <- downloadHandler(
+  #   filename = function() {
+  #     to_zip()[grepl('csv', to_zip())]
+  #   }, 
+  #   content = function(file) {
+  #     write.csv(hmap_data(), file, row.names = FALSE)
+  #   },
+  #   contentType = 'text/csv'
+  # )
+  # 
+  # output$dl_hmap_rds <- downloadHandler(
+  #   fname <- function() {
+  #     to_zip()[grepl('RDS', to_zip())]
+  #   },
+  #   content <- function(file) {
+  #     saveRDS(hmap(), file)
+  #   },
+  #   contentType = 'application/rds'
+  # )
+  # 
+  # output$dl_hmap_all <- downloadHandler(
+  #   filename = function() {
+  #     to_zip()[grepl('zip', to_zip())]
+  #   },
+  #   content = function(file) {
+  #     # save current directory
+  #     mydir <- getwd()
+  #     # create temporary directory
+  #     tmpdir <- tempdir()
+  #     setwd(tempdir())
+  #     
+  #     htmlwidgets::saveWidget(hmaply_plot(), to_zip()[grepl('html', to_zip())])
+  #     write.csv(hmap_data(), to_zip()[grepl('csv', to_zip())], 
+  #               row.row.names = FALSE)
+  #     saveRDS(hmap(), to_zip()[grepl('RDS', to_zip())])
+  #     
+  #     #create the zip file
+  #     zip(file, to_zip()[grepl('zip', to_zip())])
+  #     setwd(mydir)
+  #   },
+  #   contentType = 'application/zip'
+  # )
 }
     
 ## To be copied in the UI

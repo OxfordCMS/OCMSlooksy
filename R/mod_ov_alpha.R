@@ -15,56 +15,40 @@
 #' @importFrom shiny NS tagList 
 #' @import htmlwidgets
 #' @import shinyWidgets
-#' @import readr
 mod_ov_alpha_ui <- function(id){
   ns <- NS(id)
   tagList(
     # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     h1("\u03B1-Diversity"),
     tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
-    column(
-      width = 12,
+    fluidRow(
       DT::dataTableOutput(ns('alpha_table'))  %>%
         shinycssloaders::withSpinner()
     ), br(),
-    column(
+    fluidRow(
       width = 12,
       DT::dataTableOutput(ns('alpha_test'))  %>%
         shinycssloaders::withSpinner()
     ), br(),
-    column(
-      width = 3, br(), br(),
-      wellPanel(uiOutput(ns('alpha_grp_ui')))
-    ),
-    column(
-      width = 9,
-      dropdown(
-        size = 'xs', icon = icon('save'), inline = TRUE, 
-        style = 'material-circle',
-        animate = animateOptions(
-          enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-          exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-        
-        downloadBttn(ns('dl_alpha_original'), 
-                     list(icon('file-image'), "Original plot"),
-                     size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_alpha_html'), 
-                     list(icon('file-code'), "Interactive plot"),
-                     size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_alpha_data'), 
-                     list(icon('file-alt'), "Plot data"),
-                     size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_alpha_rds'), 
-                     list(icon('file-prescription'), "RDS"),
-                     size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_alpha_all'), 
-                     list(icon('file-archive'), "All"),
-                     size = 'xs', style = 'minimal')
+    fluidRow(
+      column(
+        width = 3, br(), br(),
+        wellPanel(uiOutput(ns('alpha_grp_ui')))
       ),
-      shinyjqui::jqui_resizable(
-        plotlyOutput(ns('alpha_plot'), width = '100%', 
-                     height= 'auto') %>% 
-          shinycssloaders::withSpinner()
+      column(
+        width = 9,
+        column(
+          width = 1, style = 'padding:0px;',
+          mod_download_ui(ns('download_alpha')),
+        ),
+        column(
+          width = 11, style = 'padding:0px;',
+          shinyjqui::jqui_resizable(
+            plotlyOutput(ns('alpha_plot'), width = '100%', 
+                         height= 'auto') %>% 
+              shinycssloaders::withSpinner()
+          )
+        )  
       )
     )
   )
@@ -220,11 +204,11 @@ mod_ov_alpha_server <- function(input, output, session, param){
     if(min(grp_tally()) > 5) {
       p <- p +
         geom_point(position = position_jitter(width = 0.25, seed = 1), 
-                   alpha = 0.8)
+                   alpha = 0.6)
     }
     else {
       p <- p +
-        geom_point(alpha = 0.8)
+        geom_point(alpha = 0.6)
     }
     
     p <- p +
@@ -240,51 +224,17 @@ mod_ov_alpha_server <- function(input, output, session, param){
     ggplotly(p_alpha())
   })
   
-  output$dl_alpha_original <- downloadHandler(
-    fname <- function() {"ov_alpha.tiff"}, 
-    content <- function(file) {ggsave(file, plot=p_alpha())}
-  )
   
-  output$dl_alpha_html <- downloadHandler(
-    fname <- function() {"ov_alpha.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_alpha())), file)
-    }
-  )
+  # download data
+  for_download <- reactiveValues()
+  observe({
+    req(input$alpha_grp)
+    for_download$figure <- p_alpha()
+    for_download$fig_data <- pdata_alpha()
+  })
   
-  output$dl_alpha_data <- downloadHandler(
-    fname <- function() {"ov_alpha.csv"}, 
-    content <- function(file) {
-      readr::write_csv(pdata_alpha(), file)
-    }
-  )
+  callModule(mod_download_server, "download_alpha", bridge = for_download, 'alpha')
   
-  output$dl_alpha_rds <- downloadHandler(
-    fname <- function() {"ov_alpha.rds"},
-    content <- function(file) {
-      saveRDS(p_alpha(), file)
-    }
-  )
-  
-  output$dl_alpha_all <- downloadHandler(
-    fname <- function() {"ov_alpha.zip"},
-    content <- function(file) {
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- c("ov_alpha.tiff", "ov_alpha.html","ov_alpha.csv", "ov_alpha.rds")
-      ggsave(to_zip[1], plot=p_alpha())
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_alpha())), to_zip[2])
-      write.csv(pdata_alpha(), to_zip[3])
-      saveRDS(p_alpha(), to_zip[4])
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
 }
     
 ## To be copied in the UI

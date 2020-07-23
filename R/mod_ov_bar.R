@@ -23,33 +23,15 @@ mod_ov_bar_ui <- function(id){
     h1('Relative Distribution of Taxa'),
     column(width = 12,
            h3(textOutput(ns('bar_title'))),
+           p("Observing relative abundance or sequence abundance based on metadata variables. Abundance values can be aggregated at different taxonomic levels. The mean relative abundance is shown when selected group variable contains multiple samples"),
            DT::dataTableOutput(ns('bar_table'))  %>%
              shinycssloaders::withSpinner()
           ),
     column(width = 12,
-           column(width = 1, style = 'padding:0px;', dropdown(
-             size = 'xs', icon = icon('save'), inline = TRUE,
-             style = 'material-circle', width = 160,
-             animate = animateOptions(
-               enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-               exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-             
-             downloadBttn(ns('dl_bar_original'),
-                          list(icon('file-image'), "Original plot"),
-                          size = 'xs', style = 'minimal'), br(),
-             downloadBttn(ns('dl_bar_html'),
-                          list(icon('file-code'), "Interactive plot"),
-                          size = 'xs', style = 'minimal'), br(),
-             downloadBttn(ns('dl_bar_data'),
-                          list(icon('file-alt'), "Plot data"),
-                          size = 'xs', style = 'minimal'), br(),
-             downloadBttn(ns('dl_bar_rds'),
-                          list(icon('file-prescription'), "RDS"),
-                          size = 'xs', style = 'minimal'), br(),
-             downloadBttn(ns('dl_bar_all'),
-                          list(icon('file-archive'), "All"),
-                          size = 'xs', style = 'minimal')
-           )),
+           column(
+             width = 1, style = 'padding:0px;',
+             mod_download_ui(ns("download_bar"))
+           ),
            column(width = 11, style = 'padding:0px;',
                   shinyjqui::jqui_resizable(
                     plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>% 
@@ -73,8 +55,6 @@ mod_ov_bar_server <- function(input, output, session, param){
   bar_y <- reactive(param$bar_input$bar_y)
   bar_x <- reactive(param$bar_input$bar_x)
   
-
-
   # calculate output bar plot---------------------------------------------------
   
   bar_data <- reactive({
@@ -117,7 +97,7 @@ mod_ov_bar_server <- function(input, output, session, param){
   output$bar_table <- DT::renderDataTable({
     out <- pdata() %>% spread(!!sym(bar_x()), !!sym(bar_y()))
     x_name <- colnames(out)
-    x_name <- !grep(bar_tax(), x_name)
+    x_name <- x_name[x_name != bar_tax()]
     
     # by default, only show first 50 samples + 8 tax columns
     if(ncol(out) <= 51) {
@@ -181,51 +161,15 @@ mod_ov_bar_server <- function(input, output, session, param){
     ggplotly(p_bar())
   })
   
-  output$dl_bar_original <- downloadHandler(
-    fname <- function() {"ov_bar.tiff"},
-    content <- function(file) {ggsave(file, plot=p_bar())}
-  )
+  # download data
+  for_download <- reactiveValues()
+  observe({
+    req(param$bar_input$bar_tax, param$bar_input$bar_y, param$bar_input$bar_x)
+    for_download$figure <- p_bar()
+    for_download$fig_data <- pdata()
+  })
   
-  output$dl_bar_html <- downloadHandler(
-    fname <- function() {"ov_bar.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), file)
-    }
-  )
-  
-  output$dl_bar_data <- downloadHandler(
-    fname <- function() {"ov_bar.csv"},
-    content <- function(file) {
-      readr::write_csv(bar_data(), file)
-    }
-  )
-  
-  output$dl_bar_rds <- downloadHandler(
-    fname <- function() {"ov_bar.rds"},
-    content <- function(file) {
-      saveRDS(p_bar(), file)
-    }
-  )
-  
-  output$dl_bar_all <- downloadHandler(
-    fname <- function() {"ov_bar.zip"},
-    content <- function(file) {
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- c("ov_bar.tiff", "ov_bar.html","ov_bar.csv", "ov_bar.rds")
-      ggsave(to_zip[1], plot=p_bar())
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_bar())), to_zip[2])
-      write.csv(pdata_bar(), to_zip[3])
-      saveRDS(p_bar(), to_zip[4])
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
+  callModule(mod_download_server, "download_bar", bridge = for_download, 'bar')
   
 }
 

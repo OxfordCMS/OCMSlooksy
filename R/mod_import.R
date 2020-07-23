@@ -75,8 +75,10 @@ mod_import_ui <- function(id){
               "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
               a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
               br(),
-              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"),
+              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the create_db() function. See ", code("?OCMSExplorer::create_db()"), "for details."),
               br(),
+              "You can find a tutorial on how to use this app on the", 
+              a("OCMS blog", href = "https://oxfordcms.github.io/OCMS-blog/"),
               div(style="font-weight: bold",
                   textOutput(ns('import_status')))
             )

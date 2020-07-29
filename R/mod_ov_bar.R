@@ -15,7 +15,7 @@
 #' @importFrom shiny NS tagList
 #' @import htmlwidgets
 #' @import shinyWidgets
-#' @import readr
+
 mod_ov_bar_ui <- function(id){
   ns <- NS(id)
   tagList(

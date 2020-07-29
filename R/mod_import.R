@@ -193,9 +193,34 @@ mod_import_server <- function(input, output, session, parent_session) {
   
   # validate dataset------------------------------------------------------------
   observe({
+    
     table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                   'merged_filter_summary','merged_qc_summary') # need ymltable
+    
+    metaID <- sort(as.character(data_set()$metadata$sampleID))
+    dbID <- sort(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID'])
+    
+    ref <- unique(metaID, dbID)
+    checkID <- data.frame(refID = ref, metadataID = ref %in% metaID, 
+                          databaseID = ref %in% dbID) 
+    only_in_db <- checkID$refID[checkID$metadataID == FALSE]
+    only_in_met <- checkID$refID[checkID$databaseID == FALSE]
+    
+    msg <- ''
+    if(length(only_in_met) > 0) {
+      entry <- sprintf("'%s' only found in metadata file.", 
+                       paste(only_in_met, collapse = "', '"))
+      
+      msg <- paste(msg, entry, collapse='')
+    }
+    if(length(only_in_db) > 0) {
+      entry <- sprintf("'%s' only found in database file.",
+                       paste(only_in_db, collapse = "', '"))
+      msg <- paste(msg, entry, collapse='')
+    }
+    
     output$import_status <- renderText({
+      
       shiny::validate(
         # data_set contains necessary tables
         need(any(table_ls %in% names(data_set())),
@@ -207,9 +232,8 @@ mod_import_server <- function(input, output, session, parent_session) {
         need(!any(duplicated(data_set()$metadata$sampleID)),
              "Sample identifiers (sampleID) must be unique."),
         # sampleID matches merge_abundance_id samples exactly
-        need(identical(sort(as.character(data_set()$metadata$sampleID)),
-                       sort(colnames(data_set()[['merged_abundance_id']])[2:ncol(data_set()[['merged_abundance_id']])])),
-             "Uh oh! sampleID in metadata do not match samples in uploaded database."),
+        need(identical(metaID, dbID),
+             sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg)),
         errorClass = 'importError'
       )
       if(class(data_set()) == 'list') {
@@ -218,9 +242,9 @@ mod_import_server <- function(input, output, session, parent_session) {
     })
   })
   
-  # Check
+  # # Check
   # output$check <- renderPrint({
-  # 
+  #  
   # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {

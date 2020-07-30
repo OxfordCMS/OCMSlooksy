@@ -218,13 +218,13 @@ mod_ov_pca_server <- function(input, output, session, param){
   asv_scale <- eventReactive(pca_calculate(), {
     req(pca_scale())
     if(pca_scale() == 'UV') {
-      apply(param$work_db$asv_transform, 2, function(x) (x - mean(x)) / sd(x))
+      apply(param$work_db$asv_transform, 1, function(x) (x - mean(x)) / sd(x))
     }
     else if(pca_scale() == 'pareto') {
-      apply(param$work_db$asv_transform, 2, function(x) (x - mean(x)) / sqrt(x))
+      apply(param$work_db$asv_transform, 1, function(x) (x - mean(x)) / sqrt(x))
     }
     else if(pca_scale() == 'vast') {
-      apply(param$work_db$asv_transform, 2, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
+      apply(param$work_db$asv_transform, 1, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
       param$work_db$asv_transform
@@ -241,10 +241,19 @@ mod_ov_pca_server <- function(input, output, session, param){
   xPC <- reactive(paste0('PC', input$xPC))
   yPC <- reactive(paste0('PC', input$yPC))
 
+  # scale rotations and score to be on same axis as score 
+  ##  by st. dev of given PC ^ n_samples
+  
+  lam <- reactive({
+    d_pcx()$sdev * sqrt(nrow(d_pcx()$x))
+  })
+  
   score_data <- reactive({
-    out <- as.data.frame(d_pcx()$x)
-    out$sampleID <- rownames(out)
-    out <- out %>%
+
+    out <- t(apply(d_pcx()$x, 1, function(x) x / lam()))
+
+    out <- as.data.frame(out) %>%
+      mutate(sampleID = rownames(d_pcx()$x)) %>%
       select(sampleID, xPC(), yPC()) %>%
       left_join(param$work_db$met, 'sampleID')
     out <- out[,c(xPC(), yPC(), colnames(param$work_db$met))]
@@ -252,9 +261,10 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   load_data <- reactive({
-    out <- as.data.frame(d_pcx()$rotation)
-    out$featureID <- rownames(out)
-    out <- out %>% select('featureID', xPC(), yPC()) %>%
+    # out <- t(apply(d_pcx()$rotation, 1, function(x) x * lam()))
+    out <- as.data.frame(d_pcx()$rotation) %>% 
+      mutate(featureID = rownames(d_pcx()$rotation)) %>%
+      select('featureID', xPC(), yPC()) %>%
       left_join(param$work_db$tax, 'featureID')
     out <- out[, c(xPC(), yPC(), colnames(param$work_db$tax))]
     out

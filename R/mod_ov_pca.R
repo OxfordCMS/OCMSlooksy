@@ -227,7 +227,7 @@ mod_ov_pca_server <- function(input, output, session, param){
       apply(param$work_db$asv_transform, 1, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
-      param$work_db$asv_transform
+      t(param$work_db$asv_transform)
     }
   })
 
@@ -235,7 +235,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   d_pcx <- reactive({
     ## samples in rows
     ## centring and scaling done outside of prcomp
-    prcomp(t(asv_scale()), center = FALSE, scale. = FALSE)
+    prcomp(asv_scale(), center = FALSE, scale. = FALSE)
   })
 
   xPC <- reactive(paste0('PC', input$xPC))
@@ -251,7 +251,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   score_data <- reactive({
 
     out <- t(apply(d_pcx()$x, 1, function(x) x / lam()))
-
+    # out <- data.frame(d_pcx()$x)
     out <- as.data.frame(out) %>%
       mutate(sampleID = rownames(d_pcx()$x)) %>%
       select(sampleID, xPC(), yPC()) %>%

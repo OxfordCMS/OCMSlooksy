@@ -108,7 +108,7 @@ mod_setup_ui <- function(id){
             # fluidRow(width = 12,
             #         h3('Check Box'),
             #         verbatimTextOutput(ns('check'))),
-            # 
+
             tabItems(
               # main page-------------------------------------------------------
               tabItem(
@@ -248,8 +248,10 @@ mod_setup_ui <- function(id){
                   hidden(div(
                     id = ns('secondary_check_div'),
                     wellPanel(
-                      tags$b(textOutput(ns('secondary_filter'))),
-                      htmlOutput(ns('secondary_filter_samples'))
+                      tags$b(textOutput(ns('secondary_filter_sample'))),
+                      htmlOutput(ns('secondary_filter_sample_ui')),
+                      tags$b(textOutput(ns('secondary_filter_asv'))),
+                      htmlOutput(ns('secondary_filter_asv_ui'))
                     )
                   ))
                 ),
@@ -403,7 +405,7 @@ mod_setup_server <- function(input, output, session, improxy){
   })
 
   observeEvent(input$submit_asv, {
-    toggle(id = 'secondary_check_div', condition = secondary_check() == TRUE)
+    toggle(id = 'secondary_check_div', condition = (secondary_check_sample() == TRUE | secondary_check_asv() == TRUE))
   })
   # ui for prevalence threshold
   output$prevalence_ui <- renderUI({
@@ -590,11 +592,7 @@ mod_setup_server <- function(input, output, session, improxy){
     sprintf("Removing %s Features", length(featID[!featID %in% to_keep()]))
   })
   
-  # # check
-  # output$check <- renderPrint({
-  #   head(asv_filtered2())
-  # })
-  
+
   # giving preview on read and prevalence
   output$prev_agg_plot <- renderPlotly({
     scaleFUN <- function(x) sprintf("%.0f", x)
@@ -699,8 +697,18 @@ mod_setup_server <- function(input, output, session, improxy){
       group_by(sampleID) %>%
       summarise(sample_total = sum(read_count))
   })
-  secondary_check <- reactive({
+  
+  asv_total <- reactive({
+    asv_filtered() %>%
+      group_by(featureID) %>%
+      summarise(asv_total = sum(read_count))
+  })
+  secondary_check_sample <- reactive({
     any(sample_total()$sample_total == 0)
+  })
+  
+  secondary_check_asv <- reactive({
+    any(asv_total()$asv_total == 0)
   })
   
   # identify empty samples
@@ -710,23 +718,51 @@ mod_setup_server <- function(input, output, session, improxy){
     out$sampleID
   })
   
-  n_empty <- reactive({length(empty_sample())})
+  n_empty_sample <- reactive({length(empty_sample())})
   
-  output$secondary_filter <- renderText({
-    sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:", n_empty())
+  output$secondary_filter_sample <- renderText({
+    sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:", n_empty_sample())
   })
   
-  output$secondary_filter_samples <- renderUI({
+  output$secondary_filter_sample_ui <- renderUI({
     HTML(paste(empty_sample(), collapse = '<br/>'))
   })
+  
+  
+  # identify empty asvs
+  empty_asv <- reactive({
+    out <- asv_total() %>%
+      filter(asv_total == 0)
+    out$featureID
+  })
+  
+  n_empty_asv <- reactive({length(empty_asv())})
+  
+  output$secondary_filter_asv <- renderText({
+    sprintf("%s asvs contained 0 reads in all samples after ASV filtering. The following asvs have been removed:", n_empty_asv())
+  })
+  
+  output$secondary_filter_asv_ui <- renderUI({
+    HTML(paste(empty_asv(), collapse = '<br/>'))
+  })
+  # # check
+  # output$check <- renderPrint({
+  #   print(sample_total())
+  #   print(sample_total()$sample_total == 0)
+  #   print(head(asv_filtered2()))
+  # })
   
   # update asv_filtered
   asv_filtered2 <- eventReactive(input$submit_asv, {
     
     withBusyIndicatorServer('submit_asv', "setup_ui_1", {
-      if(secondary_check()) {
+      if(secondary_check_sample()) {
         asv_filtered() %>%
           filter(!sampleID %in% empty_sample())
+      }
+      else if(secondary_check_asv()) {
+        asv_filtered() %>%
+          filter(!featureID %in% empty_asv())
       }
       else {
         asv_filtered()
@@ -737,7 +773,7 @@ mod_setup_server <- function(input, output, session, improxy){
   
   # update met_filtered
   met_filtered2 <- eventReactive(input$submit_asv, {
-    if(secondary_check()) {
+    if(secondary_check_sample()) {
       met_filtered() %>%
         filter(!sampleID %in% empty_sample())
     }

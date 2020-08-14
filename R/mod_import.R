@@ -198,14 +198,14 @@ mod_import_server <- function(input, output, session, parent_session) {
                   'merged_filter_summary','merged_qc_summary') # need ymltable
     
     metaID <- sort(as.character(data_set()$metadata$sampleID))
-    dbID <- sort(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID'])
+    dbID <- sort(as.character(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID']))
     
-    ref <- unique(metaID, dbID)
+    ref <- unique(c(metaID, dbID))
     checkID <- data.frame(refID = ref, metadataID = ref %in% metaID, 
                           databaseID = ref %in% dbID) 
-    only_in_db <- checkID$refID[checkID$metadataID == FALSE]
-    only_in_met <- checkID$refID[checkID$databaseID == FALSE]
-    
+    only_in_db <- as.character(checkID$refID[checkID$metadataID == FALSE])
+    only_in_met <- as.character(checkID$refID[checkID$databaseID == FALSE])
+
     msg <- ''
     if(length(only_in_met) > 0) {
       entry <- sprintf("'%s' only found in metadata file.", 

@@ -139,7 +139,9 @@ mod_diffAbund_server <- function(input, output, session, improxy){
     bridge$prop_input$rho_cutoff <- input$rho_cutoff
     bridge$prop_input$rho_operator <- input$rho_operator
   })
-  callModule(mod_da_prop_server, "da_prop_ui_1", bridge)
+  prop_obj <- callModule(mod_da_prop_server, "da_prop_ui_1", bridge)
+
+  # differential abundance------------------------------------------------------
 }
 
 ## To be copied in the UI

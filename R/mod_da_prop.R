@@ -52,73 +52,111 @@ mod_da_prop_ui <- function(id){
         "Explanation..."
       )
     ),
-    column(
-      width = 12,
+    hidden(div(
+      id = 'prop_hmap_div',
       h3('Proportionality Matrix'),
-      DT::dataTableOutput(ns('prop_table'))
-    ),
-    column(
-      width = 12,
-      wellPanel(
-        tags$b("Heirchical Cluster Parameters"),
-        fluidRow(
-          column(
-            width = 3,
-            selectInput(ns('hclust_method'), "Linkage method",
-                        choices = c('complete','ward.D','ward.D2','single',
-                                    'average','mcquitty','median','centroid'),
-                        selected = 'complete'),
-            selectInput(ns('dist_method'), "Distance method",
-                        choices = c("manhattan", "euclidean", "canberra", 
-                                    "clark", "bray", "kulczynski", "jaccard", 
-                                    "gower", "altGower", "morisita", "horn",
-                                    "mountford", "raup", "binomial", "chao", 
-                                    "cao", "mahalanobis"),
-                        selected = 'euclidean')),
-          column(
-            width = 3,
-            checkboxGroupInput(ns('show_dendro'), 'Show dendrogram',
-                               choices = c('x-axis' = 'show_dendro_x',
-                                           'y-axis' = 'show_dendro_y'),
-                               selected = c('show_dendro_x', 'show_dendro_y'))),
-          column(
-            width = 3,
-            selectInput(ns('hmap_tax_label'), 'Label taxa by:',
-                        choices = c('featureID','Taxon','Species')))
+      column(
+        width = 12,
+        wellPanel(
+          tags$b("Heirchical Cluster Parameters"),
+          fluidRow(
+            column(
+              width = 3,
+              selectInput(ns('hclust_method'), "Linkage method",
+                          choices = c('complete','ward.D','ward.D2','single',
+                                      'average','mcquitty','median','centroid'),
+                          selected = 'complete'),
+              selectInput(ns('dist_method'), "Distance method",
+                          choices = c("manhattan", "euclidean", "canberra",
+                                      "clark", "bray", "kulczynski", "jaccard",
+                                      "gower", "altGower", "morisita", "horn",
+                                      "mountford", "raup", "binomial", "chao",
+                                      "cao", "mahalanobis"),
+                          selected = 'euclidean')),
+            column(
+              width = 3,
+              checkboxGroupInput(ns('show_dendro'), 'Show dendrogram',
+                                 choices = c('x-axis' = 'show_dendro_x',
+                                             'y-axis' = 'show_dendro_y'),
+                                 selected = c('show_dendro_x', 'show_dendro_y'))),
+            column(
+              width = 3,
+              selectInput(ns('hmap_tax_label'), 'Label taxa by:',
+                          choices = c('featureID','Taxon','Species')))
+          )
         )
-        
-      )
-    ),
-    column(
-      width = 12,
+      ),
       column(
-        width = 1, style = 'padding:0px;', 
-        dropdown(
-          size = 'xs', icon = icon('save'), inline = TRUE, 
-          style = 'material-circle', width = 160,
-          animate = animateOptions(
-            enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-            exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-          
-          downloadBttn(ns('dl_hmap_html'), 
-                       list(icon('file-code'), "Interactive plot"),
-                       size = 'xs', style = 'minimal'), br(),
-          downloadBttn(ns('dl_hmap_data'), 
-                       list(icon('file-alt'), "Plot data"),
-                       size = 'xs', style = 'minimal'), br(),
-          downloadBttn(ns('dl_hmap_rds'), 
-                       list(icon('file-prescription'), "RDS"),
-                       size = 'xs', style = 'minimal'), br(),
-          downloadBttn(ns('dl_hmap_all'), 
-                       list(icon('file-archive'), "All"),
-                       size = 'xs', style = 'minimal')
-        )),
-      column(
-        width = 11, style = 'padding:0px;',
-        shinyjqui::jqui_resizable(
-          plotlyOutput(ns('hmap_prop'), width = '100%', height = 'auto')))
-    )
+        width = 12,
+        column(
+          width = 1, style = 'padding:0px;',
+          dropdown(
+            size = 'xs', icon = icon('save'), inline = TRUE,
+            style = 'material-circle', width = 160,
+            animate = animateOptions(
+              enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+              exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
 
+            downloadBttn(ns('dl_hmap_html'),
+                         list(icon('file-code'), "Interactive plot"),
+                         size = 'xs', style = 'minimal'), br(),
+            downloadBttn(ns('dl_hmap_data'),
+                         list(icon('file-alt'), "Plot data"),
+                         size = 'xs', style = 'minimal'), br(),
+            downloadBttn(ns('dl_hmap_rds'),
+                         list(icon('file-prescription'), "RDS"),
+                         size = 'xs', style = 'minimal'), br(),
+            downloadBttn(ns('dl_hmap_all'),
+                         list(icon('file-archive'), "All"),
+                         size = 'xs', style = 'minimal')
+          )),
+        column(
+          width = 11, style = 'padding:0px;',
+          shinyjqui::jqui_resizable(
+            plotlyOutput(ns('hmap_prop'), width = '100%', height = 'auto')))
+      ),
+      column(
+        width = 12,
+        h3('Visualizing Feature Pairs'),
+        DT::dataTableOutput(ns('prop_table')),
+      ),
+      column(
+        width = 12,
+        tabsetPanel(
+          type = 'tabs',
+          tabPanel("Feature Pairs",
+                   column(
+                     width = 1, style = 'padding:0px;',
+                     dropdown(
+                       size = 'xs', icon = icon('save'), inline = TRUE,
+                       style = 'material-circle', width = 160,
+                       animate = animateOptions(
+                         enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+                         exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+
+                       downloadBttn(ns('dl_pair_html'),
+                                    list(icon('file-code'), "Interactive plot"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pair_data'),
+                                    list(icon('file-alt'), "Plot data"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pair_rds'),
+                                    list(icon('file-prescription'), "RDS"),
+                                    size = 'xs', style = 'minimal'), br(),
+                       downloadBttn(ns('dl_pair_all'),
+                                    list(icon('file-archive'), "All"),
+                                    size = 'xs', style = 'minimal')
+                     )),
+                   column(
+                     width = 11, style = 'padding:0px;',
+                     shinyjqui::jqui_resizable(
+                       plotlyOutput(ns("plot_pair"), width = '100%', height = 'auto'))
+                    )
+                  ),
+          tabPanel("By Metadata")
+        )
+      )
+    ))
   )
 }
 
@@ -146,6 +184,10 @@ mod_da_prop_server <- function(input, output, session, param){
   # show/hide fdr summary-------------------------------------------------------
   observeEvent(prop_calculate(), {
     show('fdr_summary_div')
+  })
+
+  observeEvent(apply_filter(), {
+    show('prop_hmap_div')
   })
 
   # calculate rho---------------------------------------------------------------
@@ -214,25 +256,10 @@ mod_da_prop_server <- function(input, output, session, param){
     print(length(work_obj()@pairs))
   })
 
-  output$prop_table <- DT::renderDataTable(
-    DT::datatable(work_obj()@matrix, extension = 'Buttons',
-                   options=list(dom = 'Blfrtip', buttons = c('copy','csv'),
-                                scrollX = TRUE)) %>%
-      DT::formatRound(column = colnames(work_obj()@matrix), digits = 3)
-  )
-
-  output$check <- renderPrint({
-    out <- work_obj()@matrix
-    convert <- data.frame(featureID = rownames(out)) 
-    convert <- convert %>%
-      left_join(tax()%>% select(featureID, Taxon, Species), 'featureID')
-    convert
-  })
-
   # heatmap of subset-----------------------------------------------------------
   hmap_data <- reactive({
     out <- work_obj()@matrix
-    convert <- data.frame(featureID = rownames(out)) 
+    convert <- data.frame(featureID = rownames(out))
     convert <- convert %>%
       left_join(tax() %>% select(featureID, Taxon, Species),
                 'featureID')
@@ -266,16 +293,28 @@ mod_da_prop_server <- function(input, output, session, param){
   output$hmap_prop <- renderPlotly({
     req(apply_filter())
     heatmaply(hmap(), node_type = 'heatmap',
+              scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+                low = "blue",
+                high = "red",
+                midpoint = 0,
+                limits = c(-1, 1)),
               key.title = 'Rho')
   })
 
   output$dl_hmap_html <- downloadHandler(
     fname <- function() {"da_hmap.html"},
     content <- function(file) {
-      htmlwidgets::saveWidget(heatmaply(hmap(),
-                                        node_type = 'heatmap', colors = 'RdYlBu',
-                                        key.title = 'Rho'),
-                              file)
+      htmlwidgets::saveWidget(
+        heatmaply(
+          hmap(),
+          node_type = 'heatmap',
+          scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+            low = "blue",
+            high = "red",
+            midpoint = 0,
+            limits = c(-1, 1)),
+          key.title = 'Rho'),
+        file)
     }
   )
 
@@ -301,9 +340,19 @@ mod_da_prop_server <- function(input, output, session, param){
       # create temporary directory
       tmpdir <- tempdir()
       setwd(tempdir())
-      to_zip <- c("ov_hmap.html","ov_hmap.csv", "ov_hmap.rds")
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_hmap())), to_zip[2])
-      write.csv(asv_ddata(), to_zip[3])
+      to_zip <- c("da_hmap.html","da_hmap.csv", "da_hmap.rds")
+      htmlwidgets::saveWidget(
+        heatmaply(
+          hmap(),
+          node_type = 'heatmap',
+          scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+            low = "blue",
+            high = "red",
+            midpoint = 0,
+            limits = c(-1, 1)),
+          key.title = 'Rho'),
+        to_zip[2])
+      write.csv(hmap_data(), to_zip[3])
       saveRDS(p_hmap(), to_zip[4])
 
       #create the zip file
@@ -311,6 +360,103 @@ mod_da_prop_server <- function(input, output, session, param){
       setwd(mydir)
     }
   )
+
+  output$check <- renderPrint({
+
+  })
+
+  # select ASV pairs from table
+  output$prop_table <- DT::renderDataTable({
+    DT::datatable(rho_df() %>%
+                    mutate(prop = round(prop, digits = 3)),
+                  colnames = c('Feature 1','Feature 2','Rho'),
+                  options = list(searchHighlight = TRUE), filter = 'top')
+  })
+
+  # visualize selected ASV pairs
+  selected <- reactive({
+    out <- rho_df()[input$prop_table_rows_selected,]
+    out <- split(out, seq(nrow(out)))
+    out
+  })
+
+  pdata <- reactive({
+    curr <- work_obj()@logratio
+    out <- c()
+    for(i in selected()) {
+      curr_row <- c(i$feature1, i$feature2, round(i$prop, digits = 3))
+      entry <- data.frame(pairID = paste(curr_row[1:2], collapse = "_"),
+                          panel = sprintf("%s_%s, %s",
+                                          curr_row[1], curr_row[2], curr_row[3]),
+                          feature1 = curr_row[1],
+                          feature2 = curr_row[2],
+                          x = curr[,curr_row[1]],
+                          y = curr[,curr_row[2]])
+      out <- rbind(out, entry)
+    }
+    out
+  })
+
+  p_pair <- reactive({
+    ggplot(pdata(), aes(x = x, y = y)) +
+      geom_point() +
+      geom_smooth(method = 'lm', se = FALSE, show.legend = FALSE) +
+      facet_wrap(~panel, scales = 'free', ncol = 3) +
+      theme_bw(12) +
+      xlab('Feature 1') +
+      ylab('Feature 2')
+  })
+
+  output$plot_pair <- renderPlotly({
+    req(input$prop_table_rows_selected)
+    ggplotly(p_pair())
+  })
+
+  output$dl_pair_html <- downloadHandler(
+    fname <- function() {"da_pair.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(ggplotly(p_pair()), file)
+    }
+  )
+
+  output$dl_pair_data <- downloadHandler(
+    fname <- function() {"da_pair.csv"},
+    content <- function(file) {
+      readr::write_csv(pdata(), file)
+    }
+  )
+
+  output$dl_pair_rds <- downloadHandler(
+    fname <- function() {"da_pair.rds"},
+    content <- function(file) {
+      saveRDS(p_pair(), file)
+    }
+  )
+
+  output$dl_pair_all <- downloadHandler(
+    fname <- function() {"da_pair.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("da_pair.html","da_pair.csv", "da_pair.rds")
+      htmlwidgets::saveWidget(ggplotly(p_pair()), to_zip[2])
+      write.csv(pdata(), to_zip[3])
+      saveRDS(p_pair(), to_zip[4])
+
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
+
+  # # return dataset
+  # cross_module <- reactiveValues()
+  # # observe({cross_module$work_obj <- work_obj()})
+  # observe({cross_module$prop_obj <- prop_obj()})
+  # return(cross_module)
 }
 
 ## To be copied in the UI

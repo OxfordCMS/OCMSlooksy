@@ -177,9 +177,6 @@ mod_ov_bar_server <- function(input, output, session, param){
 # mod_ov_bar_ui("ov_bar_ui_1")
 
 ## To be copied in the server
-<<<<<<< HEAD
-# callModule(mod_ov_bar_server, "ov_bar_ui_1")
-=======
+
 # callModule(mod_ov_bar_server, "ov_bar_ui_1")
 
->>>>>>> 5ef9062... diff abund wip

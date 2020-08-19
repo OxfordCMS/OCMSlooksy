@@ -1,5 +1,5 @@
 # Module UI
-  
+
 #' @title   mod_ov_alpha_ui and mod_ov_alpha_server
 #' @description  A shiny Module.
 #'
@@ -11,8 +11,8 @@
 #' @rdname mod_ov_alpha
 #'
 #' @keywords internal
-#' @export 
-#' @importFrom shiny NS tagList 
+#' @export
+#' @importFrom shiny NS tagList
 #' @import htmlwidgets
 #' @import shinyWidgets
 mod_ov_alpha_ui <- function(id){
@@ -44,8 +44,8 @@ mod_ov_alpha_ui <- function(id){
         column(
           width = 11, style = 'padding:0px;',
           shinyjqui::jqui_resizable(
-            plotlyOutput(ns('alpha_plot'), width = '100%', 
-                         height= 'auto') %>% 
+            plotlyOutput(ns('alpha_plot'), width = '100%',
+                         height= 'auto') %>%
               shinycssloaders::withSpinner()
           )
         )
@@ -53,31 +53,31 @@ mod_ov_alpha_ui <- function(id){
     )
   )
 }
-    
+
 # Module Server
-    
+
 #' @rdname mod_ov_alpha
 #' @export
 #' @keywords internal
-    
+
 mod_ov_alpha_server <- function(input, output, session, param){
   ns <- session$ns
-  
+
   # unpack data from parent module----------------------------------------------
   # render controls - alpha diversity-------------------------------------------
   output$alpha_grp_ui <- renderUI({
     radioButtons(ns('alpha_grp'), "Compare Sample Groups",
                  choices = colnames(param$work_db$met), selected = 'sampleID')
   })
-  
+
   # calculate alpha diversity---------------------------------------------------
-  
+
   alpha_result <- reactive({
     req(input$alpha_grp)
     alpha_data <- param$work_db$asv %>% select(-featureID)
     alpha_data <- as.data.frame(alpha_data)
     rownames(alpha_data) <- param$work_db$asv$featureID
-    
+
     shannon <- vegan::diversity(alpha_data,index = 'shannon',
                           base = 2, MARGIN = 2)
     shannon_d <- exp(shannon)
@@ -87,7 +87,7 @@ mod_ov_alpha_server <- function(input, output, session, param){
                                    base = 2, MARGIN = 2)
     simpson <- vegan::diversity(alpha_data, index = 'simpson',
                                 base = 2, MARGIN = 2)
-    
+
     out <- data.frame(sampleID = names(shannon),
                       shannon = shannon,
                       simpson = simpson,
@@ -97,9 +97,9 @@ mod_ov_alpha_server <- function(input, output, session, param){
                       invsimpson = invsimpson)
     out
   })
-  
+
   # output$check <- renderPrint({
-  # 
+  #
   # })
 
   # determine valid stat test
@@ -108,51 +108,51 @@ mod_ov_alpha_server <- function(input, output, session, param){
     if(length(grp_tally()) == 2) 'wilcox.test'
     else 'kruskal.test'
   })
-  
+
   alpha_stat <- eventReactive(input$alpha_grp, {
 
     validate(
       need(max(grp_tally()) != 1, "Only one observation per group. Group-wise comparisons not performed"),
       need(length(grp_tally()) > 1, "All observations are in the same group. Group-wise comparisons not performed")
     )
-    
+
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(param$work_db$met %>% 
+      inner_join(param$work_db$met %>%
                    gather('meta_variable','grouping', -sampleID),
                  'sampleID') %>%
       filter(meta_variable == input$alpha_grp)
-    
+
     out <- ggpubr::compare_means(formula = alpha_value~grouping, data = out,
                                  group.by = c('alpha_metric'),
                                  method = stat_test(), p.adjust.method = 'BH')
     out
   })
-  
+
   # show tables
   output$alpha_table <- DT::renderDataTable({
     out <- param$work_db$met %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID')
-    DT::datatable(out, extensions = 'Buttons', 
-                  options = list(scrollX = TRUE, dom = 'Blfrtip', 
+    DT::datatable(out, extensions = 'Buttons',
+                  options = list(scrollX = TRUE, dom = 'Blfrtip',
                                  buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(alpha_result())[2:ncol(alpha_result())], digits = 3)
   })
-  
+
   output$alpha_test <- DT::renderDataTable({
     validate(
       need(max(grp_tally()) != 1, "Only one observation per group. Group-wise comparisons not performed"),
       need(length(grp_tally()) > 1, "All observations are in the same group. Group-wise comparisons not performed")
     )
-    
+
     DT::datatable(alpha_stat() %>%
-                    select(-.y., -p.format, ), extensions = 'Buttons', 
-                  options = list(scrollX = TRUE, dom = 'Blfrtip', 
+                    select(-.y., -p.format, ), extensions = 'Buttons',
+                  options = list(scrollX = TRUE, dom = 'Blfrtip',
                                  buttons = c('copy','csv'))) %>%
       DT::formatRound(column = 'p', digits = 3)
   })
-  
+
   # plot alpha diversity
   pdata_alpha <- eventReactive(input$alpha_grp, {
 
@@ -165,15 +165,15 @@ mod_ov_alpha_server <- function(input, output, session, param){
       mutate(alpha_avg = mean(shannon_d)) %>%
       distinct(.data[[input$alpha_grp]], alpha_avg) %>%
       ungroup() %>%
-      mutate(x = forcats::fct_reorder(.data[[input$alpha_grp]], 
+      mutate(x = forcats::fct_reorder(.data[[input$alpha_grp]],
                                       desc(alpha_avg)))
-    
+
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
       inner_join(param$work_db$met %>% mutate_all(as.character), 'sampleID') %>%
       group_by(alpha_metric, .data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value),
-             x = factor(.data[[input$alpha_grp]], 
+             x = factor(.data[[input$alpha_grp]],
                         levels = levels(xorder$x))) %>%
       distinct(x, alpha_metric, alpha_value, alpha_avg) %>%
       ungroup()
@@ -181,54 +181,50 @@ mod_ov_alpha_server <- function(input, output, session, param){
   })
   p_alpha <- reactive({
     req(input$alpha_grp)
-    
+
     p <- ggplot(pdata_alpha(), aes(x = x, y = alpha_value, group = x)) +
       facet_wrap(~alpha_metric, scales = 'free')
-   
+
     if(max(grp_tally()) > 1) {
       # geom_GeomSignif not compatible with plotly
       # compare_pairs <- combn(names(grp_tally()), 2, simplify = FALSE)
-      
+
       ymax = pdata_alpha() %>%
         group_by(alpha_metric) %>%
         mutate(ymax = max(alpha_value), yupper = ymax * 1.04,
                   ymin = min(alpha_value), ylower = ymin * 0.99)
-      
+
       p <- p +
         ggpubr::stat_compare_means(method = stat_test(), label = 'p.format',
                                    size = 3) +
         geom_blank(data = ymax, aes(y = yupper)) +
         geom_blank(data = ymax, aes(y = ylower))
     }
-    
+
     if(min(grp_tally()) > 5) {
       p <- p +
-        geom_point(position = position_jitter(width = 0.25, seed = 1), 
-<<<<<<< HEAD
-                   alpha = 0.8)
-=======
+        geom_point(position = position_jitter(width = 0.25, seed = 1),
                    alpha = 0.6)
->>>>>>> 72d381dd85c19d87a159acb8b5ff19f7cf8fd4fe
     }
     else {
       p <- p +
         geom_point(alpha = 0.6)
     }
-    
+
     p <- p +
       theme_bw() +
       xlab(input$alpha_grp) +
       theme(axis.text.x = element_text(angle = 90),
             axis.title.y = element_blank())
-    
+
     p
   })
-  
+
   output$alpha_plot <- renderPlotly({
     ggplotly(p_alpha())
   })
-  
-  
+
+
   # download data
   for_download <- reactiveValues()
   observe({
@@ -236,14 +232,14 @@ mod_ov_alpha_server <- function(input, output, session, param){
     for_download$figure <- p_alpha()
     for_download$fig_data <- pdata_alpha()
   })
-  
+
   callModule(mod_download_server, "download_alpha", bridge = for_download, 'alpha')
-  
+
 }
-    
+
 ## To be copied in the UI
 # mod_ov_alpha_ui("ov_alpha_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_ov_alpha_server, "ov_alpha_ui_1")
- 
+

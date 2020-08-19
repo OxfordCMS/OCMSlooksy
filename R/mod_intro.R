@@ -22,7 +22,7 @@ mod_intro_ui <- function(id){
           column(width = 8,
               h2('About the OCMS Explorer App'),
               # Module 1 - Introduction
-              tags$div("This app is a tool for analyzing marker gene sequencing data after it has been processed through the OCMS bioinformatics pipeline. This tool allows for interactive exploration of microbiome data, and browse through the analyses performed by the OCMS bioinformatics team. All data generated from the analyses and associated plots are downloadable. Finally, a report summarizes all parameters and analyses applied throughout data exploration.")),
+              tags$div("This app is a tool for analyzing marker gene sequencing data after it has been processed through the OCMS bioinformatics pipeline. This tool allows for interactive exploration of microbiome data, and browse through the analyses performed by the OCMS bioinformatics team. All data generated from the analyses and associated plots are downloadable. [Finally, a report summarizes all parameters and analyses applied throughout data exploration.]. Details on how to use the app are documented on the ", a("OCMS blog", href =  "https://oxfordcms.github.io/OCMS-blog/"), ".")),
           column(width = 4,
               br(),
               h4('About OCMS'),

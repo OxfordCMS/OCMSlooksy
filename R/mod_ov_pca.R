@@ -20,7 +20,12 @@ mod_ov_pca_ui <- function(id){
     # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     
     h1('Principle Component Analysis'),
-    tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data."),
+    tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data. Since feature values (even when transformed) can span multiple order of magnitudes, it is recommended that feature values are scaled for PCA so all features are weighted equally."),
+    p("1) Unit variance scaling mean centres the value and divides by the standard deviation of the feature. After unit variance scaling, all features have the same mean and standard deviation. (x - mean(x)) / sd(x))"), br(), 
+    p("Pareto scaling divides mean-centred values by the square root of the feature values. Pareto scaling diminishes the effects of features that exhibit large fold so the changes in features with different magnitudes are weighted more evenly. (x - mean(x)) / sqrt(x))"), br(),
+    p("Vast scaling (or variable stability scaling) uses the ratio of the mean and the standard deviation to in order to prioritise features that are more stable, while placind lesser importance on features with greater relative standard devieation. ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))"),
+    br(),
+    p('Definitions obtained from', a("van den Berg et al., 2006", href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1534033/")),
     
     hidden(div(
       id = ns('pca_summary_div'), 
@@ -117,34 +122,16 @@ mod_ov_pca_ui <- function(id){
     column(
       width = 12,
       column(
-        width = 1, style = 'padding:0px;', dropdown(
-        size = 'xs', icon = icon('save'), inline = TRUE, 
-        style = 'material-circle', width = 160,
-        animate = animateOptions(
-         enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-         exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-        
-        downloadBttn(ns('dl_pca_original'), 
-                    list(icon('file-image'), "Original plot"),
-                    size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_pca_html'), 
-                    list(icon('file-code'), "Interactive plot"),
-                    size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_pca_data'), 
-                    list(icon('file-alt'), "Plot data"),
-                    size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_pca_rds'), 
-                    list(icon('file-prescription'), "RDS"),
-                    size = 'xs', style = 'minimal'), br(),
-        downloadBttn(ns('dl_pca_all'), 
-                    list(icon('file-archive'), "All"),
-                    size = 'xs', style = 'minimal')
-        )),
-        column(width = 11, style = 'padding:0px;',
-            shinyjqui::jqui_resizable(
-              plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')
-            ))
+        width = 1, style = 'padding:0px;', 
+        mod_download_ui(ns("download_pca"))
+      ),
+      column(
+        width = 11, style = 'padding:0px;',
+        shinyjqui::jqui_resizable(
+          plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')
+        )
       )
+    )
   )
 }
     
@@ -160,8 +147,6 @@ mod_ov_pca_server <- function(input, output, session, param){
   # toggle div for input controls-----------------------------------------------
   observeEvent(pca_calculate(), {
     show('pca_summary_div')
-  })
-  observeEvent(pca_calculate(), {
     show('pca_body_div')
   })
   
@@ -233,16 +218,16 @@ mod_ov_pca_server <- function(input, output, session, param){
   asv_scale <- eventReactive(pca_calculate(), {
     req(pca_scale())
     if(pca_scale() == 'UV') {
-      apply(param$work_db$asv_transform, 2, function(x) (x - mean(x)) / sd(x))
+      apply(param$work_db$asv_transform, 1, function(x) (x - mean(x)) / sd(x))
     }
     else if(pca_scale() == 'pareto') {
-      apply(param$work_db$asv_transform, 2, function(x) (x - mean(x)) / sqrt(x))
+      apply(param$work_db$asv_transform, 1, function(x) (x - mean(x)) / sqrt(x))
     }
     else if(pca_scale() == 'vast') {
-      apply(param$work_db$asv_transform, 2, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
+      apply(param$work_db$asv_transform, 1, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
-      param$work_db$asv_transform
+      t(param$work_db$asv_transform)
     }
   })
 
@@ -250,16 +235,25 @@ mod_ov_pca_server <- function(input, output, session, param){
   d_pcx <- reactive({
     ## samples in rows
     ## centring and scaling done outside of prcomp
-    prcomp(t(asv_scale()), center = FALSE, scale. = FALSE)
+    prcomp(asv_scale(), center = FALSE, scale. = FALSE)
   })
 
   xPC <- reactive(paste0('PC', input$xPC))
   yPC <- reactive(paste0('PC', input$yPC))
 
+  # scale rotations and score to be on same axis as score 
+  ##  by st. dev of given PC ^ n_samples
+  
+  lam <- reactive({
+    d_pcx()$sdev * sqrt(nrow(d_pcx()$x))
+  })
+  
   score_data <- reactive({
-    out <- as.data.frame(d_pcx()$x)
-    out$sampleID <- rownames(out)
-    out <- out %>%
+
+    out <- t(apply(d_pcx()$x, 1, function(x) x / lam()))
+    # out <- data.frame(d_pcx()$x)
+    out <- as.data.frame(out) %>%
+      mutate(sampleID = rownames(d_pcx()$x)) %>%
       select(sampleID, xPC(), yPC()) %>%
       left_join(param$work_db$met, 'sampleID')
     out <- out[,c(xPC(), yPC(), colnames(param$work_db$met))]
@@ -267,9 +261,11 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   load_data <- reactive({
-    out <- as.data.frame(d_pcx()$rotation)
-    out$featureID <- rownames(out)
-    out <- out %>% select('featureID', xPC(), yPC()) %>%
+
+    # out <- t(apply(d_pcx()$rotation, 1, function(x) x * lam()))
+    out <- as.data.frame(d_pcx()$rotation) %>% 
+      mutate(featureID = rownames(d_pcx()$rotation)) %>%
+      select('featureID', xPC(), yPC()) %>%
       left_join(param$work_db$tax, 'featureID')
     out <- out[, c(xPC(), yPC(), colnames(param$work_db$tax))]
     out
@@ -390,6 +386,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
 
   p_biplot <- reactive({
+    req(input$xPC, input$yPC)
     
     p_biplot <- cms_biplot(
       score_data(), load_data(),
@@ -430,79 +427,17 @@ mod_ov_pca_server <- function(input, output, session, param){
   output$plot_pca <- renderPlotly({
     ggplotly(p_biplot())
   })
+  
+  # download data
+  for_download <- reactiveValues()
+  observe({
+    req(param$pca_input$pca_scale, param$pca_input$pca_calculate)
+    for_download$figure <- p_biplot()
+    for_download$fig_data <- plyr::rbind.fill(score_data(), load_data())
+  })
+  
+  callModule(mod_download_server, "download_pca", bridge = for_download, 'pca')
 
-  output$dl_pca_original <- downloadHandler(
-    fname <- function() {"ov_pca.tiff"},
-    content <- function(file) {ggsave(file, plot=p_biplot())}
-  )
-
-  output$dl_pca_html <- downloadHandler(
-    fname <- function() {"ov_pca.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), file)
-    }
-  )
-
-  output$dl_pca_data <- downloadHandler(
-    fname <- function() {"ov_pcadata.zip"},
-    content <- function(file) {
-      # put together pca data to write to file
-      to_save <- d_pcx()
-      to_save[['pca_score']] <- score_data()
-      to_save[['pca_load']] <- load_data()
-
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- sprintf("ov_pca-%s.csv", names(to_save))
-      for(i in 1:length(to_zip)) {
-        write.csv(to_save, to_zip[i])
-      }
-
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-
-  )
-
-  output$dl_pca_rds <- downloadHandler(
-    fname <- function() {"ov_pca.rds"},
-    content <- function(file) {
-      saveRDS(p_biplot(), file)
-    }
-  )
-
-  output$dl_pca_all <- downloadHandler(
-    fname <- function() {"ov_pca.zip"},
-    content <- function(file) {
-
-      # put together pca data to write to file
-      to_save <- d_pcx()
-      to_save[['pca_score']] <- score_data()
-      to_save[['pca_load']] <- load_data()
-
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      to_zip <- c("ov_pca.tiff", "ov_pca.html","ov_pca.rds",
-                  sprintf("ov_pca-%s.csv", names(to_save)))
-      ggsave(to_zip[1], plot=p_biplot())
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_biplot())), to_zip[2])
-      saveRDS(p_biplot(), to_zip[3])
-      for(i in 1:length(to_save)) {
-        write.csv(to_save, to_zip[i+3])
-      }
-
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
 }
     
 ## To be copied in the UI

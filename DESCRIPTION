@@ -30,7 +30,6 @@ Imports:
     plotly,
     propr,
     RColorBrewer,
-    readr,
     RSQLite,
     shiny,
     shinycssloaders,
@@ -43,4 +42,4 @@ Imports:
     vegan,
     vroom,
     pkgload
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1

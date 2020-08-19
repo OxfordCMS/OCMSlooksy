@@ -20,7 +20,7 @@
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
     h1("Principal Coordinate Analysis"),
     tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
     hidden(div(
@@ -68,7 +68,7 @@ mod_ov_pcoa_ui <- function(id){
                         min = 0.1, max = 5, value = 3, step = 0.5),
             sliderInput(ns('pcoa_lab_alpha'), 'Label transparency:',
                         min = 0.1, max = 1, value = 1, step = 0.1)),
-          
+ 
           # cluster aethetics
           hidden(div(
             id = ns('pcoa_ell_div'),
@@ -88,39 +88,27 @@ mod_ov_pcoa_ui <- function(id){
                            selected = 'solid'),
               numericInput(ns('pcoa_ell_ci'), "Confidence Interval",
                            min = 0.1, max = 0.99, value = 0.95, 
-                           step = 0.05))
-            )),
+                           step = 0.05)
+            )
+          ))
+        ) # end fluidRow
+      ), # end wellPanel,
           # column(width = 6, plotlyOutput(ns('CH_plot'))),
           # column(width = 6, verbatimTextOutput(ns('CH_index'))),
-          column(
-            width = 12, 
-            dropdown(
-              size = 'xs', icon = icon('save'), inline = TRUE, 
-              style = 'material-circle',
-              animate = animateOptions(
-                enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
-                exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-              
-              downloadBttn(ns('dl_pcoa_original'), 
-                           list(icon('file-image'), "Original plot"),
-                           size = 'xs', style = 'minimal'), br(),
-              downloadBttn(ns('dl_pcoa_html'), 
-                           list(icon('file-code'), "Interactive plot"),
-                           size = 'xs', style = 'minimal'), br(),
-              downloadBttn(ns('dl_pcoa_data'), 
-                          list(icon('file-alt'), "Plot data"),
-                          size = 'xs', style = 'minimal'), br(),
-              downloadBttn(ns('dl_pcoa_rds'), 
-                          list(icon('file-prescription'), "RDS"),
-                          size = 'xs', style = 'minimal'), br(),
-              downloadBttn(ns('dl_pcoa_all'), 
-                          list(icon('file-archive'), "All"),
-                          size = 'xs', style = 'minimal')),
-            shinyjqui::jqui_resizable(
-              plotlyOutput(ns('pcoa_plot'), width = '100%') %>% 
-                shinycssloaders::withSpinner()
-            ))
-          ))
+      column(
+        width = 12,
+        column(
+          width = 1, style = 'padding:0px;',
+          mod_download_ui(ns("download_pcoa"))
+        ),
+        column(
+          width = 11, style = 'padding:0px;',
+          shinyjqui::jqui_resizable(
+            plotlyOutput(ns('pcoa_plot'), width = '100%') %>% 
+              shinycssloaders::withSpinner()
+          )
+        )
+      )  
     ))
   )
 }
@@ -403,78 +391,17 @@ mod_ov_pcoa_server <- function(input, output, session, param){
     ggplotly(p_pcoa())
   })
   
-  output$dl_pcoa_original <- downloadHandler(
-    fname <- function() {"ov_pcoa.tiff"}, 
-    content <- function(file) {ggsave(file, plot=p_pcoa())}
-  )
+  # download data
+  for_download <- reactiveValues()
+  observe({
+    req(param$pcoa_input$pcoa_dist, param$pcoa_input$pcoa_calculate, 
+        input$xPCo, input$yPCo)
+    for_download$figure <- p_pcoa()
+    for_download$fig_data <- pdata_pcoa()
+  })
   
-  output$dl_pcoa_html <- downloadHandler(
-    fname <- function() {"ov_pcoa.html"},
-    content <- function(file) {
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_pcoa())), file)
-    }
-  )
+  callModule(mod_download_server, "download_pcoa", bridge = for_download, 'pcoa')
   
-  output$dl_pcoa_data <- downloadHandler(
-    fname <- function() {"ov_pcoadata.zip"}, 
-    content <- function(file) {
-      # put together pcoa data to write to file
-      to_save <- pcoa_data()
-      to_save[['pcoa_plotdata']] <- pdata_pcoa()
-      
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      
-      to_zip <- sprintf('ov_pcoa%s.csv',names(to_save))
-      for(i in 1:length(to_zip)) {
-        write.csv(to_save, to_zip[i])  
-      }
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
-  
-  output$dl_pcoa_rds <- downloadHandler(
-    fname <- function() {"ov_pcoa.rds"},
-    content <- function(file) {
-      saveRDS(p_pcoa(), file)
-    }
-  )
-  
-  output$dl_pcoa_all <- downloadHandler(
-    fname <- function() {"ov_pcoa.zip"},
-    content <- function(file) {
-      # put together pcoa data to write to file
-      to_save <- pcoa_data()
-      to_save[['pcoa_plotdata']] <- pdata_pcoa()
-      
-      # save current directory
-      mydir <- getwd()
-      # create temporary directory
-      tmpdir <- tempdir()
-      setwd(tempdir())
-      
-      to_zip <- c("ov_pcoa.tiff", "ov_pcoa.html","ov_pcoa.rds",
-                  sprintf('ov_pcoa%s.csv',names(to_save)))
-      
-      # writing temp files
-      ggsave(to_zip[1], plot=p_pcoa())
-      htmlwidgets::saveWidget(as_widget(ggplotly(p_pcoa())), to_zip[2])
-      saveRDS(p_pcoa(), to_zip[3])
-      for(i in 1:length(to_save)) {
-        write.csv(to_save, to_zip[i+3])  
-      }
-      
-      #create the zip file
-      zip(file, to_zip)
-      setwd(mydir)
-    }
-  )
 }
     
 ## To be copied in the UI

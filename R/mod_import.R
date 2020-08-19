@@ -75,8 +75,10 @@ mod_import_ui <- function(id){
               "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
               a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
               br(),
-              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the [create database tool]"),
+              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the create_db() function. See ", code("?OCMSExplorer::create_db()"), "for details."),
               br(),
+              "You can find a tutorial on how to use this app on the", 
+              a("OCMS blog", href = "https://oxfordcms.github.io/OCMS-blog/"),
               div(style="font-weight: bold",
                   textOutput(ns('import_status')))
             )
@@ -191,8 +193,32 @@ mod_import_server <- function(input, output, session, parent_session) {
   
   # validate dataset------------------------------------------------------------
   observe({
+    
     table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                   'merged_filter_summary','merged_qc_summary') # need ymltable
+    
+    metaID <- sort(as.character(data_set()$metadata$sampleID))
+    dbID <- sort(as.character(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID']))
+    
+    ref <- unique(c(metaID, dbID))
+    checkID <- data.frame(refID = ref, metadataID = ref %in% metaID, 
+                          databaseID = ref %in% dbID) 
+    only_in_db <- as.character(checkID$refID[checkID$metadataID == FALSE])
+    only_in_met <- as.character(checkID$refID[checkID$databaseID == FALSE])
+
+    msg <- ''
+    if(length(only_in_met) > 0) {
+      entry <- sprintf("'%s' only found in metadata file.", 
+                       paste(only_in_met, collapse = "', '"))
+      
+      msg <- paste(msg, entry, collapse='')
+    }
+    if(length(only_in_db) > 0) {
+      entry <- sprintf("'%s' only found in database file.",
+                       paste(only_in_db, collapse = "', '"))
+      msg <- paste(msg, entry, collapse='')
+    }
+    
     output$import_status <- renderText({
       shiny::validate(
         # data_set contains necessary tables
@@ -205,9 +231,8 @@ mod_import_server <- function(input, output, session, parent_session) {
         need(!any(duplicated(data_set()$metadata$sampleID)),
              "Sample identifiers (sampleID) must be unique."),
         # sampleID matches merge_abundance_id samples exactly
-        need(identical(sort(as.character(data_set()$metadata$sampleID)),
-                       sort(colnames(data_set()[['merged_abundance_id']])[2:ncol(data_set()[['merged_abundance_id']])])),
-             "Uh oh! sampleID in metadata do not match samples in uploaded database."),
+        need(identical(metaID, dbID),
+             sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg)),
         errorClass = 'importError'
       )
       if(class(data_set()) == 'list') {
@@ -218,7 +243,7 @@ mod_import_server <- function(input, output, session, parent_session) {
   
   # Check
   # output$check <- renderPrint({
-  # 
+  #
   # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {

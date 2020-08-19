@@ -108,7 +108,11 @@ mod_setup_ui <- function(id){
             # fluidRow(width = 12,
             #         h3('Check Box'),
             #         verbatimTextOutput(ns('check'))),
+<<<<<<< HEAD
             # 
+=======
+
+>>>>>>> 72d381dd85c19d87a159acb8b5ff19f7cf8fd4fe
             tabItems(
               # main page-------------------------------------------------------
               tabItem(
@@ -126,12 +130,13 @@ mod_setup_ui <- function(id){
                        h1('Filter Samples'), br(),
                        tags$div(
                          "It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
-                br(), br(),
-                fluidRow(
+                
+                fluidRow(br(), br(),
                   column(width = 8,
                     hidden(div(
                       id = ns('sample_filter_div'),
                       column(width = 12,
+                        p("Select samples to include/exclude from the table and click 'Filter samples' to apply changes"), br(),
                         DT::dataTableOutput(ns('sample_options_ui')) 
                       )
                     )),
@@ -146,6 +151,7 @@ mod_setup_ui <- function(id){
                     id = ns('sample_filter_selcted_div'),
                     column(
                       width = 4,
+                      br(),
                       wellPanel(tags$b('Selected samples:'),
                                 htmlOutput(ns('sample_select'))
                                 )
@@ -160,7 +166,7 @@ mod_setup_ui <- function(id){
                 column(width = 12,
                   h1('Filter Features'),
                   tags$div(
-                    "It may be desirable to perform analysis on a subset of features if certain taxa are considered contamination, or are no longer relevant to the current research question.",
+                    "It may be desirable to perform analysis on a subset of features (e.g. sequences) if certain taxa are considered contamination, or are no longer relevant to the current research question.",
                     br(),br(),
                     tags$em(
                       tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering features at this stage should only be done if you have additional reasoning for omitting certain sequences or features"),
@@ -171,6 +177,12 @@ mod_setup_ui <- function(id){
                   column(width = 12, # begin asv_option_count column 
                     hidden(div(
                       id = ns('asv_option_count'),
+                      br(),
+                      p("There are three methods by which sequences can be filtered. For all three methods, the cut-off threshold is taken into consideration with the prevalence of sequences across the samples*."), br(), 
+                      p("1) 'Read count' sets the filter threshold at a specific read count, such that a given sequence must be observed greater than or equal to the cut-off count."),
+                      p("2) 'Percent of sample total' looks at read counts as abundances relative to the sample total. This is useful for when you want to keep features that make up at least x% in your samples."),
+                      p("3) 'Percent of dataset total' looks at read counts as abundances relative to the dataset total. This is useful for when you want to keep features that make up at least x% in your dataset."), br(),
+                      p("*Sequence prevalence is calculated as the number of samples in which sequence abundance is greater than or equal to the cut-off threshold."),
                       column(
                         width = 3, br(),
                         wellPanel(
@@ -223,6 +235,7 @@ mod_setup_ui <- function(id){
                   hidden(div(
                     id = ns('asv_option_select'),
                     h3('Filter features based on selection'),
+                    p("Select the features that you wish to", strong("exclude"),"from subsequent analyses. You can filter the rows using the search fields at the top of each column, or using the search bar at the top right corner of the table. Multiple rows can be selected at once by clicking the first row, then holding the shift button while clicking the last row. The number of columns shown is limited to 50 samples, be default. To show more samples, click on 'Column visibility' to get a dropdown menu of the samples and select the ones you wish to display. Click 'Filter features' to apply changes."), br(),
                     DT::dataTableOutput(ns('asv_table_select')) %>% 
                       shinycssloaders::withSpinner()
                   )) # end asv_option_select
@@ -239,8 +252,10 @@ mod_setup_ui <- function(id){
                   hidden(div(
                     id = ns('secondary_check_div'),
                     wellPanel(
-                      tags$b(textOutput(ns('secondary_filter'))),
-                      htmlOutput(ns('secondary_filter_samples'))
+                      tags$b(textOutput(ns('secondary_filter_sample'))),
+                      htmlOutput(ns('secondary_filter_sample_ui')),
+                      tags$b(textOutput(ns('secondary_filter_asv'))),
+                      htmlOutput(ns('secondary_filter_asv_ui'))
                     )
                   ))
                 ),
@@ -257,9 +272,13 @@ mod_setup_ui <- function(id){
                 tabName = 'transform_asv',
                 column(width = 12,
                        h1('Transform Read Counts'),
-                       tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link].", 
-                                br(), 
-                                "Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data. Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."),
+                       tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link]."),
+                       br(), 
+                       p("Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data."),
+                       br(),
+                       p("Other forms of transformation include log10 of percent abundance (of the sample) and percent abundance (of the sample). Note that choosing percent abundance (without any log transformation) limits the analysis options available in subsequent analyses."),
+                       br(),
+                       p("Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."), br(),
                        DT::dataTableOutput(ns('preview_transform')) %>%
                          shinycssloaders::withSpinner())
               )
@@ -390,14 +409,16 @@ mod_setup_server <- function(input, output, session, improxy){
   })
 
   observeEvent(input$submit_asv, {
-    toggle(id = 'secondary_check_div', condition = secondary_check() == TRUE)
+    toggle(id = 'secondary_check_div', condition = (secondary_check_sample() == TRUE | secondary_check_asv() == TRUE))
   })
   # ui for prevalence threshold
   output$prevalence_ui <- renderUI({
     nsample <- length(unique(samp_filtered()$sampleID))
+    default <- round(nsample * 0.05)
+    if(default < 1) default <- 1
     numericInput(ns('prevalence'),
                  "Feature prevalence (# of samples):",
-                 min = 1, max = nsample, value = round(nsample * 0.05))
+                 min = 1, max = nsample, value = default)
   })
   # ui for  cut-off threshold
   ui_entry <- eventReactive(input$cutoff_method, {
@@ -575,11 +596,6 @@ mod_setup_server <- function(input, output, session, improxy){
     sprintf("Removing %s Features", length(featID[!featID %in% to_keep()]))
   })
   
-  # # check
-  # output$check <- renderPrint({
-  #   head(asv_filtered2())
-  # })
-  
   # giving preview on read and prevalence
   output$prev_agg_plot <- renderPlotly({
     scaleFUN <- function(x) sprintf("%.0f", x)
@@ -684,8 +700,18 @@ mod_setup_server <- function(input, output, session, improxy){
       group_by(sampleID) %>%
       summarise(sample_total = sum(read_count))
   })
-  secondary_check <- reactive({
+  
+  asv_total <- reactive({
+    asv_filtered() %>%
+      group_by(featureID) %>%
+      summarise(asv_total = sum(read_count))
+  })
+  secondary_check_sample <- reactive({
     any(sample_total()$sample_total == 0)
+  })
+  
+  secondary_check_asv <- reactive({
+    any(asv_total()$asv_total == 0)
   })
   
   # identify empty samples
@@ -695,23 +721,52 @@ mod_setup_server <- function(input, output, session, improxy){
     out$sampleID
   })
   
-  n_empty <- reactive({length(empty_sample())})
+  n_empty_sample <- reactive({length(empty_sample())})
   
-  output$secondary_filter <- renderText({
-    sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:", n_empty())
+  output$secondary_filter_sample <- renderText({
+    sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:", n_empty_sample())
   })
   
-  output$secondary_filter_samples <- renderUI({
+  output$secondary_filter_sample_ui <- renderUI({
     HTML(paste(empty_sample(), collapse = '<br/>'))
   })
+  
+  
+  # identify empty asvs
+  empty_asv <- reactive({
+    out <- asv_total() %>%
+      filter(asv_total == 0)
+    out$featureID
+  })
+  
+  n_empty_asv <- reactive({length(empty_asv())})
+  
+  output$secondary_filter_asv <- renderText({
+    sprintf("%s asvs contained 0 reads in all samples after ASV filtering. The following asvs have been removed:", n_empty_asv())
+  })
+  
+  output$secondary_filter_asv_ui <- renderUI({
+    HTML(paste(empty_asv(), collapse = '<br/>'))
+  })
+  # # check
+  # output$check <- renderPrint({
+  #   print(sample_total())
+  #   print(sample_total()$sample_total == 0)
+  #   print(head(asv_filtered2()))
+  # })
   
   # update asv_filtered
   asv_filtered2 <- eventReactive(input$submit_asv, {
     
     withBusyIndicatorServer('submit_asv', "setup_ui_1", {
-      if(secondary_check()) {
+
+      if(secondary_check_sample()) {
         asv_filtered() %>%
           filter(!sampleID %in% empty_sample())
+      }
+      else if(secondary_check_asv()) {
+        asv_filtered() %>%
+          filter(!featureID %in% empty_asv())
       }
       else {
         asv_filtered()
@@ -722,7 +777,8 @@ mod_setup_server <- function(input, output, session, improxy){
   
   # update met_filtered
   met_filtered2 <- eventReactive(input$submit_asv, {
-    if(secondary_check()) {
+
+    if(secondary_check_sample()) {
       met_filtered() %>%
         filter(!sampleID %in% empty_sample())
     }

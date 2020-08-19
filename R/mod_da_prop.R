@@ -56,6 +56,67 @@ mod_da_prop_ui <- function(id){
       width = 12,
       h3('Proportionality Matrix'),
       DT::dataTableOutput(ns('prop_table'))
+    ),
+    column(
+      width = 12,
+      wellPanel(
+        tags$b("Heirchical Cluster Parameters"),
+        fluidRow(
+          column(
+            width = 3,
+            selectInput(ns('hclust_method'), "Linkage method",
+                        choices = c('complete','ward.D','ward.D2','single',
+                                    'average','mcquitty','median','centroid'),
+                        selected = 'complete'),
+            selectInput(ns('dist_method'), "Distance method",
+                        choices = c("manhattan", "euclidean", "canberra", 
+                                    "clark", "bray", "kulczynski", "jaccard", 
+                                    "gower", "altGower", "morisita", "horn",
+                                    "mountford", "raup", "binomial", "chao", 
+                                    "cao", "mahalanobis"),
+                        selected = 'euclidean')),
+          column(
+            width = 3,
+            checkboxGroupInput(ns('show_dendro'), 'Show dendrogram',
+                               choices = c('x-axis' = 'show_dendro_x',
+                                           'y-axis' = 'show_dendro_y'),
+                               selected = c('show_dendro_x', 'show_dendro_y'))),
+          column(
+            width = 3,
+            selectInput(ns('hmap_tax_label'), 'Label taxa by:',
+                        choices = c('featureID','Taxon','Species')))
+        )
+        
+      )
+    ),
+    column(
+      width = 12,
+      column(
+        width = 1, style = 'padding:0px;', 
+        dropdown(
+          size = 'xs', icon = icon('save'), inline = TRUE, 
+          style = 'material-circle', width = 160,
+          animate = animateOptions(
+            enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
+            exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
+          
+          downloadBttn(ns('dl_hmap_html'), 
+                       list(icon('file-code'), "Interactive plot"),
+                       size = 'xs', style = 'minimal'), br(),
+          downloadBttn(ns('dl_hmap_data'), 
+                       list(icon('file-alt'), "Plot data"),
+                       size = 'xs', style = 'minimal'), br(),
+          downloadBttn(ns('dl_hmap_rds'), 
+                       list(icon('file-prescription'), "RDS"),
+                       size = 'xs', style = 'minimal'), br(),
+          downloadBttn(ns('dl_hmap_all'), 
+                       list(icon('file-archive'), "All"),
+                       size = 'xs', style = 'minimal')
+        )),
+      column(
+        width = 11, style = 'padding:0px;',
+        shinyjqui::jqui_resizable(
+          plotlyOutput(ns('hmap_prop'), width = '100%', height = 'auto')))
     )
 
   )
@@ -146,16 +207,10 @@ mod_da_prop_server <- function(input, output, session, param){
     propr:::proprPairs(work_obj()@matrix)
   })
 
-  # # convert df to matrix
-  # rho_mat <- reactive({
-  #   work_df() %>%
-  #     spread(Partner, rho)
-  # })
-
   output$prop_summary <- renderPrint({
-    cat('Rho distribution:\n')
+    cat('Rho distribution in selection:\n')
     print(summary(rho_df()$prop))
-    cat('Number of Feature Pairs:\n')
+    cat('Number of feature pairs in selection:\n')
     print(length(work_obj()@pairs))
   })
 
@@ -167,8 +222,95 @@ mod_da_prop_server <- function(input, output, session, param){
   )
 
   output$check <- renderPrint({
-    print(head(rho_df()))
+    out <- work_obj()@matrix
+    convert <- data.frame(featureID = rownames(out)) 
+    convert <- convert %>%
+      left_join(tax()%>% select(featureID, Taxon, Species), 'featureID')
+    convert
   })
+
+  # heatmap of subset-----------------------------------------------------------
+  hmap_data <- reactive({
+    out <- work_obj()@matrix
+    convert <- data.frame(featureID = rownames(out)) 
+    convert <- convert %>%
+      left_join(tax() %>% select(featureID, Taxon, Species),
+                'featureID')
+    rownames(out) <- convert[, input$hmap_tax_label]
+    colnames(out) <- convert[, input$hmap_tax_label]
+    out
+  })
+  # parameterizing heat map object
+  hmap <- reactive({
+    if(is.null(input$show_dendro)) {
+      show_value <- 'none'
+    }
+    else {
+      show_value <- input$show_dendro
+    }
+    heatmapr(
+      x = hmap_data(),
+      distfun = vegan::vegdist,
+      dist_method = input$dist_method,
+      hclust_method = input$hclust_method,
+      dendrogram = 'both',
+      show_dendrogram = c('show_dendro_y' %in% show_value,
+                          'show_dendro_x' %in% show_value),
+      Colv = "Rowv",
+      dsigits = 3,
+      show_grid = TRUE
+    )
+  })
+
+  # plot heat map
+  output$hmap_prop <- renderPlotly({
+    req(apply_filter())
+    heatmaply(hmap(), node_type = 'heatmap',
+              key.title = 'Rho')
+  })
+
+  output$dl_hmap_html <- downloadHandler(
+    fname <- function() {"da_hmap.html"},
+    content <- function(file) {
+      htmlwidgets::saveWidget(heatmaply(hmap(),
+                                        node_type = 'heatmap', colors = 'RdYlBu',
+                                        key.title = 'Rho'),
+                              file)
+    }
+  )
+
+  output$dl_hmap_data <- downloadHandler(
+    fname <- function() {"da_hmap.csv"},
+    content <- function(file) {
+      readr::write_csv(hmap_data(), file)
+    }
+  )
+
+  output$dl_hmap_rds <- downloadHandler(
+    fname <- function() {"da_hmap.rds"},
+    content <- function(file) {
+      saveRDS(hmap(), file)
+    }
+  )
+
+  output$dl_hmap_all <- downloadHandler(
+    fname <- function() {"da_hmap.zip"},
+    content <- function(file) {
+      # save current directory
+      mydir <- getwd()
+      # create temporary directory
+      tmpdir <- tempdir()
+      setwd(tempdir())
+      to_zip <- c("ov_hmap.html","ov_hmap.csv", "ov_hmap.rds")
+      htmlwidgets::saveWidget(as_widget(ggplotly(p_hmap())), to_zip[2])
+      write.csv(asv_ddata(), to_zip[3])
+      saveRDS(p_hmap(), to_zip[4])
+
+      #create the zip file
+      zip(file, to_zip)
+      setwd(mydir)
+    }
+  )
 }
 
 ## To be copied in the UI

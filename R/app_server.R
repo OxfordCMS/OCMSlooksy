@@ -4,14 +4,15 @@
 #' @import tidyr
 #' @import dplyr
 #' @import ggplot2
-#' 
+#'
 app_server <- function(input, output, session) {
   # List the first level callModules here
 
   options(shiny.maxRequestSize=100*1024^2)
   callModule(mod_intro_server, "intro_ui_1", parent_session = session)
-  
+
   cross_module1 <- callModule(mod_import_server, "import_ui_1", parent_session = session)
+
   # output$check <- renderPrint({
   #   print(names(cross_module1$data_db))
   #   print('parameter_table' %in% names(cross_module1$data_db))
@@ -19,14 +20,14 @@ app_server <- function(input, output, session) {
   observe({
     if('parameter_table' %in% names(cross_module1$data_db)) {
       showTab(inputId = 'tabs', target = 'qc')
-      callModule(mod_qc_server, "qc_ui_1", cross_module1)    
+      callModule(mod_qc_server, "qc_ui_1", cross_module1)
     }
     else {
       hideTab(inputId = 'tabs', target = "qc")
     }
   })
-  
-  
+
   cross_module2 <- callModule(mod_setup_server, "setup_ui_1", cross_module1)
   callModule(mod_overview_server, "overview_ui_1", cross_module2)
+  callModule(mod_diffAbund_server, "diffAbund_ui_1", cross_module2)
 }

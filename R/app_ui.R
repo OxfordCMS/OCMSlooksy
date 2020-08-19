@@ -10,9 +10,11 @@ app_ui <- function() {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     shinyjs::useShinyjs(),
-    # List the first level UI elements here 
+
+    # List the first level UI elements here
     # h3('Check'),
     # verbatimTextOutput('check'),
+
     navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'fixed-top',
 
                # Introduction---------------------------------------------------
@@ -23,31 +25,36 @@ app_ui <- function() {
                tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
                         mod_import_ui("import_ui_1")),
 
-               # # QC report------------------------------------------------------
+               # # QC report----------------------------------------------------
                tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
                         mod_qc_ui("qc_ui_1")),
 
                # Prepare dataset for analysis-----------------------------------
                tabPanel(title = "Prepare Data Set", value = 'prepare',
                         icon = icon("filter"), mod_setup_ui("setup_ui_1")),
-               
-               # Overview samples------------------------------------------------
-               tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
-                        mod_overview_ui("overview_ui_1"))
 
-               # Explore Beta-Diversity-----------------------------------------
+               # Overview samples-----------------------------------------------
+               tabPanel(title = "Overview", value = 'overview',
+                        icon = icon("binoculars"),
+                        mod_overview_ui("overview_ui_1")),
+
+               # Explore Differential Abundance---------------------------------
+               tabPanel(title = "Differential Abundance", value = 'diffAbund',
+                        icon = icon('microscope'),
+                        mod_diffAbund_ui("diffAbund_ui_1"))
 
     ))
 }
 
 #' @import shiny
 golem_add_external_resources <- function(){
-  
+
   tags$link(rel="stylesheet", type="text/css", href="www/custom.css")
+
   addResourcePath(
     'www', system.file('app/www', package = 'OCMSExplorer')
   )
- 
+
   tags$head(
     golem::activate_js(),
     golem::favicon()

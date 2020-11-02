@@ -14,7 +14,6 @@
 #' @export 
 #' @importFrom shiny NS tagList 
 #' @import cluster
-#' @import clusterSim
 #' @import htmlwidgets
 #' @import shinyWidgets
 mod_ov_pcoa_ui <- function(id){

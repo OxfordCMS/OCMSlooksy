@@ -23,17 +23,35 @@ app_ui <- function() {
                tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
                         mod_import_ui("import_ui_1")),
 
-               # # QC report------------------------------------------------------
+               # # QC report----------------------------------------------------
                tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
                         mod_qc_ui("qc_ui_1")),
 
-               # Prepare dataset for analysis-----------------------------------
-               tabPanel(title = "Prepare Data Set", value = 'prepare',
-                        icon = icon("filter"), mod_setup_ui("setup_ui_1")),
+               # Quality filter samples-----------------------------------------
+               tabPanel(title = "Filter Samples", value = 'qualityfilter',
+                        icon = icon("filter"), 
+                        mod_qualityfilter_ui("qualityfilter_ui_1")),
                
-               # Overview samples------------------------------------------------
-               tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
-                        mod_overview_ui("overview_ui_1"))
+               # relative abundance profiles------------------------------------
+               tabPanel(title = "Relative Abundance", value = 'profile',
+                        icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),
+               
+               # Alpha diversity------------------------------------------------
+               tabPanel(title = "\u03B1-Diversity", value = 'alpha',
+                        icon = icon("seedling"), mod_alpha_ui("alpha_ui_1")),
+               
+               # Beta diversity------------------------------------------------
+               tabPanel(title = "\u03B2-Diversity", value = 'beta',
+                        icon = icon("uncharted"), mod_alpha_ui("beta_ui_1"))
+               
+              
+               # # Prepare dataset for analysis-----------------------------------
+               # tabPanel(title = "Prepare Data Set", value = 'prepare',
+               #          icon = icon("filter"), mod_setup_ui("setup_ui_1")),
+               # 
+               # # Overview samples------------------------------------------------
+               # tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
+               #          mod_overview_ui("overview_ui_1"))
 
                # Explore Beta-Diversity-----------------------------------------
 

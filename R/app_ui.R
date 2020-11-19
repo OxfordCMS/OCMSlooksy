@@ -29,9 +29,9 @@ app_ui <- function() {
 
                # Quality filter samples-----------------------------------------
                tabPanel(title = "Filter Samples", value = 'qualityfilter',
-                        icon = icon("filter"), 
+                        icon = icon("filter"),
                         mod_qualityfilter_ui("qualityfilter_ui_1")),
-               
+
                # relative abundance profiles------------------------------------
                tabPanel(title = "Relative Abundance", value = 'profile',
                         icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),
@@ -39,10 +39,10 @@ app_ui <- function() {
                # Alpha diversity------------------------------------------------
                tabPanel(title = "\u03B1-Diversity", value = 'alpha',
                         icon = icon("seedling"), mod_alpha_ui("alpha_ui_1")),
-               
+
                # Beta diversity------------------------------------------------
                tabPanel(title = "\u03B2-Diversity", value = 'beta',
-                        icon = icon("uncharted"), mod_alpha_ui("beta_ui_1"))
+                        icon = icon("project-diagram"), mod_beta_ui("beta_ui_1"))
                
               
                # # Prepare dataset for analysis-----------------------------------

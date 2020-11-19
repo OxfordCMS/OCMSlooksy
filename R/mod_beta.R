@@ -117,7 +117,7 @@ mod_beta_ui <- function(id){
             # filter tab body---------------------------------------------------
             tabItem(
               tabName = "filter_asv_beta",
-              mod_filterfeat_ui("filterfeat_ui_1")
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))
             ), # end tabItem
             # transform tab body------------------------------------------------
             tabItem(
@@ -157,6 +157,10 @@ mod_beta_ui <- function(id){
 mod_beta_server <- function(input, output, session, improxy){
   ns <- session$ns
   
+  output$check <- renderPrint({
+    print(names(bridge$asv_transform))
+    print(summary(bridge$asv_transform))
+  })
   # aggregate features----------------------------------------------------------
   
   # store data in reactiveValues to pass onto submodules------------------------
@@ -179,14 +183,23 @@ mod_beta_server <- function(input, output, session, improxy){
     bridge$filter_input$submit_asv <- input$submit_asv
   })
   
-  filtered <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
+  withBusyIndicatorServer('submit_asv', 'beta_ui_1', {
+    cross_mod <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
+  })
   
-  # transform server------------------------------------------------------------
+  # add filtered data to bridge
+  bridge$filtered <- reactiveValues()
+  observe({
+    bridge$filtered <- cross_mod$filtered
+  })
+  
+  # transform filtered data-----------------------------------------------------
+  
   asv_transform <- eventReactive(input$submit_transform, {
     req(input$transform_method)
     
     withBusyIndicatorServer('submit_transform', 'beta_ui_1', {
-      asv_df <- as.data.frame(filtered$asv)
+      asv_df <- as.data.frame(bridge$filtered$asv)
       rownames(asv_df) <- asv_df$featureID
       asv_df <- asv_df[, colnames(asv_df) != 'featureID']
       
@@ -195,7 +208,7 @@ mod_beta_server <- function(input, output, session, improxy){
         ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
         ## use geometric mean abundance of features
         
-        asv_clr <- ALDEx2::aldex.clr(asv_df, conds = filtered$met$sampleID,
+        asv_clr <- ALDEx2::aldex.clr(asv_df, conds = bridge$filtered$met$sampleID,
                                      useMC = TRUE)
         clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
                                function(m){t(apply(m,1,median))})
@@ -212,7 +225,7 @@ mod_beta_server <- function(input, output, session, improxy){
         out <- apply(asv_df, 2, function(x) log10(x + 1*10^-6))
       }
       if(input$transform_method == 'percent') {
-        calc <- filtered$asv %>%
+        calc <- bridge$filtered$asv %>%
           gather('sampleID','read_count', -featureID) %>%
           group_by(sampleID) %>%
           mutate(sample_total = sum(read_count),
@@ -262,7 +275,11 @@ mod_beta_server <- function(input, output, session, improxy){
   })
   
   # add transformed data to bridge
-  bridge$asv_transform <- reactiveVal(asv_transform())
+  bridge$asv_transform <- reactiveValues()
+  observe({
+    req(input$submit_transform, input$transform_method)
+    bridge$asv_transform <- asv_transform()
+  })
   
   # PCoA server-----------------------------------------------------------------
   # render pcoa distance ui
@@ -281,7 +298,7 @@ mod_beta_server <- function(input, output, session, improxy){
     bridge$pcoa_input$pcoa_calculate <- input$pcoa_calculate
   })
   withBusyIndicatorServer('pcoa_calculate', 'beta_ui_1', {
-    callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", param = bridge)  
+    callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", bridge = bridge)  
   })
   
   # render pca menu item--------------------------------------------------------
@@ -312,13 +329,13 @@ mod_beta_server <- function(input, output, session, improxy){
   
   bridge$pca_input <- reactiveValues()
   observeEvent(input$pca_calculate, {
-    withBusyIndicatorServer('pca_calculate', 'overview_ui_1', {
-      if(improxy$work_db$transform_method != 'percent') {
+    withBusyIndicatorServer('pca_calculate', 'beta_ui_1', {
+      if(input$transform_method != 'percent') {
         # pass pca reactive inputs to submodule
         bridge$pca_input$pca_calculate <- input$pca_calculate
         bridge$pca_input$pca_scale <- input$pca_scale
         
-        callModule(mod_ov_pca_server, "ov_pca_ui_1", param = bridge)
+        callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
       }  
     })
     

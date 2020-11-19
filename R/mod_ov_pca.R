@@ -141,7 +141,7 @@ mod_ov_pca_ui <- function(id){
 #' @export
 #' @keywords internal
     
-mod_ov_pca_server <- function(input, output, session, param){
+mod_ov_pca_server <- function(input, output, session, bridge){
   ns <- session$ns
   
   # toggle div for input controls-----------------------------------------------
@@ -163,51 +163,51 @@ mod_ov_pca_server <- function(input, output, session, param){
   ### score point aesthetics
   output$score_pt_colour_ui <- renderUI({
     selectInput(ns('score_pt_colour'), 'Point colour:', 
-                choices = c('none', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$met)), selected = 'none')
   })
   output$score_pt_shape_ui <- renderUI({
     selectInput(ns('score_pt_shape'), 'Point shape:', 
-                choices = c('none', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$met)), selected = 'none')
   })
   
   ### score label aethetics
   output$score_label_ui <- renderUI({
     selectInput(ns('score_label_by'), 'Label scores by:', 
-                choices = c('none', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$met)), selected = 'none')
   })
   output$score_lab_colour_ui <- renderUI({
     selectInput(ns('score_lab_colour'), 'Label colour:', 
-                choices = c('none', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$met)), selected = 'none')
   })
   
   ### loading points aesthetics
   output$load_pt_colour_ui <- renderUI({
     selectInput(ns('load_pt_colour'), 'Point colour:', 
-                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
   output$load_pt_shape_ui <- renderUI({
     selectInput(ns('load_pt_shape'), 'Point shape:', 
-                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
   ### loading labels aesthetics
   output$load_label_ui <- renderUI({
     selectInput(ns('load_label_by'), 'Label loadings by:', 
-                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
   output$load_lab_colour_ui <- renderUI({
     selectInput(ns('load_lab_colour'), 'Label colour:', 
-                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
   output$load_lab_shape_ui <- renderUI({
     selectInput(ns('load_lab_shape'), 'Label shape:', 
-                choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
   
   
   # unpack data from parent module----------------------------------------------
   # unpack pca inputs
-  pca_scale <- reactive(param$pca_input$pca_scale)
-  pca_calculate <- reactive(param$pca_input$pca_calculate)
+  pca_scale <- reactive(bridge$pca_input$pca_scale)
+  pca_calculate <- reactive(bridge$pca_input$pca_calculate)
   
   # output$check <- renderPrint({
   # 
@@ -218,16 +218,16 @@ mod_ov_pca_server <- function(input, output, session, param){
   asv_scale <- eventReactive(pca_calculate(), {
     req(pca_scale())
     if(pca_scale() == 'UV') {
-      apply(param$work_db$asv_transform, 1, function(x) (x - mean(x)) / sd(x))
+      apply(bridge$asv_transform, 1, function(x) (x - mean(x)) / sd(x))
     }
     else if(pca_scale() == 'pareto') {
-      apply(param$work_db$asv_transform, 1, function(x) (x - mean(x)) / sqrt(x))
+      apply(bridge$asv_transform, 1, function(x) (x - mean(x)) / sqrt(x))
     }
     else if(pca_scale() == 'vast') {
-      apply(param$work_db$asv_transform, 1, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
+      apply(bridge$asv_transform, 1, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
-      t(param$work_db$asv_transform)
+      t(bridge$asv_transform)
     }
   })
 
@@ -255,8 +255,8 @@ mod_ov_pca_server <- function(input, output, session, param){
     out <- as.data.frame(out) %>%
       mutate(sampleID = rownames(d_pcx()$x)) %>%
       select(sampleID, xPC(), yPC()) %>%
-      left_join(param$work_db$met, 'sampleID')
-    out <- out[,c(xPC(), yPC(), colnames(param$work_db$met))]
+      left_join(bridge$filtered$met, 'sampleID')
+    out <- out[,c(xPC(), yPC(), colnames(bridge$filtered$met))]
     out
   })
 
@@ -265,8 +265,8 @@ mod_ov_pca_server <- function(input, output, session, param){
     out <- as.data.frame(d_pcx()$rotation) %>% 
       mutate(featureID = rownames(d_pcx()$rotation)) %>%
       select('featureID', xPC(), yPC()) %>%
-      left_join(param$work_db$tax, 'featureID')
-    out <- out[, c(xPC(), yPC(), colnames(param$work_db$tax))]
+      left_join(bridge$filtered$tax, 'featureID')
+    out <- out[, c(xPC(), yPC(), colnames(bridge$filtered$tax))]
     out
   })
 
@@ -429,7 +429,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   # download data
   for_download <- reactiveValues()
   observe({
-    req(param$pca_input$pca_scale, param$pca_input$pca_calculate)
+    req(bridge$pca_input$pca_scale, bridge$pca_input$pca_calculate)
     for_download$figure <- p_biplot()
     for_download$fig_data <- plyr::rbind.fill(score_data(), load_data())
   })

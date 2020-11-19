@@ -118,13 +118,18 @@ mod_ov_pcoa_ui <- function(id){
 #' @export
 #' @keywords internal
     
-mod_ov_pcoa_server <- function(input, output, session, param){
+mod_ov_pcoa_server <- function(input, output, session, bridge){
   ns <- session$ns
+  
+  # # check
+  # output$check <- renderPrint({
+  # 
+  # })
   
   # unpack data from parent module----------------------------------------------
   # unpack pca inputs
-  pcoa_dist <- reactive(param$pcoa_input$pcoa_dist)
-  pcoa_calculate <- reactive(param$pcoa_input$pcoa_calculate)
+  pcoa_dist <- reactive(bridge$pcoa_input$pcoa_dist)
+  pcoa_calculate <- reactive(bridge$pcoa_input$pcoa_calculate)
   
   # toggle div for input controls-----------------------------------------------
   observeEvent(pcoa_calculate(), {
@@ -141,46 +146,46 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   ## render controls - PCoA-----------------------------------------------------
   output$pcoa_nclust_ui <- renderUI({
     numericInput(ns('pcoa_nclust'), "Number of clusters, k", 
-                 value = 2, min = 2, max = nrow(param$work_db$met)-1, step = 1)
+                 value = 2, min = 2, max = nrow(bridge$filtered$met)-1, step = 1)
   })
   output$xPCo_ui <- renderUI({
-    numericInput(ns('xPCo'), "Principal Coordinate, x-axis", min = 1, max = length(param$work_db$met$sampleID), step = 1,
+    numericInput(ns('xPCo'), "Principal Coordinate, x-axis", min = 1, max = length(bridge$filtered$met$sampleID), step = 1,
                  value = 1)
   })
   output$yPCo_ui <- renderUI({
-    numericInput(ns('yPCo'), "Principal Coordinate, y-axis", min = 1, max = length(param$work_db$met$sampleID), step = 1,
+    numericInput(ns('yPCo'), "Principal Coordinate, y-axis", min = 1, max = length(bridge$filtered$met$sampleID), step = 1,
                  value = 2)
   })
   
   ### pcoa point aesthetics
   output$pcoa_pt_colour_ui <- renderUI({
     selectInput(ns('pcoa_pt_colour'), 'Point colour:', 
-                choices = c('none', 'k-means', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', 'k-means', colnames(bridge$filtered$met)), selected = 'none')
   })
   output$pcoa_pt_shape_ui <- renderUI({
     selectInput(ns('pcoa_pt_shape'), 'Point shape:', 
-                choices = c('none', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$met)), selected = 'none')
   })
   
   ### pcoa label aethetics
   output$pcoa_label_ui <- renderUI({
     selectInput(ns('pcoa_label'), 'Label by:', 
-                choices = c('none', colnames(param$work_db$met)), selected = 'none')
+                choices = c('none', colnames(bridge$filtered$met)), selected = 'none')
   })
   output$pcoa_lab_colour_ui <- renderUI({
     selectInput(ns('pcoa_lab_colour'), 'Label colour:', 
-                choices = c('none', 'k-means', colnames(param$work_db$met)), 
+                choices = c('none', 'k-means', colnames(bridge$filtered$met)), 
                 selected = 'none')
   })
   
   # ### pca loaing points aesthetics
   # output$pcoa_pt_colour_ui <- renderUI({
   #   selectInput(ns('pcoa_pt_colour'), 'Point colour:', 
-  #               choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+  #               choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   # })
   # output$pcoa_pt_shape_ui <- renderUI({
   #   selectInput(ns('pcoa_pt_shape'), 'Point shape:', 
-  #               choices = c('none', colnames(param$work_db$tax)), selected = 'none')
+  #               choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   # })
   
   # calculate pcoa--------------------------------------------------------------
@@ -189,7 +194,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   ## samples as rows
   dist_data <- eventReactive(pcoa_calculate(), {
     req(pcoa_dist())
-    vegan::vegdist(t(param$work_db$asv_transform), method = pcoa_dist())
+    vegan::vegdist(t(bridge$asv_transform), method = pcoa_dist())
   })
   
   output$dist_table <- DT::renderDataTable({
@@ -221,11 +226,11 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   #   out <- 0
   #   
   #   # cluster of 1 returns NaN
-  #   for (k in 2:(nrow(param$work_db$met)-1)) {
+  #   for (k in 2:(nrow(bridge$filtered$met)-1)) {
   #     # find mediod clusters and return a vector of clusters
   #     
   #     # calculate Calisnki-Harabasz index to determine the fit to the cluster
-  #     out[k] <- clusterSim::index.G1(t(param$work_db$asv_transform), cluster_result()$pam_cluster, 
+  #     out[k] <- clusterSim::index.G1(t(bridge$asv_transform), cluster_result()$pam_cluster, 
   #                                    d = dist_data(), centrotypes = "medoids")
   #   }
   #   
@@ -238,7 +243,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   #   pdata <- data.frame(x=1:length(pcoa_optk()), y=0, yend=pcoa_optk())
   #   pdata$xend <- pdata$x
   #   
-  #   k <- nrow(param$work_db$met)-1
+  #   k <- nrow(bridge$filtered$met)-1
   #   # plot number of clusters and respective CH index
   #   p <- ggplot(pdata) +
   #     geom_segment(ggplot2::aes(x=x, y=y, xend=xend, yend=yend)) +
@@ -338,7 +343,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
       inner_join(cluster_result() %>%
                    mutate(pam_cluster = as.character(pam_cluster)), 
                  'sampleID') %>%
-      inner_join(param$work_db$met, 'sampleID')
+      inner_join(bridge$filtered$met, 'sampleID')
     pdata
   })
   
@@ -393,7 +398,7 @@ mod_ov_pcoa_server <- function(input, output, session, param){
   # download data
   for_download <- reactiveValues()
   observe({
-    req(param$pcoa_input$pcoa_dist, param$pcoa_input$pcoa_calculate, 
+    req(bridge$pcoa_input$pcoa_dist, bridge$pcoa_input$pcoa_calculate, 
         input$xPCo, input$yPCo)
     for_download$figure <- p_pcoa()
     for_download$fig_data <- pdata_pcoa()

@@ -43,8 +43,9 @@ mod_alpha_ui <- function(id){
                                   'selection' = 'asv_by_select'),
                       selected = character(0))
                 )),
-              withBusyIndicatorUI(
-                actionButton(ns('submit_asv'), "Filter features")))  
+              actionButton(ns('submit_asv'), "Filter features"))
+              # withBusyIndicatorUI(
+              #  )  
           )
         ) # end sidebar menu
       ), # end sidebar
@@ -62,7 +63,7 @@ mod_alpha_ui <- function(id){
             # filter tab body---------------------------------------------------
             tabItem(
               tabName = "filter_asv_alpha",
-              mod_filterfeat_ui("filterfeat_ui_1")
+              mod_filterfeat_ui(ns("filterfeat_ui_alpha"))
             ), # end tabItem
             # alpha tab body----------------------------------------------------
             tabItem(
@@ -136,21 +137,26 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   withBusyIndicatorServer('submit_asv', 'alpha_ui_1', {
-    filtered <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
+    cross_mod <- callModule(mod_filterfeat_server, "filterfeat_ui_alpha", bridge=bridge)
   })
+  
+  output$check <- renderPrint({
+
+  })
+  
   # render controls - alpha diversity-------------------------------------------
   output$alpha_grp_ui <- renderUI({
     radioButtons(ns('alpha_grp'), "Compare Sample Groups",
-                 choices = colnames(filtered$met), selected = 'sampleID')
+                 choices = colnames(cross_mod$filtered$met), selected = 'sampleID')
   })
   
   # calculate alpha diversity---------------------------------------------------
   
   alpha_result <- reactive({
     req(input$alpha_grp)
-    alpha_data <- filtered$asv %>% select(-featureID)
+    alpha_data <- cross_mod$filtered$asv %>% select(-featureID)
     alpha_data <- as.data.frame(alpha_data)
-    rownames(alpha_data) <- filtered$asv$featureID
+    rownames(alpha_data) <- cross_mod$filtered$asv$featureID
     
     shannon <- vegan::diversity(alpha_data,index = 'shannon',
                                 base = 2, MARGIN = 2)
@@ -173,7 +179,7 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   # determine valid stat test
-  grp_tally <- reactive(table(filtered$met[,input$alpha_grp]))
+  grp_tally <- reactive(table(cross_mod$filtered$met[,input$alpha_grp]))
   stat_test <- reactive({
     if(length(grp_tally()) == 2) 'wilcox.test'
     else 'kruskal.test'
@@ -188,7 +194,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(filtered$met %>% 
+      inner_join(cross_mod$filtered$met %>% 
                    gather('meta_variable','grouping', -sampleID),
                  'sampleID') %>%
       filter(meta_variable == input$alpha_grp)
@@ -201,7 +207,7 @@ mod_alpha_server <- function(input, output, session, improxy){
   
   # show tables
   output$alpha_table <- DT::renderDataTable({
-    out <- filtered$met %>%
+    out <- cross_mod$filtered$met %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID')
     DT::datatable(out, extensions = 'Buttons', 
@@ -227,7 +233,7 @@ mod_alpha_server <- function(input, output, session, improxy){
   pdata_alpha <- eventReactive(input$alpha_grp, {
     
     # set xorder based on shannon_d
-    xorder <- filtered$met %>%
+    xorder <- cross_mod$filtered$met %>%
       mutate_all(as.character) %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID') %>%
@@ -240,7 +246,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(filtered$met %>% mutate_all(as.character), 'sampleID') %>%
+      inner_join(cross_mod$filtered$met %>% mutate_all(as.character), 'sampleID') %>%
       group_by(alpha_metric, .data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value),
              x = factor(.data[[input$alpha_grp]], 

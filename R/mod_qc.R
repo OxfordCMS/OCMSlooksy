@@ -806,8 +806,8 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
   p_samdistr <- reactive({
-    variable <- input$sample_select
-    ggplot(pdata_samdistr(), aes(x=eval(parse(text=variable)), y=count, group=eval(parse(text=variable)))) +
+    ggplot(pdata_samdistr(), aes(x=.data[[input$sample_select]], y=count, 
+                                 group=.data[[input$sample_select]])) +
     geom_boxplot() +
     geom_jitter(height=0, width=0.2) +
     xlab(input$sample_select) +

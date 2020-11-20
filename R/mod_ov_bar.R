@@ -23,7 +23,6 @@ mod_ov_bar_ui <- function(id){
     h1('Relative Distribution of Taxa'),
     column(width = 12,
            h3(textOutput(ns('bar_title'))),
-
            p("Observing relative abundance or sequence abundance based on metadata variables. Abundance values can be aggregated at different taxonomic levels. The mean relative abundance is shown when selected group variable contains multiple samples"),
 
            DT::dataTableOutput(ns('bar_table'))  %>%
@@ -51,7 +50,6 @@ mod_ov_bar_ui <- function(id){
 
 mod_ov_bar_server <- function(input, output, session, param){
   ns <- session$ns
-
   # unpack bar plot inputs
   bar_tax <- reactive(param$bar_input$bar_tax)
   bar_y <- reactive(param$bar_input$bar_y)
@@ -110,7 +108,6 @@ mod_ov_bar_server <- function(input, output, session, param){
       col_ind <- 52:ncol(out) # index of columns to hide
       vis_val <- FALSE
     }
-
 
     if(bar_y() == 'rel_abund') {
       DT::datatable(out,  extensions = 'Buttons',
@@ -171,6 +168,7 @@ mod_ov_bar_server <- function(input, output, session, param){
   })
 
   callModule(mod_download_server, "download_bar", bridge = for_download, 'bar')
+
 }
 
 ## To be copied in the UI
@@ -179,4 +177,3 @@ mod_ov_bar_server <- function(input, output, session, param){
 ## To be copied in the server
 
 # callModule(mod_ov_bar_server, "ov_bar_ui_1")
-

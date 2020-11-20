@@ -1,5 +1,5 @@
 # Module UI
-  
+
 #' @title   mod_ov_hmap_ui and mod_ov_hmap_server
 #' @description  A shiny Module.
 #'
@@ -11,8 +11,8 @@
 #' @rdname mod_ov_hmap
 #'
 #' @keywords internal
-#' @export 
-#' @importFrom shiny NS tagList 
+#' @export
+#' @importFrom shiny NS tagList
 #' @import cowplot
 #' @import htmlwidgets
 #' @import shinyWidgets
@@ -27,7 +27,7 @@ mod_ov_hmap_ui <- function(id){
       id = ns('hmap_body_div'),
       column(
         width = 12,
-        
+
         column(
           width = 3, br(), br(),
           wellPanel(
@@ -50,7 +50,7 @@ mod_ov_hmap_ui <- function(id){
         column(
           width = 3, br(), br(),
           wellPanel(
-            numericInput(ns('hmap_asv_k'), "Number of clusters, k", 
+            numericInput(ns('hmap_asv_k'), "Number of clusters, k",
                         value = 1, min = 1, step = 1),
             uiOutput(ns('hmap_asv_label_ui')),
             uiOutput(ns('hmap_asv_colour_ui')))),
@@ -64,16 +64,16 @@ mod_ov_hmap_ui <- function(id){
           shinyjqui::jqui_resizable(
             plotlyOutput(ns('asv_dendro_plot'), width = '100%')
           ))),
-      
+
       h2('Heat map'), br(), br(),
-      wellPanel(  
+      wellPanel(
        fluidRow(
          column(
            width = 3,
            radioButtons(ns('sample_as_x'), "Show samples along:",
                         choices = c('x-axis' = TRUE, 'y-axis' = FALSE),
                         selected = TRUE)),
-         
+
          column(
            width = 3,
            checkboxGroupInput(ns('show_dendro'), 'Show dendrogram',
@@ -88,7 +88,7 @@ mod_ov_hmap_ui <- function(id){
       column(
         width = 12,
         column(
-          width = 1, style = 'padding:0px;', 
+          width = 1, style = 'padding:0px;',
 
           mod_download_ui(ns('download_hmap'))
           # dropdown(
@@ -97,7 +97,7 @@ mod_ov_hmap_ui <- function(id){
           #   animate = animateOptions(
           #     enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
           #     exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-          #   
+          #
           #   myDownloadBttn(ns('dl_hmap_html'), icon_name = 'file-code',
           #                label = "Interactive lot",
           #                size = 'xs', style = 'minimal'), br(),
@@ -124,32 +124,32 @@ mod_ov_hmap_ui <- function(id){
 }
 
 
-    
+
 # Module Server
-    
+
 #' @rdname mod_ov_hmap
 #' @export
 #' @keywords internal
-    
+
 mod_ov_hmap_server <- function(input, output, session, param){
   ns <- session$ns
-  
+
   # unpack data from parent module----------------------------------------------
   # unpack alpha inputs
   hclust_method <- reactive(param$hmap_input$hclust_method)
   dist_method <- reactive(param$hmap_input$dist_method)
   hmap_calculate <- reactive(param$hmap_input$hmap_calculate)
-  
+
   met_var <- reactive({
     out <- colnames(param$work_db$met)
     out <- out[out != 'sampleID']
   })
-  
+
   # toggle div for input controls-----------------------------------------------
   observeEvent(hmap_calculate(), {
     show('hmap_body_div')
   })
-  
+
   # render controls - heat map--------------------------------------------------
   output$hmap_samp_label_ui <- renderUI({
     selectInput(ns('hmap_samp_label'), "Label:",
@@ -160,34 +160,34 @@ mod_ov_hmap_server <- function(input, output, session, param){
                  choices = c('none', met_var()),
                  selected = 'none')
   })
-  
+
   output$hmap_asv_label_ui <- renderUI({
     selectInput(ns('hmap_asv_label'), "Label:",
                 choices = colnames(param$work_db$tax), selected = 'featureID')
   })
-  
+
   output$hmap_asv_colour_ui <- renderUI({
     choices <- c('none', colnames(param$work_db$tax))
     choices <- choices[!choices %in% c('sequence','featureID','Taxon')]
     radioButtons(ns('hmap_asv_colour'), "Show taxonomy level:",
                  choices = choices, selected = 'none')
   })
-  
+
   # calculate heatmap-----------------------------------------------------------
 
   # calculate sample clustering
   samp_hclust <- reactive({
     req(hmap_calculate())
-    hclust(vegan::vegdist(t(param$work_db$asv_transform), 
-                          method = dist_method()), 
+    hclust(vegan::vegdist(t(param$work_db$asv_transform),
+                          method = dist_method()),
            method = hclust_method())
   })
-  
+
   samp_ddata <- reactive({
     req(hmap_calculate())
     dendro_data_k(samp_hclust(), input$hmap_samp_k)
   })
-  
+
   # sample dendrogram
   p_dend_samp <- reactive({
     req(input$hmap_samp_k, input$hmap_samp_colour)
@@ -204,50 +204,50 @@ mod_ov_hmap_server <- function(input, output, session, param){
       id = 'sampleID')
     p
   })
-  
+
   output$sample_dendro_plot <- renderPlotly({
     label_data <- ggplot_build(p_dend_samp())$data[[2]]
-    
-    ggplotly(p_dend_samp() + theme(legend.position = 'none')) %>% 
+
+    ggplotly(p_dend_samp() + theme(legend.position = 'none')) %>%
       style(text = label_data$label, textposition = "middle right")
   })
-  
+
   output$sample_dendro_leg <- renderPlot({
     p_legend <- cowplot::get_legend(p_dend_samp())
     grid::grid.draw(p_legend)
   })
-  
+
   # download data
   for_download1 <- reactiveValues()
   observe({
-    req(param$hmap_input$hclust_method, param$hmap_input$dist_method, 
+    req(param$hmap_input$hclust_method, param$hmap_input$dist_method,
         param$hmap_input$hmap_calculate)
     for_download1$figure <- p_dend_samp()
     for_download1$fig_data <- samp_ddata()
   })
-  
+
   callModule(mod_download_server, "download_samdendro", bridge = for_download1,
              'sample_dendrogram', dl_options = c('png','html','RDS','zip'))
-  
+
   # calculate asv clustering
-  
+
   asv_hclust <- reactive({
     req(hmap_calculate())
     hclust(vegan::vegdist(param$work_db$asv_transform, method = dist_method()),
            method = hclust_method())
   })
-  
+
   asv_ddata <- reactive({
     req(hmap_calculate())
     dendro_data_k(asv_hclust(), input$hmap_asv_k)
   })
-  
+
   # asv dendrogram
   p_dend_asv <- reactive({
     req(input$hmap_asv_k, input$hmap_asv_colour)
     if(input$hmap_asv_colour == 'none') category <- NULL
     else category <- input$hmap_asv_colour
-    
+
     p <- plot_ggdendro(
       asv_ddata(),
       direction = 'lr',
@@ -258,34 +258,34 @@ mod_ov_hmap_server <- function(input, output, session, param){
       category = category,
       id = 'featureID')
   })
-  
+
   output$asv_dendro_plot <- renderPlotly({
     label_data <- ggplot_build(p_dend_asv())$data[[2]]
-    ggplotly(p_dend_asv() + theme(legend.position = 'none')) %>% 
+    ggplotly(p_dend_asv() + theme(legend.position = 'none')) %>%
       style(text = label_data$label, textposition = "middle right")
   })
-  
+
   output$asv_dendro_leg <- renderPlot({
     p_legend <- cowplot::get_legend(p_dend_asv())
     grid::grid.draw(p_legend)
   })
-  
+
   # download data
   for_download2 <- reactiveValues()
   observe({
-    req(param$hmap_input$hclust_method, param$hmap_input$dist_method, 
+    req(param$hmap_input$hclust_method, param$hmap_input$dist_method,
         param$hmap_input$hmap_calculate)
     for_download2$figure <- p_dend_asv()
     for_download2$fig_data <- asv_ddata()
   })
-  
+
   callModule(mod_download_server, "download_asvdendro", bridge = for_download2,
              'feature_dendrogram', dl_options = c('png','html','RDS','zip'))
-  
+
   # heatmap---------------------------------------------------------------------
   # set heatmap orientation
   hmap_data <- reactive({
-    
+
     if(input$sample_as_x) {
       hmap_data <- param$work_db$asv_transform # taxon in rows, samples in columns
       rownames(hmap_data) <- param$work_db$tax[, input$hmap_tax_label]
@@ -303,7 +303,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # parameterizing heat map object
   hmap <- reactive({
     heatmapr(
-      x = hmap_data(), 
+      x = hmap_data(),
       distfun = vegan::vegdist,
       dist_method = dist_method(),
       hclust_method = hclust_method(),
@@ -314,10 +314,10 @@ mod_ov_hmap_server <- function(input, output, session, param){
       show_grid = TRUE
     )
   })
-  
+
   hmaply_plot <- reactive({
     req(hmap_calculate())
-    
+
     if(param$work_db$transform_method == 'none') {
       key_title <- 'Read Count'
 
@@ -328,7 +328,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
     else {
       key_title <- 'Normalized\nRelative Abundance'
     }
-    heatmaply(hmap(), node_type = 'heatmap', 
+    heatmaply(hmap(), node_type = 'heatmap',
               scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
                 low = "blue",
                 high = "red"),
@@ -342,25 +342,25 @@ mod_ov_hmap_server <- function(input, output, session, param){
   # download data
   for_download3 <- reactiveValues()
   observe({
-    req(param$hmap_input$hclust_method, param$hmap_input$dist_method, 
+    req(param$hmap_input$hclust_method, param$hmap_input$dist_method,
         param$hmap_input$hmap_calculate)
     for_download3$figure <- hmaply_plot()
-    for_download3$fig_data <- hmap_data() %>% 
+    for_download3$fig_data <- hmap_data() %>%
       as.data.frame() %>%
       mutate(featureID = rownames(hmap_data()))
   })
-  
+
   callModule(mod_download_server, "download_hmap", bridge = for_download3,
              'heatmap', dl_options = c('html','csv','RDS','zip'))
-  
-  
-  # 
-  # 
-  # 
+
+
+  #
+  #
+  #
   # to_zip <- reactive({
   #   sprintf("heatmap_%s.%s", Sys.Date(), c("html","csv", "RDS", "zip"))
   # })
-  # 
+  #
   # # download data
   # output$dl_hmap_html <- downloadHandler(
   #   filename = function() {
@@ -371,17 +371,17 @@ mod_ov_hmap_server <- function(input, output, session, param){
   #   },
   #   contentType = 'text/html'
   # )
-  # 
+  #
   # output$dl_hmap_data <- downloadHandler(
   #   filename = function() {
   #     to_zip()[grepl('csv', to_zip())]
-  #   }, 
+  #   },
   #   content = function(file) {
   #     write.csv(hmap_data(), file, row.names = FALSE)
   #   },
   #   contentType = 'text/csv'
   # )
-  # 
+  #
   # output$dl_hmap_rds <- downloadHandler(
   #   fname <- function() {
   #     to_zip()[grepl('RDS', to_zip())]
@@ -391,7 +391,7 @@ mod_ov_hmap_server <- function(input, output, session, param){
   #   },
   #   contentType = 'application/rds'
   # )
-  # 
+  #
   # output$dl_hmap_all <- downloadHandler(
   #   filename = function() {
   #     to_zip()[grepl('zip', to_zip())]
@@ -402,24 +402,23 @@ mod_ov_hmap_server <- function(input, output, session, param){
   #     # create temporary directory
   #     tmpdir <- tempdir()
   #     setwd(tempdir())
-  #     
+  #
   #     htmlwidgets::saveWidget(hmaply_plot(), to_zip()[grepl('html', to_zip())])
-  #     write.csv(hmap_data(), to_zip()[grepl('csv', to_zip())], 
+  #     write.csv(hmap_data(), to_zip()[grepl('csv', to_zip())],
   #               row.row.names = FALSE)
   #     saveRDS(hmap(), to_zip()[grepl('RDS', to_zip())])
-  #     
+  #
   #     #create the zip file
   #     zip(file, to_zip()[grepl('zip', to_zip())])
   #     setwd(mydir)
   #   },
   #   contentType = 'application/zip'
   # )
-
 }
-    
+
 ## To be copied in the UI
 # mod_ov_hmap_ui("ov_hmap_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_ov_hmap_server, "ov_hmap_ui_1")
- 
+

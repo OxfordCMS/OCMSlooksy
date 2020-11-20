@@ -1,14 +1,14 @@
 #' withBusyIndicatorUI
-#' 
+#'
 #' UI function to show busy/loading/error indicator after button is pressed.
 #' Corresponds with \code{withBusyIndicatorServer} function.
 #' copied from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
-#' 
+#'
 #' @param button Action button for indicator to act on
 
 withBusyIndicatorUI <- function(button) {
-  
-  
+
+
   withBusyIndicatorCSS <- "
     .btn-loading-container {
     margin-left: 10px;
@@ -22,7 +22,7 @@ withBusyIndicatorUI <- function(button) {
     color: red;
     }
     "
-  
+
   id <- button[['attribs']][['id']]
   div(
     shinyjs::useShinyjs(),
@@ -51,15 +51,14 @@ withBusyIndicatorUI <- function(button) {
 }
 
 #' withBusyIndicatorServer
-#' 
+#'
 #' Call this function from the server with the button id that is clicked and the
 #' expression to run when the button is clicked.
 #' Corresponds with \code{withBustyIndicatorUI} function.
 #' Copied and modified from \href{https://github.com/daattali/advanced-shiny/blob/master/busy-indicator/helpers.R}
-#' 
+#'
 #' @param buttonID button id
 #' @param mod_name name of shiny module where \code{withBusyIndicatorServer} is called
-
 #' @param expr code executed when button clicked
 
 withBusyIndicatorServer <- function(buttonId, mod_name, expr) {
@@ -76,7 +75,7 @@ withBusyIndicatorServer <- function(buttonId, mod_name, expr) {
     shinyjs::enable(buttonId)
     shinyjs::hide(selector = loadingEl)
   })
-  
+
   # When an error happens after a button click, show the error
   errorFunc <- function(err, buttonId) {
     errEl <- sprintf("[data-for-btn=%s] .btn-err", buttonId)
@@ -85,7 +84,7 @@ withBusyIndicatorServer <- function(buttonId, mod_name, expr) {
     shinyjs::html(html = errMessage, selector = errElMsg)
     shinyjs::show(selector = errEl, anim = TRUE, animType = "fade")
   }
-  
+
   # Try to run the code when the button is clicked and show an error message if
   # an error occurs or a success message if it completes
   tryCatch({
@@ -98,7 +97,7 @@ withBusyIndicatorServer <- function(buttonId, mod_name, expr) {
 }
 
 #' myDownloadBttn
-#' 
+#'
 #' Modifying downloadBttn from shinyWidgets so it doesn't have download ison as it's default
 #' https://github.com/dreamRs/shinyWidgets
 #' @param outputId The name of the output slot that the \code{downloadHandler} is assigned to.
@@ -112,7 +111,7 @@ withBusyIndicatorServer <- function(buttonId, mod_name, expr) {
 #' @param block Logical, full width button.
 #' @param no_outline Logical, don't show outline when navigating with
 #'  keyboard/interact using mouse or touch.
-#'  
+#'
 myDownloadBttn <- function(outputId,
                          label = "Download",
                          style = "unite",

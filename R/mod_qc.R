@@ -80,7 +80,6 @@ mod_qc_ui <- function(id){
                   column(
                     width = 1, style = 'padding:0px;',
                     mod_download_ui(ns("download_filter"))
-
                   ),
                   column(
                     width = 11, style = 'padding:0px;',
@@ -121,7 +120,6 @@ mod_qc_ui <- function(id){
                 ) # end column 12
               ) # end fluidRow
             ), # end tabitem
-
             # featureID Prevalence------------------------------------------------------
             tabItem(
               tabName = 'asv_prevalence',
@@ -197,7 +195,6 @@ mod_qc_ui <- function(id){
                       shinycssloaders::withSpinner()
                   )
                 )
-
               )
             ),
             # taxonomy overview-------------------------------------------------
@@ -272,7 +269,6 @@ mod_qc_ui <- function(id){
                 )
               ) # end fluidRow
             ), # end tabitem
-
             # Read count distribution---------------------------------------------
             tabItem(
               tabName = 'group_distribution_tab',
@@ -318,7 +314,6 @@ mod_qc_ui <- function(id){
               ) # end column 12
             ) # end fluidrow
           ) # end tabitem
-
         ) # end tabitems
       ) # end box
     ) # end dashboard body
@@ -332,8 +327,8 @@ mod_qc_ui <- function(id){
 #' @keywords internal
 
 mod_qc_server <- function(input, output, session, improxy){
-  ns <- session$ns
 
+  ns <- session$ns
 
   # reading in tables ----------------------------------------------------------
   qc_filtered <- reactive({
@@ -347,7 +342,6 @@ mod_qc_server <- function(input, output, session, improxy){
   asv <- reactive({improxy$data_db$merged_abundance_id})
   met <- reactive({improxy$data_db$metadata})
   tax <- reactive({improxy$data_db$merged_taxonomy})
-
 
   # Render reactive widgets-----------------------------------------------------
   output$sample_select_ui <- renderUI({
@@ -393,7 +387,6 @@ mod_qc_server <- function(input, output, session, improxy){
     ggplotly(p_filt()) %>%
       layout(legend = list(orientation = 'h', x = 0.5, y = -0.5))
   })
-
 
   # download data
   for_download1 <- reactiveValues()
@@ -474,13 +467,11 @@ mod_qc_server <- function(input, output, session, improxy){
       layout(legend = list(orientation = 'h', x = 0.5, y = -0.5))
   })
 
-
   for_download2 <- reactiveValues()
   observe({
     for_download2$figure <- p_nochim()
     for_download2$fig_data <- pdata_nochim()
   })
-
 
   callModule(mod_download_server, "download_nochim", bridge = for_download2, 'qc-nochim')
 
@@ -507,13 +498,11 @@ mod_qc_server <- function(input, output, session, improxy){
     ggplotly(p_nasv())
   })
 
-
   for_download3 <- reactiveValues()
   observe({
     for_download3$figure <- p_nasv()
     for_download3$fig_data <- pdata_nasv()
   })
-
 
   callModule(mod_download_server, "download_nasv", bridge = for_download3, 'qc-nfeature')
 
@@ -529,7 +518,6 @@ mod_qc_server <- function(input, output, session, improxy){
 
   # tally frequency of prevalence values
   pdata_preval <- reactive({
-
     tally_table <- as.data.frame(table(prevalence()$n_observe))
     colnames(tally_table) <- c('n_observe', 'n_asv')
     tally_table$perc_prev <- as.numeric(tally_table$n_observe) / n_sample()
@@ -550,6 +538,14 @@ mod_qc_server <- function(input, output, session, improxy){
     ggplotly(p_preval())
   })
 
+  for_download4 <- reactiveValues()
+  observe({
+    for_download4$figure <- p_preval()
+    for_download4$fig_data <- pdata_preval()
+  })
+
+  callModule(mod_download_server, "download_prevalence", bridge = for_download4,
+             'qc-prevalence')
 
   for_download4 <- reactiveValues()
   observe({
@@ -592,6 +588,7 @@ mod_qc_server <- function(input, output, session, improxy){
     for_download5$fig_data <- pdata_spur()
   })
 
+
   callModule(mod_download_server, "download_spur", bridge = for_download5,
              'qc-prevabund')
 
@@ -601,7 +598,6 @@ mod_qc_server <- function(input, output, session, improxy){
   # output$check <- renderPrint({
   #   names(improxy)
   # })
-
   rare_df <- reactive({
     mat <- asv() %>% select(-featureID)
     rownames(mat) <- asv()$featureID
@@ -612,6 +608,7 @@ mod_qc_server <- function(input, output, session, improxy){
   pdata_rare <- reactive({
     rare_df() %>%
       inner_join(met(), 'sampleID')
+
   })
 
   p_rare <- reactive({
@@ -718,7 +715,6 @@ mod_qc_server <- function(input, output, session, improxy){
              'qc-taxdistrib')
 
   # evaluate number ASVs assigned to taxonomy level-----------------------------
-
   n_assigned <- reactive({
 
     out <- tax() %>%
@@ -738,7 +734,6 @@ mod_qc_server <- function(input, output, session, improxy){
                                 levels = c('Kingdom','Phylum','Class',
                                            'Order','Family','Genus',
                                            'Species')))
-
   })
 
   p_assigned <- reactive({
@@ -794,36 +789,39 @@ mod_qc_server <- function(input, output, session, improxy){
     for_download9$fig_data <- pdata_grpdistr()
   })
 
+  # download data
+  for_download9 <- reactiveValues()
+  observe({
+    for_download9$figure <- p_grpdistr()
+    for_download9$fig_data <- pdata_grpdistr()
+  })
+
   callModule(mod_download_server, "download_grpdistr", bridge = for_download9,
              'qc-grpdistrib')
 
   # sample distribution --------------------------------------------------------
-
   pdata_samdistr <- reactive({
     req(input$sample_select)
-    improxy$asv_met %>%
-      mutate(sampleID = as.factor(sampleID)) %>%
-      group_by(sampleID) %>%
-      mutate(sample_tot = sum(read_count)) %>%
-      group_by(.data[[input$sample_select]]) %>%
-      summarise(selected_var = as.factor(.data[[input$sample_select]]),
-                sample_tot = sample_tot, group_tot = sum(read_count),
-                avg = mean(sample_tot), x = as.numeric(selected_var),
-                xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
-      ungroup()
+    met <- improxy$data_db$metadata
+    asv <- improxy$data_db$merged_abundance_id[,met$sampleID]
+    rownames(met) <- met$sampleID
+    samdistr <- data.frame(count=colSums(asv))
+    rownames(samdistr) <- met$sampleID
+    samdistr[,input$sample_select] <- met[,input$sample_select]
+    samdistr
+
   })
 
-
   p_samdistr <- reactive({
-    ggplot(pdata_samdistr(), aes(x = x, y = sample_tot)) +
-      geom_segment(aes(x = xavg1, xend = xavg2, y = avg, yend = avg)) +
-      geom_point(alpha = 0.6) +
-      scale_x_continuous(breaks = seq(1, length(levels(pdata_samdistr()$selected_var))),
-                         labels = levels(pdata_samdistr()$selected_var)) +
-      xlab(input$sample_select) +
-      ylab('Mean read count within group') +
-      theme_bw(12) +
-      theme(axis.text.x = element_text(angle = 90))
+    ggplot(pdata_samdistr(), aes(x=.data[[input$sample_select]], y=count,
+                                 group=.data[[input$sample_select]])) +
+    geom_boxplot() +
+    geom_jitter(height=0, width=0.2) +
+    xlab(input$sample_select) +
+    ylab('Read count') +
+    theme_bw(12) +
+    theme(axis.text.x = element_text(angle = 90))
+
   })
 
   output$sample_distribution <- renderPlotly({

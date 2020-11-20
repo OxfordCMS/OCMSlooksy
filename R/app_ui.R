@@ -10,11 +10,9 @@ app_ui <- function() {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     shinyjs::useShinyjs(),
-
     # List the first level UI elements here
     # h3('Check'),
     # verbatimTextOutput('check'),
-
     navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'fixed-top',
 
                # Introduction---------------------------------------------------

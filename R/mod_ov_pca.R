@@ -1,5 +1,5 @@
 # Module UI
-  
+
 #' @title   mod_ov_pca_ui and mod_ov_pca_server
 #' @description  A shiny Module.
 #'
@@ -11,29 +11,29 @@
 #' @rdname mod_ov_pca
 #'
 #' @keywords internal
-#' @export 
-#' @importFrom shiny NS tagList 
+#' @export
+#' @importFrom shiny NS tagList
 #' @import htmlwidgets
 mod_ov_pca_ui <- function(id){
   ns <- NS(id)
   tagList(
     # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
-    
+
     h1('Principle Component Analysis'),
     tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data. Since feature values (even when transformed) can span multiple order of magnitudes, it is recommended that feature values are scaled for PCA so all features are weighted equally."),
-    p("1) Unit variance scaling mean centres the value and divides by the standard deviation of the feature. After unit variance scaling, all features have the same mean and standard deviation. (x - mean(x)) / sd(x))"), br(), 
+    p("1) Unit variance scaling mean centres the value and divides by the standard deviation of the feature. After unit variance scaling, all features have the same mean and standard deviation. (x - mean(x)) / sd(x))"), br(),
     p("Pareto scaling divides mean-centred values by the square root of the feature values. Pareto scaling diminishes the effects of features that exhibit large fold so the changes in features with different magnitudes are weighted more evenly. (x - mean(x)) / sqrt(x))"), br(),
     p("Vast scaling (or variable stability scaling) uses the ratio of the mean and the standard deviation to in order to prioritise features that are more stable, while placind lesser importance on features with greater relative standard devieation. ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))"),
     br(),
     p('Definitions obtained from', a("van den Berg et al., 2006", href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1534033/")),
-    
+
     hidden(div(
-      id = ns('pca_summary_div'), 
+      id = ns('pca_summary_div'),
       h2('Summary of PCA'),
       DT::dataTableOutput(ns('summary_pca'))  %>%
         shinycssloaders::withSpinner()
     )),
-    
+
     hidden(div(
       id = ns('pca_body_div'),
       h2('PCA Plot'),
@@ -50,9 +50,9 @@ mod_ov_pca_ui <- function(id){
            checkboxInput(ns('load_arrow'), 'Show loading arrows', TRUE),
            checkboxInput(ns('show_ellipse'),"Show Ellipse", value = TRUE)
          ),
-         
+
          conditionalPanel(
-           condition = paste0("input['", ns('show_ellipse'), "'] == true"),  
+           condition = paste0("input['", ns('show_ellipse'), "'] == true"),
            column(
              width = 3,
              h4("Ellipse aesthetics"),
@@ -68,7 +68,7 @@ mod_ov_pca_ui <- function(id){
                          choices = c('solid','dashed','longdash','dotdash'),
                          selected = 'solid'),
              numericInput(ns('pca_ell_ci'), "Confidence Interval",
-                          min = 0.1, max = 0.99, value = 0.95, 
+                          min = 0.1, max = 0.99, value = 0.95,
                           step = 0.05))
           ),
        ),
@@ -122,7 +122,7 @@ mod_ov_pca_ui <- function(id){
     column(
       width = 12,
       column(
-        width = 1, style = 'padding:0px;', 
+        width = 1, style = 'padding:0px;',
         mod_download_ui(ns("download_pca"))
       ),
       column(
@@ -134,26 +134,26 @@ mod_ov_pca_ui <- function(id){
     )
   )
 }
-    
+
 # Module Server
-    
+
 #' @rdname mod_ov_pca
 #' @export
 #' @keywords internal
-    
+
 mod_ov_pca_server <- function(input, output, session, param){
   ns <- session$ns
-  
+
   # toggle div for input controls-----------------------------------------------
   observeEvent(pca_calculate(), {
     show('pca_summary_div')
     show('pca_body_div')
   })
-  
+
   ## render controls - PCA------------------------------------------------------
   ### choose PCs to plot
   output$xPC_ui <- renderUI({
-    numericInput(ns('xPC'), 'x-axis PC', value = 1, 
+    numericInput(ns('xPC'), 'x-axis PC', value = 1,
                  min = 1, max = nrow(d_pcx()$x), step = 1)
   })
   output$yPC_ui <- renderUI({
@@ -162,55 +162,55 @@ mod_ov_pca_server <- function(input, output, session, param){
   })
   ### score point aesthetics
   output$score_pt_colour_ui <- renderUI({
-    selectInput(ns('score_pt_colour'), 'Point colour:', 
+    selectInput(ns('score_pt_colour'), 'Point colour:',
                 choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
   output$score_pt_shape_ui <- renderUI({
-    selectInput(ns('score_pt_shape'), 'Point shape:', 
+    selectInput(ns('score_pt_shape'), 'Point shape:',
                 choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
-  
+
   ### score label aethetics
   output$score_label_ui <- renderUI({
-    selectInput(ns('score_label_by'), 'Label scores by:', 
+    selectInput(ns('score_label_by'), 'Label scores by:',
                 choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
   output$score_lab_colour_ui <- renderUI({
-    selectInput(ns('score_lab_colour'), 'Label colour:', 
+    selectInput(ns('score_lab_colour'), 'Label colour:',
                 choices = c('none', colnames(param$work_db$met)), selected = 'none')
   })
-  
+
   ### loading points aesthetics
   output$load_pt_colour_ui <- renderUI({
-    selectInput(ns('load_pt_colour'), 'Point colour:', 
+    selectInput(ns('load_pt_colour'), 'Point colour:',
                 choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   output$load_pt_shape_ui <- renderUI({
-    selectInput(ns('load_pt_shape'), 'Point shape:', 
+    selectInput(ns('load_pt_shape'), 'Point shape:',
                 choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   ### loading labels aesthetics
   output$load_label_ui <- renderUI({
-    selectInput(ns('load_label_by'), 'Label loadings by:', 
+    selectInput(ns('load_label_by'), 'Label loadings by:',
                 choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   output$load_lab_colour_ui <- renderUI({
-    selectInput(ns('load_lab_colour'), 'Label colour:', 
+    selectInput(ns('load_lab_colour'), 'Label colour:',
                 choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
   output$load_lab_shape_ui <- renderUI({
-    selectInput(ns('load_lab_shape'), 'Label shape:', 
+    selectInput(ns('load_lab_shape'), 'Label shape:',
                 choices = c('none', colnames(param$work_db$tax)), selected = 'none')
   })
-  
-  
+
+
   # unpack data from parent module----------------------------------------------
   # unpack pca inputs
   pca_scale <- reactive(param$pca_input$pca_scale)
   pca_calculate <- reactive(param$pca_input$pca_calculate)
-  
+
   # output$check <- renderPrint({
-  # 
+  #
   # })
   # calculate pca---------------------------------------------------------------
 
@@ -241,13 +241,13 @@ mod_ov_pca_server <- function(input, output, session, param){
   xPC <- reactive(paste0('PC', input$xPC))
   yPC <- reactive(paste0('PC', input$yPC))
 
-  # scale rotations and score to be on same axis as score 
+  # scale rotations and score to be on same axis as score
   ##  by st. dev of given PC ^ n_samples
-  
+
   lam <- reactive({
     d_pcx()$sdev * sqrt(nrow(d_pcx()$x))
   })
-  
+
   score_data <- reactive({
 
     out <- t(apply(d_pcx()$x, 1, function(x) x / lam()))
@@ -263,7 +263,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   load_data <- reactive({
 
     # out <- t(apply(d_pcx()$rotation, 1, function(x) x * lam()))
-    out <- as.data.frame(d_pcx()$rotation) %>% 
+    out <- as.data.frame(d_pcx()$rotation) %>%
       mutate(featureID = rownames(d_pcx()$rotation)) %>%
       select('featureID', xPC(), yPC()) %>%
       left_join(param$work_db$tax, 'featureID')
@@ -387,12 +387,12 @@ mod_ov_pca_server <- function(input, output, session, param){
 
   p_biplot <- reactive({
     req(input$xPC, input$yPC)
-    
+
     p_biplot <- cms_biplot(
       score_data(), load_data(),
       xPC = input$xPC, yPC = input$yPC,
       # ellipse
-      frame = input$show_ellipse, frame.type = input$pca_ell_type, 
+      frame = input$show_ellipse, frame.type = input$pca_ell_type,
       frame.line = input$pca_ell_line, frame.colour = score_pt_colour(),
       frame.level = input$pca_ell_ci,
       # score point
@@ -427,7 +427,7 @@ mod_ov_pca_server <- function(input, output, session, param){
   output$plot_pca <- renderPlotly({
     ggplotly(p_biplot())
   })
-  
+
   # download data
   for_download <- reactiveValues()
   observe({
@@ -435,14 +435,14 @@ mod_ov_pca_server <- function(input, output, session, param){
     for_download$figure <- p_biplot()
     for_download$fig_data <- plyr::rbind.fill(score_data(), load_data())
   })
-  
+
   callModule(mod_download_server, "download_pca", bridge = for_download, 'pca')
 
 }
-    
+
 ## To be copied in the UI
 # mod_ov_pca_ui("ov_pca_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_ov_pca_server, "ov_pca_ui_1")
- 
+

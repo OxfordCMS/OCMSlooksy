@@ -224,7 +224,6 @@ mod_ov_alpha_server <- function(input, output, session, param){
     ggplotly(p_alpha())
   })
 
-
   # download data
   for_download <- reactiveValues()
   observe({

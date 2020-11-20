@@ -77,8 +77,6 @@ mod_setup_ui <- function(id){
               withBusyIndicatorUI(
                 actionButton(ns('submit_asv'), "Filter features")))
               ),
-
-
           # transform counts----------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'transform_asv'",
@@ -104,7 +102,6 @@ mod_setup_ui <- function(id){
       # main panel--------------------------------------------------------------
       dashboardBody(
         box(width = '100%', br(),br(), br(),
-
             # fluidRow(width = 12,
             #         h3('Check Box'),
             #         verbatimTextOutput(ns('check'))),
@@ -126,7 +123,6 @@ mod_setup_ui <- function(id){
                        h1('Filter Samples'), br(),
                        tags$div(
                          "It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
-
                 fluidRow(br(), br(),
                   column(width = 8,
                     hidden(div(
@@ -155,7 +151,6 @@ mod_setup_ui <- function(id){
                   ))
                 )
               ),
-
               # filter asv------------------------------------------------------
               tabItem(
                 tabName = 'filter_asv',
@@ -262,7 +257,6 @@ mod_setup_ui <- function(id){
                     shinycssloaders::withSpinner()
                 )
               ), # end tabItem
-
               # asv transformation----------------------------------------------
               tabItem(
                 tabName = 'transform_asv',
@@ -308,8 +302,6 @@ mod_setup_server <- function(input, output, session, improxy){
     toggle("sample_filter_selcted_div",
            condition = input$sample_select_prompt != 'all')
   })
-
-
   output$sample_options_ui <- DT::renderDataTable({
     out <- met()
     DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
@@ -353,8 +345,6 @@ mod_setup_server <- function(input, output, session, improxy){
     })
 
     })
-
-
   output$preview_sample_title <- renderText({
     req(input$submit_sample)
     'Samples included in analysis:'
@@ -367,7 +357,6 @@ mod_setup_server <- function(input, output, session, improxy){
                                  pageLength = 30,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
-
 
   # update ASV with filtered samples
   samp_filtered <- eventReactive(input$submit_sample, {
@@ -517,7 +506,6 @@ mod_setup_server <- function(input, output, session, improxy){
 
   # prepare asv dataframe-------------------------------------------------------
   working_asv <- reactive({
-
     if(input$asv_select_prompt == 'some') {
       dataset_total <- sum(samp_filtered()$read_count)
 
@@ -611,6 +599,7 @@ mod_setup_server <- function(input, output, session, improxy){
       ylab <- 'Aggregated Relative abundance\n(% of sample)'
     }
 
+
     pdata <- working_asv() %>%
       group_by(featureID) %>%
       # number of samples in which asv meets read cutoff
@@ -689,7 +678,6 @@ mod_setup_server <- function(input, output, session, improxy){
     }
   })
 
-
   # secondary check for samples with no reads-----------------------------------
   sample_total <- reactive({
     asv_filtered() %>%
@@ -726,7 +714,6 @@ mod_setup_server <- function(input, output, session, improxy){
   output$secondary_filter_sample_ui <- renderUI({
     HTML(paste(empty_sample(), collapse = '<br/>'))
   })
-
 
   # identify empty asvs
   empty_asv <- reactive({
@@ -773,7 +760,6 @@ mod_setup_server <- function(input, output, session, improxy){
 
   # update met_filtered
   met_filtered2 <- eventReactive(input$submit_asv, {
-
     if(secondary_check_sample()) {
       met_filtered() %>%
         filter(!sampleID %in% empty_sample())

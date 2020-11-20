@@ -26,7 +26,6 @@ app_server <- function(input, output, session) {
       hideTab(inputId = 'tabs', target = "qc")
     }
   })
-
   cross_module2 <- callModule(mod_setup_server, "setup_ui_1", cross_module1)
   callModule(mod_overview_server, "overview_ui_1", cross_module2)
   callModule(mod_diffAbund_server, "diffAbund_ui_1", cross_module2)

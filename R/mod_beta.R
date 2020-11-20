@@ -7,6 +7,8 @@
 #' @noRd 
 #'
 #' @importFrom shiny NS tagList 
+#' @import shinyjs
+#'  
 mod_beta_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -24,6 +26,22 @@ mod_beta_ui <- function(id){
           uiOutput(ns('pca_menu_ui')),
           
           # aggregate menu controls---------------------------------------------
+          conditionalPanel(
+            condition = "input.menu === 'tab_aggregate'",
+            br(), hr(),
+            tags$div(
+              style = 'text-align: center',
+              tags$b('Input controls')
+            ),
+            fixedPanel(
+              radioButtons(ns('aggregate_by'), "Aggregate counts by:",
+                           choices = c('featureID','Kingdom','Phylum','Class',
+                                       'Order','Family','Genus','Species'),
+                           selected = 'Genus'),
+              
+              actionButton(ns('agg_calculate'), "Aggregate")
+            )
+          ),
           # filter menu controls------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'filter_asv_beta'",
@@ -102,17 +120,21 @@ mod_beta_ui <- function(id){
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           tabItems(
             # info tab body-----------------------------------------------------
             tabItem(
-              tabName = 'info_tab_overview',
+              tabName = 'info_tab_beta',
               h1("\u03B2-Diversity")
             ), # end tabItem
             # aggregate tab body------------------------------------------------
             tabItem(
               tabName = 'tab_aggregate',
-              h1("Aggregate Features")
+              h1("Aggregate Features"),
+              h4(textOutput(ns("agg_message"))),
+              tags$div("The number of features collapsed is listed in the 'n_collapse' column"),
+              DT::dataTableOutput(ns('agg_preview_tax')),
+              DT::dataTableOutput(ns('agg_preview_count'))
             ), # end tabItem
             # filter tab body---------------------------------------------------
             tabItem(
@@ -134,7 +156,7 @@ mod_beta_ui <- function(id){
                      DT::dataTableOutput(ns('preview_transform')) %>%
                        shinycssloaders::withSpinner())
             ), # end tabItem
-            #PCoA body----------------------------------------------------------
+            # PCoA body----------------------------------------------------------
             tabItem(
               tabName = "pcoa_tab",
               mod_ov_pcoa_ui(ns("ov_pcoa_ui_1"))
@@ -157,16 +179,117 @@ mod_beta_ui <- function(id){
 mod_beta_server <- function(input, output, session, improxy){
   ns <- session$ns
   
-  output$check <- renderPrint({
-    print(names(bridge$asv_transform))
-    print(summary(bridge$asv_transform))
-  })
+
   # aggregate features----------------------------------------------------------
+  output$agg_message <- renderText({
+    req(input$aggregate_by)
+    sprintf("Aggregating feature counts at the %s level", input$aggregate_by)
+  })
+  
+  # perform aggregation with base aggregate
+  aggregated_count <- eventReactive(input$agg_calculate, {
+    req(input$aggregate_by)
+    
+    # set featureID in count_df to aggregation level
+    count_df <- improxy$work_db$asv
+    count_df$featureID <- improxy$work_db$tax[, input$aggregate_by]
+    
+    sampleID <- colnames(count_df)
+    sampleID <- sampleID[sampleID != 'featureID']
+ 
+    # build formula
+    yvar <- paste(sampleID, collapse=',')
+    f <- sprintf("cbind(%s) ~ featureID", yvar)
+
+    # perform aggregation with base::aggregate  
+    aggregate(formula = formula(f), data = count_df, FUN = sum)
+  })
+
+  # update taxonomy table-------------------------------------------------------
+  aggregated_tax <- eventReactive(input$agg_calculate, {
+    req(input$aggregate_by)
+    tax_level <- c('Kingdom','Phylum','Class','Order', 'Family','Genus',
+                   'Species','featureID')
+    
+    if(input$aggregate_by != 'featureID') {
+      
+      # copy tax data over taxa up to aggregated level
+      out <- as.data.frame(improxy$work_db$tax)
+      
+      # set all tax levels lower than aggregated level to NA
+      ind <- which(tax_level == input$aggregate_by) + 1
+      to_na <- tax_level[ind:length(tax_level)]
+      
+      
+      out[, to_na] <- NA
+      
+      # set sequence column to NA
+      out$sequence <- NA
+      
+      # update Taxon column
+      ind <- which(tax_level == input$aggregate_by)
+      
+      Taxon <- stringr::str_split(out$Taxon, ";", simplify = TRUE)
+      
+      if(ind == 1) {
+        Taxon <- Taxon[,ind]
+      } else {
+        Taxon <- apply(Taxon[,1:ind], 1, paste, collapse = ";")  
+      }
+      
+      out$Taxon <- Taxon
+      
+      # remove redundant entries
+      out <- unique(out)
+      
+      # record how many ASVs aggregated
+      n_collapse <- improxy$work_db$tax %>%
+        group_by(.data[[input$aggregate_by]]) %>%
+        summarise(n_collapse = n())
+      
+      out <- merge(out, n_collapse, input$aggregate_by)
+      
+      # set new featureID
+      out$featureID <- out[, input$aggregate_by]
+
+    } else {
+      out <- as.data.frame(improxy$work_db$tax)
+      out$n_collapse <- 1
+    }
+
+    # set column order
+    out <- out[,c('featureID', 'n_collapse', tax_level[-length(tax_level)], 'Taxon','sequence')]
+    out
+  })
+
+  # show aggregated tables
+  output$agg_preview_tax <- DT::renderDataTable({
+    
+    out <- aggregated_tax() %>%
+      mutate_all(as.character)
+    DT::datatable(out,
+                  extensions = 'Buttons', 
+                  options = list(scrollX = TRUE, dom = 'Blfrtip', 
+                                 buttons = c('copy','csv')))
+  })
+
+  output$check <- renderPrint({
+    # as.data.frame(aggregated_tax())
+  })
+  output$agg_preview_count <- DT::renderDataTable({
+    DT::datatable(aggregated_count(),
+                  extensions = 'Buttons',
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
   
   # store data in reactiveValues to pass onto submodules------------------------
   bridge <- reactiveValues()
   observe({
-    bridge$work_db <- improxy$work_db
+    bridge$work_db <- list(met = improxy$work_db$met,
+                           asv = aggregated_count(),
+                           tax = aggregated_tax() %>% select(-n_collapse))
+    
   })
   
   # filter features-------------------------------------------------------------
@@ -184,13 +307,14 @@ mod_beta_server <- function(input, output, session, improxy){
   })
   
   withBusyIndicatorServer('submit_asv', 'beta_ui_1', {
+    # submodule returns list of filtered met, asv and tax tables
     cross_mod <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
   })
   
   # add filtered data to bridge
   bridge$filtered <- reactiveValues()
   observe({
-    bridge$filtered <- cross_mod$filtered
+    bridge$filtered <- cross_mod$filtered 
   })
   
   # transform filtered data-----------------------------------------------------

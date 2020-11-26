@@ -185,20 +185,33 @@ mod_beta_server <- function(input, output, session, improxy){
     req(input$aggregate_by)
     sprintf("Aggregating feature counts at the %s level", input$aggregate_by)
   })
+  # output$check <- renderPrint({
+  #   
+  # })
   
   # perform aggregation with base aggregate
   aggregated_count <- eventReactive(input$agg_calculate, {
     req(input$aggregate_by)
     
     # set featureID in count_df to aggregation level
-    count_df <- improxy$work_db$asv
-    count_df$featureID <- improxy$work_db$tax[, input$aggregate_by]
+    count_df <- improxy$work_db$asv %>% arrange(featureID)
     
+    # copy taxonomy table
+    new_featID <- improxy$work_db$tax %>%
+      arrange(featureID) %>%
+      select(featureID, .data[[input$aggregate_by]]) %>%
+      mutate(newID = .data[[input$aggregate_by]],
+             newID = ifelse(is.na(newID), paste(input$aggregate_by, 'NA', sep="."), 
+                            newID))
+    
+    # updating count featureID
+    count_df$featureID <- new_featID$newID
     sampleID <- colnames(count_df)
     sampleID <- sampleID[sampleID != 'featureID']
- 
+    sampleID <- sprintf("`%s`", sampleID)
+    
     # build formula
-    yvar <- paste(sampleID, collapse=',')
+    yvar <- paste(as.character(sampleID), collapse=',')
     f <- sprintf("cbind(%s) ~ featureID", yvar)
 
     # perform aggregation with base::aggregate  
@@ -273,9 +286,6 @@ mod_beta_server <- function(input, output, session, improxy){
                                  buttons = c('copy','csv')))
   })
 
-  output$check <- renderPrint({
-    # as.data.frame(aggregated_tax())
-  })
   output$agg_preview_count <- DT::renderDataTable({
     DT::datatable(aggregated_count(),
                   extensions = 'Buttons',

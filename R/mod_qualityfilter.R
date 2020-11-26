@@ -37,9 +37,9 @@ mod_qualityfilter_ui <- function(id){
       ), # end dashboard sidebar
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
-            fluidRow(
-              box(width = 12, h3('Check'),
-                  verbatimTextOutput(ns('check')))),
+            # fluidRow(
+            #   box(width = 12, h3('Check'),
+            #       verbatimTextOutput(ns('check')))),
             column(
               width = 12, 
               h1('Remove Poor Quality Samples'),

@@ -11,7 +11,7 @@
 mod_filterfeat_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('filterfeat check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('filterfeat check'), br(), verbatimTextOutput(ns('check'))),
     column(width = 12,
            h1('Filter Features'),
            tags$div(

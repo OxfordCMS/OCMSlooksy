@@ -16,6 +16,7 @@
 #' @importFrom shiny NS tagList 
 #' @import dplyr
 #' @import tidyr
+#' @import plotly
 #' @import shinyFiles
 #' @import shinyjqui
 #' @import htmlwidgets

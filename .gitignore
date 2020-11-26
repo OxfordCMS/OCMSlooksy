@@ -4,5 +4,4 @@
 .DS_Store
 .gitignore
 .Rbuildignore
-man/*
 dev/*

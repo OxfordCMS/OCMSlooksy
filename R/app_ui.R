@@ -13,7 +13,7 @@ app_ui <- function() {
     # List the first level UI elements here 
     # h3('Check'),
     # verbatimTextOutput('check'),
-    navbarPage(title = "OCMS Explorer", id = 'tabs', position = 'fixed-top',
+    navbarPage(title = "OCMSlooksy", id = 'tabs', position = 'fixed-top',
 
                # Introduction---------------------------------------------------
                tabPanel(title = "Introduction", value = 'intro', icon = icon("book"),
@@ -63,7 +63,7 @@ golem_add_external_resources <- function(){
   
   tags$link(rel="stylesheet", type="text/css", href="www/custom.css")
   addResourcePath(
-    'www', system.file('app/www', package = 'OCMSExplorer')
+    'www', system.file('app/www', package = 'OCMSlooksy')
   )
  
   tags$head(

@@ -1,9 +1,9 @@
-if (!require('OCMSExplorer', character.only = TRUE))
+if (!require('OCMSlooksy', character.only = TRUE))
 {
-  install.packages("/gfs/devel/syen/release/OCMSExplorer", 
+  install.packages("/gfs/devel/syen/release/OCMSlooksy", 
                    repo = NULL, type = "source", dep=TRUE)
-  if(!require('OCMSExplorer', character.only = TRUE)) stop("Package not found")
+  if(!require('OCMSlooksy', character.only = TRUE)) stop("Package not found")
 }
 
-library(OCMSExplorer)
-OCMSExplorer::run_app()
+library(OCMSlooksy)
+OCMSlooksy::run_app()

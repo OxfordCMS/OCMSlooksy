@@ -2,8 +2,8 @@
 
 usethis::use_data("example_data")
 
-save_dir <- "/gfs/devel/syen/OCMSExplorer/data-raw/"
-save_dir <- "~/OCMSExplorer/data-raw/"
+save_dir <- "/gfs/devel/syen/OCMSlooksy/data-raw/"
+save_dir <- "~/OCMSlooksy/data-raw/"
 # create database
 con <- dbConnect(RSQLite::SQLite(), file.path(save_dir, "example_database.db"))
 

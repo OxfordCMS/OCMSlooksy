@@ -187,7 +187,7 @@ mod_import_server <- function(input, output, session, parent_session) {
     
     # Use example dataset-------------------------------------------------------
     else {
-      switch(input$example, {data_ls <- OCMSExplorer::example_data})  }
+      switch(input$example, {data_ls <- OCMSlooksy::example_data})  }
 
   })
   

@@ -796,27 +796,23 @@ mod_qc_server <- function(input, output, session, improxy){
   # sample distribution --------------------------------------------------------
   pdata_samdistr <- reactive({
     req(input$sample_select)
-    improxy$asv_met %>%
-      mutate(sampleID = as.factor(sampleID)) %>%
-      group_by(sampleID) %>%
-      mutate(sample_tot = sum(read_count)) %>%
-      group_by(.data[[input$sample_select]]) %>%
-      summarise(selected_var = as.factor(.data[[input$sample_select]]), 
-                sample_tot = sample_tot, group_tot = sum(read_count), 
-                avg = mean(sample_tot), x = as.numeric(selected_var), 
-                xavg1 = x - 0.5, xavg2 = x + 0.5) %>%
-      ungroup()
+    met <- improxy$data_db$metadata
+    asv <- improxy$data_db$merged_abundance_id[,met$sampleID]
+    rownames(met) <- met$sampleID
+    samdistr <- data.frame(count=colSums(asv))
+    rownames(samdistr) <- met$sampleID
+    samdistr[,input$sample_select] <- met[,input$sample_select]
+    samdistr
   })
   
-  
   p_samdistr <- reactive({
-    ggplot(pdata_samdistr(), aes(x = x, y = sample_tot)) +
-      geom_segment(aes(x = xavg1, xend = xavg2, y = avg, yend = avg)) +
-      geom_point(alpha = 0.6) +
-      scale_x_continuous(breaks = seq(1, length(levels(pdata_samdistr()$selected_var))),
-                         labels = levels(pdata_samdistr()$selected_var)) +
+    ggplot(pdata_samdistr(), aes(x = .data[[input$sample_select]], 
+                                 y = count,
+                                 group = .data[[input$sample_select]])) +
+      geom_boxplot() +
+      geom_jitter(height=0, width=0.2) +
       xlab(input$sample_select) +
-      ylab('Mean read count within group') +
+      ylab('Read count') +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
   })

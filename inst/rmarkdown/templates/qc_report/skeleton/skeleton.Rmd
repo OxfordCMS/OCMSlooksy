@@ -1,0 +1,138 @@
+---
+title: "QC Report"
+author: "Your Name"
+date: "The Date"
+output: output_format
+always_allow_html: true
+params:
+  tax_level: NA
+  yml: NA
+  p_filt: NA
+  p_nochim: NA
+  p_nasv: NA
+  p_preval: NA
+  p_spur: NA
+  p_rare: NA
+  tax_distrb_df: NA
+  p_taxdistr: NA
+  p_assigned: NA
+  p_grpdistr: NA
+  p_samdistr: NA
+---
+
+```{r setup, include=FALSE}
+require(RSQLite)
+require(dplyr)
+require(tidyr)
+require(knitr)
+require(ggplot2)
+require(plotly)
+require(OCMSutility)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE, warning = FALSE, 
+                      result = 'asis', fig.width = 8, fig.height = 6)
+```
+
+# Sequencing Quality Control
+Raw sequences were processed through the OCMS 16S rRNA gene pipeline to assure all sequences used during analysis have been quality controlled. This report outlines the processing steps that occured, and depicts the changes applied to the dataset through this process.
+
+## Filtering Reads
+The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.
+
+### Filtering parameters applied
+```{r}
+out <- params$yml %>%
+      dplyr::filter(task == 'trim')
+
+DT::datatable(out, colnames = c('pipeline task','dada2 function',
+                                'parameter','value'),
+              options = list(scrollX = TRUE))
+```
+
+### Filtering effects
+
+```{r}
+params$p_filt
+```
+
+## Denoising Sequences
+The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)
+
+### Denoising parameters applied
+```{r, results='asis'}
+out <- params$yml %>%
+      filter(task == 'sample_inference')
+
+kable(out, col.names = c('pipeline task','dada2 function','parameter','value'))
+```
+
+### Denoising Effects
+
+```{r}
+params$p_nochim
+```
+
+## Feature Prevalence
+A useful metric is the number of features that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of features per sample we also plot the prevalence of these features i.e. the proportion of samples that each feature is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of spurious features i.e. low prevalence and low abundance.
+
+### Number of featuers calle dper sample
+```{r}
+params$p_nasv
+```
+
+### Distribution of Feature Prevalence
+```{r}
+params$p_preval
+```
+
+### Feature Prevalence and Relative Abundance
+```{r}
+ params$p_spur
+```
+
+## Feature Rarefaction
+The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve.
+
+```{r}
+params$p_rare
+```
+
+## Taxonomy Distribution
+The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species).
+
+### Taxonomy assignment parameters applied
+```{r}
+out <- params$yml %>%
+      filter(task == "taxonomy")
+
+kable(out, col.names = c('pipeline task','dada2 function','parameter','value'))
+```
+
+### Distribution of Taxa
+```{r}
+out <- params$tax_distrb_df
+    colnames(out) <- c(params$tax_level, "Read Count", "Relative Abundance")
+kable(out)
+
+```
+
+```{r}
+params$p_taxdistr
+```
+
+### Percent Assigned
+```{r}
+params$p_assigned
+```
+
+## Read Count Distribution
+Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)
+
+### Total read counts across samples or sample groups
+```{r}
+params$p_grpdistr
+```
+
+### Distribution of Average Read Counts Across Sample Groups
+```{r}
+params$p_samdistr
+```

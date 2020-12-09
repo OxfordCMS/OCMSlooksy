@@ -19,7 +19,7 @@ mod_qc_server(input, output, session, improxy)
 \item{session}{internal}
 }
 \description{
-Provides interactive version of QC report returned from dada2 
+Provides interactive version of QC report returned from dada2
 analysis via CGAT-core pipeline
 }
 \keyword{internal}

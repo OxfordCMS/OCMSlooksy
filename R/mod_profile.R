@@ -4,9 +4,9 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 mod_profile_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -20,6 +20,7 @@ mod_profile_ui <- function(id){
             width = 225,
             tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
             uiOutput(ns('bar_x_ui')),
+            uiOutput(ns('bar_panel_ui')),
             selectInput(ns('bar_tax'), 'Taxonomic level:',
                         choices = c('featureID','Kingdom','Phylum',
                                     'Class', 'Order', 'Family','Genus',
@@ -34,7 +35,7 @@ mod_profile_ui <- function(id){
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-          
+
           # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           h1('Relative Distribution of Taxa'),
           column(width = 12,
@@ -50,7 +51,7 @@ mod_profile_ui <- function(id){
                  ),
                  column(width = 11, style = 'padding:0px;',
                         shinyjqui::jqui_resizable(
-                          plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>% 
+                          plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>%
                             shinycssloaders::withSpinner())
                  )
           )
@@ -59,25 +60,37 @@ mod_profile_ui <- function(id){
     ) # end dashboard Page
   ) # end taglist
 }
-    
+
 #' profile Server Function
 #'
-#' @noRd 
+#' @noRd
 mod_profile_server <- function(input, output, session, improxy){
   ns <- session$ns
- 
+
   # render controls bar plot
   output$bar_x_ui <- renderUI({
-    selectInput(ns('bar_x'), "x-axis", choices = colnames(improxy$work_db$met),
+    selectInput(ns('bar_x'), "x-axis",
+                choices = colnames(improxy$work_db$met),
                 selected = 'sampleID')
   })
-  
- 
+
+  output$bar_panel_ui <- renderUI({
+    selectInput(ns('bar_panel'), "panel by",
+                choices = c('none', colnames(improxy$work_db$met)),
+                selected = 'none')
+  })
+
+
   # calculate output bar plot---------------------------------------------------
-  
   bar_data <- reactive({
-    req(input$bar_tax, input$bar_x)
-    improxy$work_db$work %>%
+  req(input$bar_tax, input$bar_x, input$bar_panel)
+    
+    col_keep <- c(input$bar_tax, input$bar_x)
+    if(input$bar_panel != 'none') {
+      col_keep <- c(col_keep, input$bar_panel)
+    }
+    
+    out <- improxy$work_db$work %>%
       # sample total read count
       group_by(sampleID) %>%
       mutate(sample_total = sum(read_count)) %>%
@@ -85,14 +98,16 @@ mod_profile_server <- function(input, output, session, improxy){
       group_by(sampleID, !!sym(input$bar_tax)) %>%
       mutate(tax_cnt = sum(read_count), tax_rel = tax_cnt / sample_total) %>%
       ungroup() %>%
-      distinct(!!sym(input$bar_tax), !!sym(input$bar_x), tax_cnt, tax_rel) %>%
+      distinct(!!!syms(col_keep), tax_cnt, tax_rel) %>%
       # mean of aggregated counts within selected group
       group_by(!!sym(input$bar_x), !!sym(input$bar_tax)) %>%
       mutate(cnt_abund = mean(tax_cnt),
              rel_abund = mean(tax_rel)) %>%
-      ungroup() 
+      ungroup()
+    
+    out
   })
-  
+
   output$bar_title  <- renderText({
     req(input$bar_y)
     if(input$bar_y == 'rel_abund') {
@@ -102,24 +117,20 @@ mod_profile_server <- function(input, output, session, improxy){
       sprintf('Mean Cumulative Read Count, %s', input$bar_tax)
     }
   })
-  
+
   # output$check <- renderPrint({
-  # 
+  #
   # })
-  
-  pdata <- reactive({
-    req(input$bar_tax, input$bar_x, input$bar_y)
-    bar_data() %>%
-      distinct(!!sym(input$bar_tax), !!sym(input$bar_x), !!sym(input$bar_y))
-  })
-  
-  
+
   output$bar_table <- DT::renderDataTable({
     req(input$bar_tax, input$bar_x, input$bar_y)
-    out <- pdata() %>% spread(!!sym(input$bar_x), !!sym(input$bar_y))
+    out <- bar_data() %>% 
+      select(!!sym(input$bar_x), !!sym(input$bar_y), !!sym(input$bar_tax)) %>%
+      spread(!!sym(input$bar_x), !!sym(input$bar_y))
+    
     x_name <- colnames(out)
     x_name <- x_name[x_name != input$bar_tax]
-    
+
     # by default, only show first 50 samples + 8 tax columns
     if(ncol(out) <= 51) {
       # if less than 50 samples, show all
@@ -130,8 +141,8 @@ mod_profile_server <- function(input, output, session, improxy){
       col_ind <- 52:ncol(out) # index of columns to hide
       vis_val <- FALSE
     }
-    
-    
+
+
     if(input$bar_y == 'rel_abund') {
       DT::datatable(out,  extensions = 'Buttons',
                     options = list(
@@ -155,18 +166,19 @@ mod_profile_server <- function(input, output, session, improxy){
                         list(targets = col_ind, visible = vis_val)
                       )))
     }
-    
+
   })
-  
+
   p_bar <- reactive({
-    req(input$bar_tax, input$bar_x, input$bar_y)
-    p <- ggplot(pdata(), aes_string(x = input$bar_x, y = input$bar_y, fill = input$bar_tax)) +
+    req(input$bar_tax, input$bar_x, input$bar_y, input$bar_panel)
+    p <- ggplot(bar_data(), aes_string(x = input$bar_x, y = input$bar_y, 
+                                       fill = input$bar_tax)) +
       geom_bar(stat = 'identity') +
       xlab(input$bar_x) +
       scale_fill_discrete(name = input$bar_tax) +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
-    
+
     if(input$bar_y == 'rel_abund') {
       p <- p +
         ylab(sprintf('Mean Relative Abundance (%%), %s', input$bar_tax))
@@ -175,27 +187,32 @@ mod_profile_server <- function(input, output, session, improxy){
       p <- p +
         ylab(sprintf('Mean Read Count, %s', input$bar_tax))
     }
+
+    if(input$bar_panel != 'none') {
+      panel_formula = formula(paste("~", input$bar_panel))
+      p <- p + facet_wrap(panel_formula, scales='free')
+    }
     p
   })
-  
+
   output$bar_plot <- renderPlotly({
     ggplotly(p_bar())
   })
-  
+
   # download data
   for_download <- reactiveValues()
   observe({
     req(input$bar_tax, input$bar_y, input$bar_x)
     for_download$figure <- p_bar()
-    for_download$fig_data <- pdata()
+    for_download$fig_data <- bar_data()
   })
-  
+
   callModule(mod_download_server, "download_bar", bridge = for_download, 'bar')
 }
-    
+
 ## To be copied in the UI
 # mod_profile_ui("profile_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_profile_server, "profile_ui_1")
- 
+

@@ -173,6 +173,10 @@ kable(params$alpha_result, caption = "Alpha-diversity metrics for each sample.")
   scroll_box(width="100%", height="500px")
 ```
 
+`r if(params$validation_msg != 'valid') {
+params$validation_msg
+}`
+
 ```{r, eval=params$validation_msg == 'valid'}
 kable(params$alpha_stat, caption = "Results of group-wise statistical test.")
 ```

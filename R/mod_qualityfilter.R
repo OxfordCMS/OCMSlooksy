@@ -41,13 +41,9 @@ mod_qualityfilter_ui <- function(id){
             #   box(width = 12, h3('Check'),
             #       verbatimTextOutput(ns('check')))),
             column(
-              width = 12, 
-              h1('Remove Poor Quality Samples'),
-              tags$div("Before starting data exploration, it may be desirable to remove poor-quality samples. This ensures that the analysis is performed on a dataset that is relevant to the current research question.")),
-            column(
               width = 12,
               h1('Filter Samples'), br(),
-              tags$div("It may be desirable to perform analysis on a subset of samples if certain samples did not pass QC, or are no longer relevant to the current research question.")),
+              tags$div("It may be desirable to perform analysis on a subset of samples if they are of poor quality or are no longer relevant to the current research question.")),
             fluidRow(
               br(), br(),
               column(
@@ -185,7 +181,9 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
          tax = tax(),
          work = samp_filtered() %>%
            inner_join(tax() %>% mutate_all(as.character), 'featureID') %>%
-           inner_join(met_filtered(), 'sampleID')
+           inner_join(met_filtered(), 'sampleID'),
+         sample_select_prompt = input$sample_select_prompt,
+         sample_select = all_sample()[rows_selected()]
     )
   })
   

@@ -214,8 +214,8 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     req(input$cutoff_method)
     ui_entry()$max_cutoff})
 
-  output$asv_cutoff_msg <- renderText({
-    req(input$cutoff_method)
+  asv_cutoff_msg <- reactive({
+    req(input$cutoff_method, input$prevalence, input$asv_cutoff)
     tot_feat <- wip() %>% filter(read_count > 0)
     tot_feat <- length(unique(tot_feat$featureID))
     rel_feat <- length(to_keep()) / tot_feat * 100
@@ -231,6 +231,10 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     out <- gsub("REPLACE3", as.character(input$prevalence), out)
     out <- gsub("TOT_SAMP", as.character(tot_samp), out)
     out <- gsub("REL_SAMP", as.character(rel_samp), out)
+  })
+  
+  output$asv_cutoff_msg <- renderText({
+    asv_cutoff_msg()
   })
 
   # by selecting ASVs
@@ -340,19 +344,22 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   })
 
   # show ASVs removed-----------------------------------------------------------
-  output$asv_remove <- renderText({
-    req(bridge$filter_input$asv_filter_options, input$asv_table_select_rows_selected)
+  asv_remove <- reactive({
     featID <- unique(wip()$featureID)
-    sprintf("Removing %s Features", length(featID[!featID %in% to_keep()]))
+    featID[!featID %in% to_keep()]
+  })
+  
+  output$asv_remove <- renderText({
+    sprintf("Removing %s Features", length(asv_remove()))
   })
 
 
   # giving preview on read and prevalence
-  output$prev_agg_plot <- renderPlotly({
+  prev_agg_plot <- reactive({
     scaleFUN <- function(x) sprintf("%.0f", x)
-
+    
     req(bridge$filter_input$asv_filter_options)
-
+    
     if(input$cutoff_method == 'abs_count') {
       y = 'agg_count'
       ylab <- 'Aggregated Read count'
@@ -365,7 +372,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       y = 'agg_samp_rel'
       ylab <- 'Aggregated Relative abundance\n(% of sample)'
     }
-
+    
     pdata <- working_asv() %>%
       group_by(featureID) %>%
       # number of samples in which asv meets read cutoff
@@ -378,7 +385,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       mutate(colour = ifelse(featureID %in% to_keep(),
                              'to keep', 'to remove')) %>%
       distinct()
-
+    
     p <- ggplot(pdata, aes_string(x = 'prev_observed', y = y, colour = 'colour')) +
       geom_point(aes(text=sprintf("featureID: %s", featureID)), alpha = 0.5, size = 2) +
       xlab('ASV prevalence (# of samples)') +
@@ -387,16 +394,19 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       scale_y_continuous(trans = 'log10') +
       theme_bw(12) +
       theme(legend.position = 'bottom')
-
-    ggplotly(p) %>%
+    p
+  })
+  
+  output$prev_agg_plot <- renderPlotly({
+    ggplotly(prev_agg_plot()) %>%
       layout(legend = list(orientation = "h", x = -0.5, y = -1))
   })
 
-  output$prev_read_plot <- renderPlotly({
+  prev_read_plot <- reactive({
     scaleFUN <- function(x) sprintf("%.0f", x)
-
+    
     req(bridge$filter_input$asv_filter_options)
-
+    
     if(input$cutoff_method == 'abs_count') {
       y = 'read_count'
       ylab <- 'Read count'
@@ -409,14 +419,14 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       y = 'samp_rel_abund'
       ylab <- 'Relative abundance\n(% of sample)'
     }
-
+    
     pdata <- working_asv() %>%
       group_by(featureID) %>%
       # number of samples in which asv meets read cutoff
       mutate(prev_observed = sum(read_count >= input$asv_cutoff),
              colour = ifelse(featureID %in% to_keep(), 'to keep', 'to remove')) %>%
       distinct()
-
+    
     p <- ggplot(pdata, aes_string(x = 'prev_observed', y = y, colour = 'colour')) +
       geom_point(aes(text=sprintf("featureID: %s<br>sampleID: %s",
                                   featureID, sampleID)),
@@ -427,7 +437,10 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       scale_y_continuous(trans = 'log10') +
       theme_bw(12) +
       theme(legend.position = 'bottom')
-    ggplotly(p) %>%
+  })
+  
+  output$prev_read_plot <- renderPlotly({
+    ggplotly(prev_read_plot()) %>%
       layout(legend = list(orientation = "h", x = -0.5, y = -1))
   })
 
@@ -572,16 +585,28 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   observe({
     req(bridge$filter_input$submit_asv)
     cross_mod$filtered <- list(met = met_filtered(),
-                            asv = asv_filtered2() %>%
-                              spread(sampleID, read_count),
-                            tax = tax() %>%
-                              filter(featureID %in% asv_filtered2()$featureID)
+                               asv = asv_filtered2() %>%
+                                 spread(sampleID, read_count),
+                               tax = tax() %>%
+                                 filter(featureID %in% asv_filtered2()$featureID))
+    
+    cross_mod$params <- list(
+      cutoff_method = input$cutoff_method,
+      asv_cutoff = input$asv_cutoff,
+      prevalence = input$prevalence,
+      asv_cutoff_msg = asv_cutoff_msg(),
+      asv_remove = asv_remove(),
+      prev_agg_plot = prev_agg_plot(),
+      prev_read_plot = prev_read_plot(),
+      empty_sample = empty_sample(),
+      empty_asv = empty_asv()
     )
   })
+  
 
-  # # check
-  # output$check <- renderPrint({
-  # })
+  # check
+  output$check <- renderPrint({
+  })
   
   return(cross_mod)
 }

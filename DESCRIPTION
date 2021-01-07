@@ -38,6 +38,7 @@ Imports:
     shinyjqui,
     shinyjs,
     tidyr,
+    tibble,
     vegan,
     vroom,
     pkgload

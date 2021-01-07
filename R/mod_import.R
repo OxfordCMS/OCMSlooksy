@@ -337,7 +337,7 @@ mod_import_server <- function(input, output, session, parent_session) {
 
   output$tax_preview <- DT::renderDT({
     
-    DT::datatable(tax(), extensions = 'Buttons', 
+    DT::datatable(tax() %>% relocate(sequence, .after=last_col()), extensions = 'Buttons', 
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE, 

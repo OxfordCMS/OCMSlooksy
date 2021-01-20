@@ -55,7 +55,7 @@ mod_alpha_ui <- function(id){
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           tabItems(
             # info tab body-----------------------------------------------------
             tabItem(
@@ -348,12 +348,12 @@ mod_alpha_server <- function(input, output, session, improxy){
   
   callModule(mod_download_server, "download_alpha", bridge = for_download, 'alpha')
   
-  output$check <- renderPrint({
-    
-    print(grp_tally())
-    print(validation_msg())
-    print(summary(for_report$params))
-  })
+  # output$check <- renderPrint({
+  #   
+  #   print(grp_tally())
+  #   print(validation_msg())
+  #   print(summary(for_report$params))
+  # })
   # initiate list to pass onto report submodule
   for_report <- reactiveValues()
   observe({

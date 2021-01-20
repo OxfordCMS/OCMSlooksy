@@ -21,7 +21,7 @@ mod_alpha_ui <- function(id){
                    icon = icon('info-circle'), selected = TRUE),
           menuItem('Filter Features', tabName = 'filter_asv_alpha'),
           menuItem('\u03B1-Diversity Analysis', tabName = 'alpha_tab'),
-          menuItem('Report', tabName = 'alpha_report'),
+          menuItem('Report', tabName = 'alpha_report_tab'),
           # filter menu controls--------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'filter_asv_alpha'",
@@ -61,6 +61,7 @@ mod_alpha_ui <- function(id){
             tabItem(
               tabName = 'info_tab_overview',
               column(
+                width = 12,
                 h1("\u03B1-Diversity"),
                 tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation.")  
               ),
@@ -73,41 +74,44 @@ mod_alpha_ui <- function(id){
             # alpha tab body----------------------------------------------------
             tabItem(
               tabName = 'alpha_tab',
-              column(h1("\u03B1-Diversity")),
-              fluidRow(
-                DT::dataTableOutput(ns('alpha_table'))  %>%
-                  shinycssloaders::withSpinner()
-              ), br(),
-              fluidRow(
+              column(
                 width = 12,
-                DT::dataTableOutput(ns('alpha_test'))  %>%
-                  shinycssloaders::withSpinner()
-              ), br(),
-              fluidRow(
-                column(
-                  width = 3, br(), br(),
-                  wellPanel(uiOutput(ns('alpha_grp_ui')))
-                ),
-                column(
-                  width = 9,
+                h1("\u03B1-Diversity"),
+                fluidRow(
+                  DT::dataTableOutput(ns('alpha_table'))  %>%
+                    shinycssloaders::withSpinner()
+                ), br(),
+                fluidRow(
+                  width = 12,
+                  DT::dataTableOutput(ns('alpha_test'))  %>%
+                    shinycssloaders::withSpinner()
+                ), br(),
+                fluidRow(
                   column(
-                    width = 1, style = 'padding:0px;',
-                    mod_download_ui(ns('download_alpha')),
+                    width = 3, br(), br(),
+                    wellPanel(uiOutput(ns('alpha_grp_ui')))
                   ),
                   column(
-                    width = 11, style = 'padding:0px;',
-                    shinyjqui::jqui_resizable(
-                      plotlyOutput(ns('alpha_plot'), width = '100%', 
-                                   height= 'auto') %>% 
-                        shinycssloaders::withSpinner()
-                    )
-                  )  
+                    width = 9,
+                    column(
+                      width = 1, style = 'padding:0px;',
+                      mod_download_ui(ns('download_alpha')),
+                    ),
+                    column(
+                      width = 11, style = 'padding:0px;',
+                      shinyjqui::jqui_resizable(
+                        plotlyOutput(ns('alpha_plot'), width = '100%', 
+                                     height= 'auto') %>% 
+                          shinycssloaders::withSpinner()
+                      )
+                    )  
+                  )
                 )
               )
             ),
             # report------------------------------------------------------------
             tabItem(
-              tabName = "alpha_report",
+              tabName = "alpha_report_tab",
               mod_report_ui(ns("alpha_report_ui"))
             ) # end tabitem
           ) # end tabItems
@@ -186,9 +190,14 @@ mod_alpha_server <- function(input, output, session, improxy){
   # determine valid stat test
   grp_tally <- reactive({
     req(input$alpha_grp)
-    table(cross_mod$filtered$met[,input$alpha_grp])
+    out <- table(cross_mod$filtered$met[,input$alpha_grp])
+    if(length(out) == 0) out <- 0
+    out
   })
+  
   stat_test <- reactive({
+    print(grp_tally())
+    print(unique(cross_mod$filtered$met[,input$alpha_grp]))
     if(length(grp_tally()) == 2) 'wilcox.test'
     else 'kruskal.test'
   })
@@ -340,6 +349,8 @@ mod_alpha_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_alpha", bridge = for_download, 'alpha')
   
   output$check <- renderPrint({
+    
+    print(grp_tally())
     print(validation_msg())
     print(summary(for_report$params))
   })

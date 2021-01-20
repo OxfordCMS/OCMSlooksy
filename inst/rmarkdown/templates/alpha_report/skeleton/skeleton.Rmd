@@ -1,0 +1,186 @@
+---
+title: "Alpha Diversity Report"
+author: "Your Name"
+date: "The Date"
+output: output_format
+always_allow_html: true
+params:
+  sample_select_prompt: NA
+  sample_select: NA
+  met1: NA
+  tax1: NA
+  asv_select_prompt: NA
+  asv_filter_options: NA
+  cutoff_method: NA
+  asv_cutoff: NA
+  prevalence: NA
+  asv_cutoff_msg: NA
+  asv_remove: NA
+  prev_agg_plot: NA
+  prev_read_plot: NA
+  empty_sample: NA
+  empty_asv: NA
+  met2: NA
+  tax2: NA
+  alpha_result: NA
+  alpha_stat: NA
+  validation_msg: NA
+  p_alpha: NA
+---
+
+```{r setup, include=FALSE}
+require(dplyr)
+require(tidyr)
+require(knitr)
+require(ggplot2)
+require(kableExtra)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE, warning = FALSE, 
+                      message = TRUE, result = 'asis', 
+                      fig.width = 8, fig.height = 6)
+```
+
+# Data Preparation
+## Filtering Samples
+### Parameters selected:
+```{r sample-filter}
+sample_select_prompt_out <- switch(params$sample_select_prompt, 
+                                   all = "Use all samples",
+                                   include = "Include selected samples",
+                                   exclude = "Exclude selected samples")
+
+if(params$sample_select_prompt == 'all') {
+  sample_select_out <- 'Not applicable'
+} else {
+  sample_select_out <- paste0(' ', params$sample_select, collapse="\n")
+}
+```
+
+* Samples to include in analysis: `r sample_select_prompt_out`
+* Samples selected: `r sample_select_out`
+
+### Samples included in analysis:
+```{r sample-table}
+kable(params$met1) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+## Filtering Features
+### Parameters selected:
+```{r feat-filter}
+# features to exclude from analysis
+asv_select_prompt_out <- switch(params$asv_select_prompt,
+                                all = 'Use all features',
+                                some = 'Filter features')
+```
+
+* Features to exclude from analysis: `r asv_select_prompt_out`
+
+```{r feat-param}
+# Filter features by
+if(params$asv_select_prompt == 'some') {
+  asv_filter_options_out <- switch(params$asv_filter_options,
+                                   asv_by_count = 'read count',
+                                   asv_by_select = 'selection')
+} else {
+  asv_filter_options_out <- 'Not applicable'
+}
+
+if(params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count') {
+  # Set filter cut-off by
+  cutoff_method_out <- switch(
+    params$cutoff_method,
+    abs_count = 'Read count',
+    percent_sample = 'Percent of total read count of each sample',
+    percent_total = 'Percent of total read count of dataset'
+  )
+
+  # Read count cut-off
+  asv_cutoff_out <- params$asv_cutoff
+
+  # Feature prevalence
+  prevalence_out <- params$prevalence
+
+  # filter message
+  asv_cutoff_msg_out <- params$asv_cutoff_msg
+} else {
+  cutoff_method_out <- 'Not applicable'
+  asv_cutoff_out <- 'Not applicable'
+  prevalence_out <- 'Not applicable'
+  asv_cutoff_msg_out <- 'Features not filtered by read count'
+  
+}
+```
+
+`r if(params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count') {
+  paste("* Filter features by:", asv_filter_options_out, sep=" ")
+  paste("* Set filter cut-off by:", cutoff_method_out, sep=" ")
+  paste("* Read count cut-off:", asv_cutoff_out, sep=" ")
+  paste("* Feature prevalence (# of samples):", prevalence_out, sep=" ")
+  "\n"
+  asv_cutoff_msg_out
+}`
+
+```{r, eval=params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count', fig.cap="Distribution of feature prevalence based on aggregated read count. Each point is a feature, with y-axis as the sum of read counts of a given feature across all samples and x-axis as the number of samples in which a given feature is observed."}
+
+params$prev_agg_plot
+```
+
+```{r feat-text, eval=params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count', fig.cap="Distribution of feature prevalence based on read count. Each point is feature of a sample, with y-axis as the read count and x-axis as the number of samples in which a given feature is observed."}
+
+params$prev_read_plot
+```
+
+`r if(params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_select') {
+  paste("* Filter features by: ", asv_filter_options_out, sep=" ")
+  "* Features selected to be excluded:"
+}`
+
+```{r feat-table-select, eval = params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_select'}
+out <- params$tax1 %>% 
+  filter(featureID %in% params$asv_remove) %>% 
+  relocate(sequence, .after=last_col())
+kable(out) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+`r if(length(params$empty_sample) > 0) {
+  sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:\n%s", length(params$empty_sample), paste(params$empty_sample, collapse="\n"))
+}`
+
+`r if(length(params$empty_asv) > 0) {
+sprintf("%s asvs contained 0 reads in all samples after ASV filtering. The following asvs have been removed:\n%s", length(params$empty_asv), paste(params$empty_asv, collapse="\n"))
+}`
+
+### Features included in analysis:
+```{r feat-table-keep}
+out <- params$tax2 %>% 
+  relocate(sequence, .after=last_col())
+
+kable(out) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+# Alpha Diversity
+
+Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost, 2006](https://onlinelibrary.wiley.com/doi/abs/10.1111/j.2006.0030-1299.14714.x). Diversity measures, such as Shannon's Diversity and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation.
+
+```{r alpha-metric}
+kable(params$alpha_result, caption = "Alpha-diversity metrics for each sample.") %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+`r if(params$validation_msg != 'valid') {
+params$validation_msg
+}`
+
+```{r alpha-stat, eval=params$validation_msg == 'valid'}
+kable(params$alpha_stat, caption = "Results of group-wise statistical test.")
+```
+
+```{r alpha-fig, fig.cap="Alpha-Diveristy metrics"}
+params$p_alpha
+```

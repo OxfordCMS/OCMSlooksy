@@ -140,11 +140,20 @@ mod_import_server <- function(input, output, session, parent_session) {
         req(input$metadata_file)
 
         ext <- tools::file_ext(input$metadata_file$name)
-        switch(ext,
-               csv = vroom::vroom(input$metadata_file$datapath, delim = ","),
-               tsv = vroom::vroom(input$metadata_file$datapath, delim = "\t"),
-               validate("Invalid file; Please upload a .csv or .tsv file")
-        )
+        out <- switch(ext,
+                 csv = vroom::vroom(input$metadata_file$datapath, delim = ","),
+                 tsv = vroom::vroom(input$metadata_file$datapath, delim = "\t"),
+                 validate("Invalid file; Please upload a .csv or .tsv file"))
+        
+        # check for spaces or special characters
+        check_char <- any(grepl("[^[:alnum:]_]", colnames(out)))
+        
+        if(check_char) {
+          # remove all spaces and special characters
+          new_colname <- gsub("[^[:alnum:]_]", "_", colnames(out))
+          colnames(out) <- new_colname
+        }
+        out
       })
       
       data_ls[['metadata']] <- metadata()
@@ -167,21 +176,6 @@ mod_import_server <- function(input, output, session, parent_session) {
       table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
                     'merged_filter_summary','merged_qc_summary') # need ymltable
       
-      # shiny::validate(
-      #   # data_set contains necessary tables
-      #   need(any(table_ls %in% names(data_ls)),
-      #        "database file missing necessary table(s)."),
-      #   # metadata must have sampleID as a identifier
-      #   need("sampleID" %in% colnames(data_ls$metadata), 
-      #        "Metadata must include 'sampleID'."),
-      #   # sampleID must be unique
-      #   need(!any(duplicated(data_ls$metadata$sampleID)),
-      #        "Sample identifiers (sampleID) must be unique."),
-      #   # sampleID matches merge_abundance_id samples exactly
-      #   need(identical(sort(as.character(data_ls$metadata$sampleID)),
-      #                  sort(colnames(data_ls[['merged_abundance_id']])[2:ncol(data_ls[['merged_abundance_id']])])),
-      #        "holdup! sampleID in metadata do not match samples in uploaded database."),
-      #   errorClass = 'importError')
       data_ls
     }
     
@@ -337,7 +331,7 @@ mod_import_server <- function(input, output, session, parent_session) {
 
   output$tax_preview <- DT::renderDT({
     
-    DT::datatable(tax(), extensions = 'Buttons', 
+    DT::datatable(tax() %>% relocate(sequence, .after=last_col()), extensions = 'Buttons', 
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE, 

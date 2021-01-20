@@ -15,46 +15,72 @@ mod_profile_ui <- function(id){
       dashboardSidebar(
         sidebarMenu(
           id = 'menu', br(),
+          menuItem('Task Info', tabName = 'info_tab_profile', 
+                   icon = icon('info-circle'), selected = TRUE),
+          menuItem('Microbiome Profile', tabName = "profile_tab"),
+          menuItem('Report', tabName='profile_report_tab'),
           # Bar plot controls---------------------------------------------------
-          fixedPanel(
-            width = 225,
-            tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
-            uiOutput(ns('bar_x_ui')),
-            uiOutput(ns('bar_panel_ui')),
-            selectInput(ns('bar_tax'), 'Taxonomic level:',
-                        choices = c('featureID','Kingdom','Phylum',
-                                    'Class', 'Order', 'Family','Genus',
-                                    'Species', 'Taxon'),
-                        selected = 'Phylum'),
-            radioButtons(ns('bar_y'), 'Response measure:',
-                         c('Relative abundance' = 'rel_abund',
-                           'Read count' = 'cnt_abund')))
+          conditionalPanel(
+            condition = "input.menu === 'profile_tab'",
+            br(), hr(),
+            fixedPanel(
+              width = 225,
+              tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
+              uiOutput(ns('bar_x_ui')),
+              uiOutput(ns('bar_panel_ui')),
+              selectInput(ns('bar_tax'), 'Taxonomic level:',
+                          choices = c('featureID','Kingdom','Phylum',
+                                      'Class', 'Order', 'Family','Genus',
+                                      'Species', 'Taxon'),
+                          selected = 'Phylum'),
+              radioButtons(ns('bar_y'), 'Response measure:',
+                           c('Relative abundance' = 'rel_abund',
+                             'Read count' = 'cnt_abund')))
+          )
         ) # end sidebar menu
       ), # end dashbaord sidebar
       # dashboard body----------------------------------------------------------
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-
           # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
-          h1('Relative Distribution of Taxa'),
-          column(width = 12,
-                 h3(textOutput(ns('bar_title'))),
-                 p("Observing relative abundance or sequence abundance based on metadata variables. Abundance values can be aggregated at different taxonomic levels. The mean relative abundance is shown when selected group variable contains multiple samples"),
-                 DT::dataTableOutput(ns('bar_table'))  %>%
-                   shinycssloaders::withSpinner()
-          ),
-          column(width = 12,
-                 column(
-                   width = 1, style = 'padding:0px;',
-                   mod_download_ui(ns("download_bar"))
-                 ),
-                 column(width = 11, style = 'padding:0px;',
-                        shinyjqui::jqui_resizable(
-                          plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>%
-                            shinycssloaders::withSpinner())
-                 )
-          )
+          tabItems(
+            tabItem(
+              tabName = "info_tab_profile",
+              column(
+                width=12,
+                h1('Microbiome Profile'),
+                p('Examine the relative abundance microbiome profile at various taxonomic levels.')
+              )
+            ), # end info tab
+            tabItem(
+              tabName = "profile_tab",
+              column(
+                width = 12,
+                h1('Microbiome Profile'),
+                h3(textOutput(ns('bar_title'))),
+                p("Observing relative abundance or sequence abundance based on metadata variables. Abundance values can be aggregated at different taxonomic levels. The mean relative abundance is shown when selected group variable contains multiple samples"),
+                DT::dataTableOutput(ns('bar_table'))  %>%
+                  shinycssloaders::withSpinner()
+              ),
+              column(
+                width = 12,
+                column(
+                  width = 1, style = 'padding:0px;',
+                  mod_download_ui(ns("download_bar"))
+                ),
+                column(width = 11, style = 'padding:0px;',
+                       shinyjqui::jqui_resizable(
+                         plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>%
+                           shinycssloaders::withSpinner())
+                )
+              )
+            ), # end profile tab
+            tabItem(
+              tabName = "profile_report_tab",
+              mod_report_ui(ns("profile_report_ui"))
+            ) # end report tab
+          ) # end tabItems
         ) # end box
       ) # end dashbaoad body
     ) # end dashboard Page
@@ -118,16 +144,15 @@ mod_profile_server <- function(input, output, session, improxy){
     }
   })
 
-  # output$check <- renderPrint({
-  #
-  # })
-
-  output$bar_table <- DT::renderDataTable({
+  bar_table <- reactive({
     req(input$bar_tax, input$bar_x, input$bar_y)
-    out <- bar_data() %>% 
+    bar_data() %>% 
       select(!!sym(input$bar_x), !!sym(input$bar_y), !!sym(input$bar_tax)) %>%
       spread(!!sym(input$bar_x), !!sym(input$bar_y))
+  })
+  output$bar_table <- DT::renderDataTable({
     
+    out <- bar_table()
     x_name <- colnames(out)
     x_name <- x_name[x_name != input$bar_tax]
 
@@ -208,6 +233,29 @@ mod_profile_server <- function(input, output, session, improxy){
   })
 
   callModule(mod_download_server, "download_bar", bridge = for_download, 'bar')
+  
+  # output$check <- renderPrint({
+  #   print(for_report$params$sample_select_prompt)
+  # })
+  
+  # initiate parameters to send to report
+  for_report <- reactiveValues()
+  observe({
+    for_report$params <- list(
+      met = improxy$work_db$met,
+      sample_select_prompt = improxy$work_db$sample_select_prompt,
+      sample_select = improxy$work_db$sample_select,
+      bar_y = input$bar_y,
+      bar_x = input$bar_x,
+      bar_tax = input$bar_tax,
+      bar_table = bar_table(),
+      p_bar = p_bar()
+    )
+  })
+  # build report
+  callModule(mod_report_server, "profile_report_ui", bridge = for_report,
+             template = "profile_report",
+             file_name = "profile_report")
 }
 
 ## To be copied in the UI

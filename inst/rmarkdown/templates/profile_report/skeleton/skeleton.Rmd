@@ -1,0 +1,76 @@
+---
+title: "Profile Report"
+author: "Your Name"
+date: "The Date"
+output: output_format
+always_allow_html: true
+params:
+  met: NA
+  sample_select_prompt: NA
+  sample_select: NA
+  bar_x: NA
+  bar_y: NA
+  bar_tax: NA
+  bar_table: NA
+  p_bar: NA
+---
+
+
+```{r setup, include=FALSE}
+require(dplyr)
+require(tidyr)
+require(knitr)
+require(ggplot2)
+require(kableExtra)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE, warning = FALSE, 
+                      message = TRUE, result = 'asis', 
+                      fig.width = 8, fig.height = 6)
+```
+
+
+# Data Preparation
+## Filtering Samples
+### Parameters selected:
+```{r}
+sample_select_prompt_out <- switch(params$sample_select_prompt, 
+                                   all = "Use all samples",
+                                   include = "Include selected samples",
+                                   exclude = "Exclude selected samples")
+
+if(params$sample_select_prompt == 'all') {
+  sample_select_out <- 'Not applicable'
+} else {
+  sample_select_out <- paste0(' ', params$sample_select, collapse="\n")
+}
+```
+
+* Samples to include in analysis: `r sample_select_prompt_out`
+* Samples selected: `r sample_select_out`
+
+### Samples included in analysis:
+```{r}
+kable(params$met) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+# Microbiome Profiles
+
+```{r}
+bar_y_out <- switch(params$bar_y,
+                    rel_abund = 'Relative abundance',
+                    cnt_abund = 'Read count')
+```
+
+Observing `r bar_y_out` based on `r params$bar_x`. 
+Abundance values aggregated at `r params$bar_tax` level. The mean relative abundance is shown when selected group variable contains multiple samples.
+
+```{r}
+kable(params$bar_table, caption=sprintf("%s level microbiome profile", params$bar_tax)) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+```{r}
+params$p_bar
+```

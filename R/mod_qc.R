@@ -57,9 +57,9 @@ mod_qc_ui <- function(id){
       # dashboard---------------------------------------------------------------
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
-          fluidRow(
-            box(width = 12, h3('Check'),
-                verbatimTextOutput(ns('check')))),
+          # fluidRow(
+          #   box(width = 12, h3('Check'),
+          #       verbatimTextOutput(ns('check')))),
           tabItems(
             # main page---------------------------------------------------------
             tabItem(
@@ -863,12 +863,10 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
 
-  # Check
-  output$check <- renderPrint({
-    print(head(for_report$params$yml))
-    print(head(yml()))
-    print(summary(for_report$params))
-  })
+  # # Check
+  # output$check <- renderPrint({
+  # 
+  # })
 
   callModule(mod_report_server, "report_ui_1", bridge = for_report,
              template = "qc_report",

@@ -24,6 +24,7 @@ mod_beta_ui <- function(id){
           menuItem('Read Count Transformation', tabName = "transform_asv"),
           menuItem('PCoA', tabName = 'pcoa_tab'),
           uiOutput(ns('pca_menu_ui')),
+          menuItem('Report', tabName = "beta_report_tab"),
           
           # aggregate menu controls---------------------------------------------
           conditionalPanel(
@@ -63,7 +64,7 @@ mod_beta_ui <- function(id){
                       ns('asv_filter_options'), 'Filter features by:',
                       choices = c('read count' = 'asv_by_count',
                                   'selection' = 'asv_by_select'),
-                      selected = character(0))
+                      selected = "asv_by_count")
                 )),
               withBusyIndicatorUI(
                 actionButton(ns('submit_asv'), "Filter features")))  
@@ -165,6 +166,10 @@ mod_beta_ui <- function(id){
             tabItem(
               tabName = 'pca_tab',
               mod_ov_pca_ui(ns("ov_pca_ui_1"))
+            ),
+            tabItem(
+              tabName = 'beta_report_tab',
+              mod_report_ui(ns("beta_report_ui"))
             )
           ) # end tabItems
         ) # end box
@@ -185,9 +190,6 @@ mod_beta_server <- function(input, output, session, improxy){
     req(input$aggregate_by)
     sprintf("Aggregating feature counts at the %s level", input$aggregate_by)
   })
-  # output$check <- renderPrint({
-  #   
-  # })
   
   # perform aggregation with base aggregate
   aggregated_count <- eventReactive(input$agg_calculate, {
@@ -431,8 +433,10 @@ mod_beta_server <- function(input, output, session, improxy){
     bridge$pcoa_input$pcoa_dist <- input$pcoa_dist
     bridge$pcoa_input$pcoa_calculate <- input$pcoa_calculate
   })
+  
   withBusyIndicatorServer('pcoa_calculate', 'beta_ui_1', {
-    callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", bridge = bridge)  
+    pcoa_result <- callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", bridge = bridge)
+      
   })
   
   # render pca menu item--------------------------------------------------------
@@ -461,19 +465,75 @@ mod_beta_server <- function(input, output, session, improxy){
                  selected = 'UV')
   })
   
+  # pass pca reactive inputs to submodule
   bridge$pca_input <- reactiveValues()
-  observeEvent(input$pca_calculate, {
-    withBusyIndicatorServer('pca_calculate', 'beta_ui_1', {
-      if(input$transform_method != 'percent') {
-        # pass pca reactive inputs to submodule
-        bridge$pca_input$pca_calculate <- input$pca_calculate
-        bridge$pca_input$pca_scale <- input$pca_scale
-        
-        callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
-      }  
-    })
-    
+  observe({
+    req(input$transform_method)
+    if(input$transform_method != 'percent') {
+      req(input$transform_method, input$pca_scale, input$pca_calculate)
+      bridge$pca_input$pca_calculate <- input$pca_calculate
+      bridge$pca_input$pca_scale <- input$pca_scale
+    }
   })
+  withBusyIndicatorServer('pca_calculate', 'beta_ui_1', {
+    pca_result <- callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
+  })
+  
+  # output$check <- renderPrint({
+  # 
+  # })
+  
+  # initiate list to pass onto report submodule
+  for_report <- reactiveValues()
+  observe({
+    req(input$pcoa_calculate)
+    for_report$params <- list(
+      # sample filter
+      met1 = improxy$work_db$met,
+      sample_select_prompt = improxy$work_db$sample_select_prompt,
+      sample_select = improxy$work_db$sample_select,
+      # aggregate features
+      aggregate_by = input$aggregate_by,
+      aggregated_count = aggregated_count(),
+      aggregated_tax = aggregated_tax(),
+      #feature filter
+      asv_select_prompt = input$asv_select_prompt,
+      asv_filter_options = input$asv_filter_options,
+      cutoff_method = cross_mod$params$cutoff_method,
+      asv_cutoff = cross_mod$params$asv_cutoff,
+      prevalence = cross_mod$params$prevalence,
+      asv_cutoff_msg = cross_mod$params$asv_cutoff_msg,
+      asv_remove = cross_mod$params$asv_remove,
+      prev_agg_plot = cross_mod$params$prev_agg_plot,
+      prev_read_plot = cross_mod$params$prev_read_plot,
+      empty_sample = cross_mod$params$empty_sample,
+      empty_asv = cross_mod$params$empty_asv,
+      met2 = cross_mod$filtered$met,
+      tax2 = cross_mod$filtered$tax,
+      # feature transformation
+      transform_method = input$transform_method,
+      asv_transform = asv_transform(),
+      # pcoa
+      pcoa_dist = input$pcoa_dist,
+      pcoa_summary = pcoa_result$pcoa$pcoa_summary,
+      p_pcoa = pcoa_result$pcoa$p_pcoa
+    )
+  })
+
+  observe({
+    req(input$transform_method)
+    if(input$transform_method != 'percent') {
+      req(input$pca_calculate, input$pca_scale)
+      for_report$params[['pca_scale']] <- input$pca_scale
+      for_report$params[['pca_summary']] <- pca_result$pca$pca_summary
+      for_report$params[['p_pca']] <- pca_result$pca$p_pca
+    }
+  })
+  
+  # build report
+  callModule(mod_report_server, "beta_report_ui", bridge = for_report,
+             template = "beta_report",
+             file_name = "beta_report")
   
  
 }

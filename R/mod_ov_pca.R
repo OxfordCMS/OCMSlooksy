@@ -17,7 +17,7 @@
 mod_ov_pca_ui <- function(id){
   ns <- NS(id)
   tagList(
-    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('Sub check'), br(), verbatimTextOutput(ns('check'))),
     
     h1('Principle Component Analysis'),
     tags$div("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data. Since feature values (even when transformed) can span multiple order of magnitudes, it is recommended that feature values are scaled for PCA so all features are weighted equally."),
@@ -145,7 +145,7 @@ mod_ov_pca_server <- function(input, output, session, bridge){
   ns <- session$ns
   
   # toggle div for input controls-----------------------------------------------
-  observeEvent(pca_calculate(), {
+  observeEvent(bridge$pca_input$pca_calculate, {
     show('pca_summary_div')
     show('pca_body_div')
   })
@@ -203,27 +203,21 @@ mod_ov_pca_server <- function(input, output, session, bridge){
                 choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
   
-  
-  # unpack data from parent module----------------------------------------------
-  # unpack pca inputs
-  pca_scale <- reactive(bridge$pca_input$pca_scale)
-  pca_calculate <- reactive(bridge$pca_input$pca_calculate)
-  
   # output$check <- renderPrint({
   # 
   # })
   # calculate pca---------------------------------------------------------------
 
   # centre and scale
-  asv_scale <- eventReactive(pca_calculate(), {
-    req(pca_scale())
-    if(pca_scale() == 'UV') {
+  asv_scale <- eventReactive(bridge$pca_input$pca_calculate, {
+    req(bridge$pca_input$pca_scale)
+    if(bridge$pca_input$pca_scale == 'UV') {
       apply(bridge$asv_transform, 1, function(x) (x - mean(x)) / sd(x))
     }
-    else if(pca_scale() == 'pareto') {
+    else if(bridge$pca_input$pca_scale == 'pareto') {
       apply(bridge$asv_transform, 1, function(x) (x - mean(x)) / sqrt(x))
     }
-    else if(pca_scale() == 'vast') {
+    else if(bridge$pca_input$pca_scale == 'vast') {
       apply(bridge$asv_transform, 1, function(x) ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))
     }
     else {
@@ -436,6 +430,17 @@ mod_ov_pca_server <- function(input, output, session, bridge){
   
   callModule(mod_download_server, "download_pca", bridge = for_download, 'pca')
 
+  
+  # initiate return list
+  cross_module <- reactiveValues()
+  observe({
+    cross_module$pca <- list(
+      pca_summary = pcx_summary(),
+      p_pca = p_biplot()
+    )
+  })
+  
+  return(cross_module)
 }
     
 ## To be copied in the UI

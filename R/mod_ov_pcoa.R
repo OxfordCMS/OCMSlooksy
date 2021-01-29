@@ -19,7 +19,7 @@
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(
-    # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+    wellPanel(width = 12, h3('Subcheck'), br(), verbatimTextOutput(ns('check'))),
     h1("Principal Coordinate Analysis"),
     tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
     hidden(div(
@@ -120,19 +120,10 @@ mod_ov_pcoa_ui <- function(id){
     
 mod_ov_pcoa_server <- function(input, output, session, bridge){
   ns <- session$ns
-  
-  # # check
-  # output$check <- renderPrint({
-  # 
-  # })
-  
-  # unpack data from parent module----------------------------------------------
-  # unpack pca inputs
-  pcoa_dist <- reactive(bridge$pcoa_input$pcoa_dist)
-  pcoa_calculate <- reactive(bridge$pcoa_input$pcoa_calculate)
+
   
   # toggle div for input controls-----------------------------------------------
-  observeEvent(pcoa_calculate(), {
+  observeEvent(bridge$pcoa_input$pcoa_calculate, {
     show('pcoa_body_div')
   })
   
@@ -192,9 +183,9 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # sample clustering
   
   ## samples as rows
-  dist_data <- eventReactive(pcoa_calculate(), {
-    req(pcoa_dist())
-    vegan::vegdist(t(bridge$asv_transform), method = pcoa_dist())
+  dist_data <- eventReactive(bridge$pcoa_input$pcoa_calculate, {
+    req(bridge$pcoa_input$pcoa_dist)
+    vegan::vegdist(t(bridge$asv_transform), method = bridge$pcoa_input$pcoa_dist)
   })
   
   output$dist_table <- DT::renderDataTable({
@@ -258,17 +249,25 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # })
   # 
   # calculate principal coordinates
-  pcoa_data <- eventReactive(pcoa_calculate(), {
-    ape::pcoa(dist_data(), correction = 'cailliez')
+  pcoa_data <- eventReactive(bridge$pcoa_input$pcoa_calculate, {
+    out <- tryCatch({
+      ape::pcoa(dist_data(), correction = 'cailliez')
+    }, error = function(e) {
+      list(note = "Data contains negative eigenvalues after Cailliez correction in PCOA. Try different transformation method.",
+           values = NULL)
+    })
+    out
   })
   
   # extract correction note
-  pcoa_note <- eventReactive(pcoa_calculate(), {
+  pcoa_note <- eventReactive(bridge$pcoa_input$pcoa_calculate, {
     pcoa_data()$note
   })
 
   # summary of pcoa
   pcoa_summary <- reactive({
+    
+    validate(need(!is.null(pcoa_data()$values), pcoa_data()$note))
     
     if(pcoa_note() == 'There were no negative eigenvalues. No correction was applied') {
       col_keep <- c('Eigenvalues', 'Relative_eig','Cumul_eig')  
@@ -337,6 +336,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   
   # plot pcoa plot
   pdata_pcoa <- reactive({
+    validate(need(!is.null(pcoa_data()$values), pcoa_data()$note))
     pdata <- data.frame(pcoa_data()$vectors)
     pdata$sampleID <- rownames(pcoa_data()$vectors)
     pdata <- pdata %>%
@@ -348,6 +348,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   })
   
   p_pcoa <- reactive({
+    validate(need(!is.null(pcoa_data()$values), pcoa_data()$note))
     xPCo <- paste('Axis', input$xPCo, sep = ".")
     yPCo <- paste('Axis', input$yPCo, sep = ".")
     
@@ -406,6 +407,21 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   
   callModule(mod_download_server, "download_pcoa", bridge = for_download, 'pcoa')
   
+  # initiate return list
+  cross_module <- reactiveValues()
+  observe({
+    cross_module$pcoa <- list(
+      pcoa_summary = pcoa_summary(),
+      p_pcoa = p_pcoa()
+    )
+    
+  })
+  
+  # # check
+  output$check <- renderPrint({
+  })
+  
+  return(cross_module)
 }
     
 ## To be copied in the UI

@@ -32,6 +32,13 @@ params:
   pca_scale: NA
   pca_summary: NA
   p_pca: NA
+  diss_grp: NA
+  diss_panel: NA
+  validation_msg: NA
+  diss_msg: NA
+  diss_result: NA
+  p_diss: NA
+  diss_stat: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -202,6 +209,35 @@ kable(params$asv_transform) %>%
   scroll_box(width="100%", height="500px")
 ```
 
+`r if(params$transform_method == 'percent') {
+  sprintf(
+  "## Sample Dissimilarity \n
+   ### Parameters selected \n
+   Compare sample groups: %s \n
+   Panel by: %s \n\n
+   Using Bray-Curtis distance metric to measure the sample-wise dissimilarity. Dissimilarity is calculated for pair-wise samples within the groups of the selected metadata variable (phenotype). \n\n
+   %s \n\n
+   %s \n\n", 
+   params$diss_grp, params$diss_panel, params$validation_msg, params$diss_msg
+  )
+}`
+
+```{r diss-plot, eval=params$transform_method == 'percent'}
+params$p_diss
+```
+
+```{r diss-stat, eval=!is.na(params$diss_stat)}
+kable(params$diss_stat)  %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="250px")
+```
+
+```{r diss-result, eval=params$transform_method == 'percent'}
+kable(params$diss_result)  %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="250px")
+```
+
 ## PCOA
 ### Parameters selected
 Distance method: `r params$pcoa_dist`
@@ -237,3 +273,4 @@ kable(params$pca_summary) %>%
 ```{r pca-plot, eval=params$transform_method != 'percent'}
 params$p_pca
 ```
+

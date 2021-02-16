@@ -22,6 +22,7 @@ mod_beta_ui <- function(id){
           menuItem('Aggregate Features', tabName = 'tab_aggregate'),
           menuItem('Filter Features', tabName = 'filter_asv_beta'),
           menuItem('Read Count Transformation', tabName = "transform_asv"),
+          uiOutput(ns("diss_menu_ui")),
           menuItem('PCoA', tabName = 'pcoa_tab'),
           uiOutput(ns('pca_menu_ui')),
           menuItem('Report', tabName = "beta_report_tab"),
@@ -90,6 +91,20 @@ mod_beta_ui <- function(id){
             )
           ),
           
+          # Dissimilarity menu controls-----------------------------------------
+          conditionalPanel(
+            condition = "input.menu === 'diss_tab'",
+            br(), hr(),
+            fixedPanel(
+              width = 225,
+              tags$div(style = "text-align: center", tags$b("Parameters")),
+              uiOutput(ns('diss_grp_ui')),
+              uiOutput(ns('diss_panel_ui')),
+              withBusyIndicatorUI(
+                actionButton(ns('diss_calculate'), 'Calculate')  
+              )
+            )
+          ),
           # PCoA menu controls--------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'pcoa_tab'",
@@ -156,6 +171,11 @@ mod_beta_ui <- function(id){
                      p("Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."), br(),
                      DT::dataTableOutput(ns('preview_transform')) %>%
                        shinycssloaders::withSpinner())
+            ), # end tabItem
+            # Dissimilarity body------------------------------------------------
+            tabItem(
+              tabName = "diss_tab",
+              mod_ov_diss_ui(ns("ov_diss_ui_1"))
             ), # end tabItem
             # PCoA body----------------------------------------------------------
             tabItem(
@@ -417,6 +437,42 @@ mod_beta_server <- function(input, output, session, improxy){
     bridge$asv_transform <- asv_transform()
   })
   
+
+  # Dissimilarity server--------------------------------------------------------
+  # render dissimilarity menu item
+  output$diss_menu_ui <- renderUI({
+    if(input$transform_method == 'percent') {
+      sidebarMenu(menuItem('Sample Dissimilarity', tabName = 'diss_tab'))
+    }
+  })
+  
+  # render controls - dissimilarity
+  output$diss_grp_ui <- renderUI({
+    selectInput(ns('diss_grp'), "Compare Sample Groups",
+                 choices = colnames(improxy$work_db$met), selected = 'sampleID')
+  })
+  
+  output$diss_panel_ui <- renderUI({
+    selectInput(ns('diss_panel'), "panel by",
+                choices = c('none', colnames(improxy$work_db$met)),
+                selected = 'none')
+  })
+  
+  bridge$diss_input <- reactiveValues()
+  observe({
+    bridge$diss_input$diss_grp <- input$diss_grp
+    bridge$diss_input$diss_panel <- input$diss_panel
+    bridge$diss_input$diss_calculate <- input$diss_calculate
+  })
+  
+  withBusyIndicatorServer('diss_calculate','beta_ui_1', {
+    dissimilarity <- callModule(mod_ov_diss_server, "ov_diss_ui_1", bridge = bridge)
+  })
+  
+  
+  # output$check <- renderPrint({
+  # 
+  # })
   # PCoA server-----------------------------------------------------------------
   # render pcoa distance ui
   output$pcoa_dist_ui <- renderUI({
@@ -479,14 +535,10 @@ mod_beta_server <- function(input, output, session, improxy){
     pca_result <- callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
   })
   
-  # output$check <- renderPrint({
-  # 
-  # })
-  
-  # initiate list to pass onto report submodule
+  # initiate list to pass onto report submodule---------------------------------
   for_report <- reactiveValues()
   observe({
-    req(input$pcoa_calculate)
+    req(input$agg_calculate)
     for_report$params <- list(
       # sample filter
       met1 = improxy$work_db$met,
@@ -495,38 +547,64 @@ mod_beta_server <- function(input, output, session, improxy){
       # aggregate features
       aggregate_by = input$aggregate_by,
       aggregated_count = aggregated_count(),
-      aggregated_tax = aggregated_tax(),
-      #feature filter
-      asv_select_prompt = input$asv_select_prompt,
-      asv_filter_options = input$asv_filter_options,
-      cutoff_method = cross_mod$params$cutoff_method,
-      asv_cutoff = cross_mod$params$asv_cutoff,
-      prevalence = cross_mod$params$prevalence,
-      asv_cutoff_msg = cross_mod$params$asv_cutoff_msg,
-      asv_remove = cross_mod$params$asv_remove,
-      prev_agg_plot = cross_mod$params$prev_agg_plot,
-      prev_read_plot = cross_mod$params$prev_read_plot,
-      empty_sample = cross_mod$params$empty_sample,
-      empty_asv = cross_mod$params$empty_asv,
-      met2 = cross_mod$filtered$met,
-      tax2 = cross_mod$filtered$tax,
-      # feature transformation
-      transform_method = input$transform_method,
-      asv_transform = asv_transform(),
-      # pcoa
-      pcoa_dist = input$pcoa_dist,
-      pcoa_summary = pcoa_result$pcoa$pcoa_summary,
-      p_pcoa = pcoa_result$pcoa$p_pcoa
+      aggregated_tax = aggregated_tax()
     )
+  })
+    
+    observe({
+      req(input$submit_asv)
+      #feature filter
+      for_report$params$asv_select_prompt <- input$asv_select_prompt
+      for_report$params$asv_filter_options <- input$asv_filter_options
+      for_report$params$cutoff_method <- cross_mod$params$cutoff_method
+      for_report$params$asv_cutoff <- cross_mod$params$asv_cutoff
+      for_report$params$prevalence <- cross_mod$params$prevalence
+      for_report$params$asv_cutoff_msg <- cross_mod$params$asv_cutoff_msg
+      for_report$params$asv_remove <- cross_mod$params$asv_remove
+      for_report$params$prev_agg_plot <- cross_mod$params$prev_agg_plot
+      for_report$params$prev_read_plot <- cross_mod$params$prev_read_plot
+      for_report$params$empty_sample <- cross_mod$params$empty_sample
+      for_report$params$empty_asv <- cross_mod$params$empty_asv
+      for_report$params$met2 <- cross_mod$filtered$met
+      for_report$params$tax2 <- cross_mod$filtered$tax
+    })
+    
+    observe({
+      req(input$submit_transform)
+      # feature transformation
+      for_report$params$transform_method <- input$transform_method
+      for_report$params$asv_transform <- asv_transform()
+    })
+    
+    observe({
+      req(input$pcoa_calculate)
+      # pcoa
+      for_report$params$pcoa_dist <- input$pcoa_dist
+      for_report$params$pcoa_summary <- pcoa_result$pcoa$pcoa_summary
+      for_report$params$p_pcoa <- pcoa_result$pcoa$p_pcoa
   })
 
   observe({
     req(input$transform_method)
     if(input$transform_method != 'percent') {
       req(input$pca_calculate, input$pca_scale)
-      for_report$params[['pca_scale']] <- input$pca_scale
-      for_report$params[['pca_summary']] <- pca_result$pca$pca_summary
-      for_report$params[['p_pca']] <- pca_result$pca$p_pca
+      for_report$params$pca_scale <- input$pca_scale
+      for_report$params$pca_summary <- pca_result$pca$pca_summary
+      for_report$params$p_pca <- pca_result$pca$p_pca
+    } 
+  })
+  
+  observe({
+    req(input$transform_method)
+    if(input$transform_method == 'percent') {
+      req(input$diss_grp, input$diss_panel, input$diss_calculate)
+      for_report$params$diss_grp <- input$diss_grp
+      for_report$params$diss_panel <- input$diss_panel
+      for_report$params$validation_msg <- dissimilarity$diss$validation_msg
+      for_report$params$diss_msg <- dissimilarity$diss$diss_msg
+      for_report$params$diss_result <- dissimilarity$diss$diss_result
+      for_report$params$p_diss <- dissimilarity$diss$p_diss
+      for_report$params$diss_stat <- dissimilarity$diss$diss_stat
     }
   })
   

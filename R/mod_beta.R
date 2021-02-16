@@ -136,7 +136,7 @@ mod_beta_ui <- function(id){
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           tabItems(
             # info tab body-----------------------------------------------------
             tabItem(
@@ -470,9 +470,9 @@ mod_beta_server <- function(input, output, session, improxy){
   })
   
   
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
   # PCoA server-----------------------------------------------------------------
   # render pcoa distance ui
   output$pcoa_dist_ui <- renderUI({

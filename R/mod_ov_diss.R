@@ -10,7 +10,7 @@
 mod_ov_diss_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('Sub check'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('Sub check'), br(), verbatimTextOutput(ns('check'))),
     h1('Sample Dissimilarity'),
       tags$div("Using Bray-Curtis distance metric to measure the sample-wise dissimilarity. Dissimilarity is calculated for pair-wise samples within the groups of the selected metadata variable (phenotype). "),
     fluidRow(
@@ -328,9 +328,9 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   })
 
 
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # 
+  # })
 
   # plot dissimilarity
   pdata_diss <- eventReactive(bridge$diss_input$diss_calculate, {

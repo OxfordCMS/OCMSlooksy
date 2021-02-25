@@ -39,6 +39,11 @@ params:
   diss_result: NA
   p_diss: NA
   diss_stat: NA
+  permanova_terms: NA
+  permanova_stratify: NA
+  permanova_dist: NA
+  permanova_formula: NA
+  permanova_summary: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -274,3 +279,22 @@ kable(params$pca_summary) %>%
 params$p_pca
 ```
 
+## PERMANOVA
+
+### Parameters selected
+
+* Terms: `r params$permanova_terms`
+* Group by: `r params$permanova_stratify`
+* Distance metric: `r params$permanova_dist`
+
+**PERMANOVA Formula**
+```{r}
+params$permanova_formula
+```
+
+### PERMANOVA Summary
+```{r}
+kable(params$permanova_summary) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="200px")
+```

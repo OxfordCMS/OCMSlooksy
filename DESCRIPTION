@@ -10,6 +10,7 @@ biocViews:
 Imports: 
     ALDEx2,
     ape,
+    broom,
     cluster,
     cowplot,
     DBI,
@@ -26,6 +27,7 @@ Imports:
     heatmaply,
     htmltools,
     htmlwidgets,
+    permute,
     plotly,
     propr,
     RColorBrewer,

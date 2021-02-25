@@ -25,12 +25,13 @@ mod_beta_ui <- function(id){
           uiOutput(ns("diss_menu_ui")),
           menuItem('PCoA', tabName = 'pcoa_tab'),
           uiOutput(ns('pca_menu_ui')),
+          menuItem('PERMANOVA', tabName = 'permanova_tab'),
           menuItem('Report', tabName = "beta_report_tab"),
           
           # aggregate menu controls---------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'tab_aggregate'",
-            br(), hr(),
+            hr(),
             tags$div(
               style = 'text-align: center',
               tags$b('Input controls')
@@ -47,7 +48,7 @@ mod_beta_ui <- function(id){
           # filter menu controls------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'filter_asv_beta'",
-            br(), hr(),
+            hr(),
             tags$div(
               style = 'text-align: center',
               tags$b('Input controls')),
@@ -73,7 +74,7 @@ mod_beta_ui <- function(id){
           # transform menu controls---------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'transform_asv'",
-            br(), hr(),
+            hr(),
             tags$div(
               style = 'text-align: center',
               tags$b('Input controls')),
@@ -94,7 +95,7 @@ mod_beta_ui <- function(id){
           # Dissimilarity menu controls-----------------------------------------
           conditionalPanel(
             condition = "input.menu === 'diss_tab'",
-            br(), hr(),
+            hr(),
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b("Parameters")),
@@ -108,7 +109,7 @@ mod_beta_ui <- function(id){
           # PCoA menu controls--------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'pcoa_tab'",
-            br(), hr(),
+            hr(),
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b("PCoA Parameters")),
@@ -121,7 +122,7 @@ mod_beta_ui <- function(id){
           # PCA controls--------------------------------------------------------
           conditionalPanel(
             condition = "input.menu === 'pca_tab'",
-            br(), hr(),
+            hr(),
             fixedPanel(
               width = 225,
               tags$div(style = "text-align: center", tags$b('PCA Parameters')),
@@ -186,6 +187,10 @@ mod_beta_ui <- function(id){
             tabItem(
               tabName = 'pca_tab',
               mod_ov_pca_ui(ns("ov_pca_ui_1"))
+            ),
+            tabItem(
+              tabName = 'permanova_tab',
+              mod_ov_permanova_ui(ns("ov_permanova_ui_1"))
             ),
             tabItem(
               tabName = 'beta_report_tab',
@@ -434,6 +439,7 @@ mod_beta_server <- function(input, output, session, improxy){
   bridge$asv_transform <- reactiveValues()
   observe({
     req(input$submit_transform, input$transform_method)
+    bridge$transform_method <- input$transform_method
     bridge$asv_transform <- asv_transform()
   })
   
@@ -470,9 +476,6 @@ mod_beta_server <- function(input, output, session, improxy){
   })
   
   
-  # output$check <- renderPrint({
-  # 
-  # })
   # PCoA server-----------------------------------------------------------------
   # render pcoa distance ui
   output$pcoa_dist_ui <- renderUI({
@@ -534,7 +537,14 @@ mod_beta_server <- function(input, output, session, improxy){
   withBusyIndicatorServer('pca_calculate', 'beta_ui_1', {
     pca_result <- callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
   })
+  # PERMANOVA ------------------------------------------------------------------
   
+  permanova_result <- callModule(mod_ov_permanova_server, "ov_permanova_ui_1",
+                                 bridge = bridge)
+  
+  output$check <- renderPrint({
+
+  })
   # initiate list to pass onto report submodule---------------------------------
   for_report <- reactiveValues()
   observe({
@@ -582,8 +592,9 @@ mod_beta_server <- function(input, output, session, improxy){
       for_report$params$pcoa_dist <- input$pcoa_dist
       for_report$params$pcoa_summary <- pcoa_result$pcoa$pcoa_summary
       for_report$params$p_pcoa <- pcoa_result$pcoa$p_pcoa
-  })
+    })
 
+  # pca
   observe({
     req(input$transform_method)
     if(input$transform_method != 'percent') {
@@ -594,6 +605,7 @@ mod_beta_server <- function(input, output, session, improxy){
     } 
   })
   
+  # dissimilarity
   observe({
     req(input$transform_method)
     if(input$transform_method == 'percent') {
@@ -608,12 +620,24 @@ mod_beta_server <- function(input, output, session, improxy){
     }
   })
   
+  # permanova
+  observeEvent(permanova_result$permanova$permanova_calculate, {
+    for_report$params$permanova_stratify <-
+      permanova_result$permanova$permanova_stratify
+    for_report$params$permanova_dist <-
+      permanova_result$permanova$permanova_dist
+    for_report$params$permanova_terms <-
+      permanova_result$permanova$permanova_terms
+    for_report$params$permanova_formula <-
+      permanova_result$permanova$permanova_formula
+    for_report$params$permanova_summary <-
+      permanova_result$permanova$permanova_summary
+  })
+  
   # build report
   callModule(mod_report_server, "beta_report_ui", bridge = for_report,
              template = "beta_report",
              file_name = "beta_report")
-  
- 
 }
     
 ## To be copied in the UI

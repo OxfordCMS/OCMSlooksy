@@ -39,5 +39,8 @@ app_server <- function(input, output, session) {
   # beta diversity
   callModule(mod_beta_server, "beta_ui_1", cross_module2)
   
+  # feature proportionality
+  callModule(mod_prop_server, "prop_ui_1", cross_module2)
+  
   # callModule(mod_overview_server, "overview_ui_1", cross_module2)
 }

@@ -135,7 +135,8 @@ mod_filterfeat_server <- function(input, output, session, bridge){
 
   # control UI based on filter method--------------------------------------
   observeEvent(bridge$filter_input$asv_select_prompt, {
-    toggle('asv_filter_div', condition = bridge$filter_input$asv_select_prompt == 'some')
+    toggle('asv_filter_div', 
+           condition = bridge$filter_input$asv_select_prompt == 'some')
   })
 
   # main panel

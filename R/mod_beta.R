@@ -41,8 +41,9 @@ mod_beta_ui <- function(id){
                            choices = c('featureID','Kingdom','Phylum','Class',
                                        'Order','Family','Genus','Species'),
                            selected = 'Genus'),
-              
-              actionButton(ns('agg_calculate'), "Aggregate")
+              withBusyIndicatorUI(
+                actionButton(ns('agg_calculate'), "Aggregate")
+              )
             )
           ),
           # filter menu controls------------------------------------------------
@@ -147,11 +148,7 @@ mod_beta_ui <- function(id){
             # aggregate tab body------------------------------------------------
             tabItem(
               tabName = 'tab_aggregate',
-              h1("Aggregate Features"),
-              h4(textOutput(ns("agg_message"))),
-              tags$div("The number of features collapsed is listed in the 'n_collapse' column"),
-              DT::dataTableOutput(ns('agg_preview_tax')),
-              DT::dataTableOutput(ns('agg_preview_count'))
+              mod_aggregate_ui(ns("aggregate_ui_1"))
             ), # end tabItem
             # filter tab body---------------------------------------------------
             tabItem(
@@ -161,17 +158,7 @@ mod_beta_ui <- function(id){
             # transform tab body------------------------------------------------
             tabItem(
               tabName = 'transform_asv',
-              column(width = 12,
-                     h1('Transform Read Counts'),
-                     tags$div("Surveying an ecosystem based on DNA sequence produces compositional data due to the constant sum constraint of sequencing platforms. Sequence read 'count' is not directly reflective of the absolute count of sequences in the sampled environment because the changes in the absolute abundance of a sequence can only be observed at the expense of other sequences. Lack of independance in sequence counts can result in spurious correlations, ultimately leading to false associations between variables. Further detail on compositional data analysis are discussed by [Greg Gloor and others, link]."),
-                     br(), 
-                     p("Applying log transformations corrects for the 'closure problem' [Aitcheson reference, link], such ecological and statistical tools are applicable to sequence data sets. The log transformations will be applied to the filtered data."),
-                     br(),
-                     p("Other forms of transformation include log10 of percent abundance (of the sample) and percent abundance (of the sample). Note that choosing percent abundance (without any log transformation) limits the analysis options available in subsequent analyses."),
-                     br(),
-                     p("Transformed data will be used throughout the analysis, where necessary. Instances of its usage is recorded in the final [report]."), br(),
-                     DT::dataTableOutput(ns('preview_transform')) %>%
-                       shinycssloaders::withSpinner())
+              mod_transform_ui(ns("transform_ui_1"))
             ), # end tabItem
             # Dissimilarity body------------------------------------------------
             tabItem(
@@ -209,132 +196,75 @@ mod_beta_ui <- function(id){
 mod_beta_server <- function(input, output, session, improxy){
   ns <- session$ns
   
-
-  # aggregate features----------------------------------------------------------
-  output$agg_message <- renderText({
-    req(input$aggregate_by)
-    sprintf("Aggregating feature counts at the %s level", input$aggregate_by)
-  })
-  
-  # perform aggregation with base aggregate
-  aggregated_count <- eventReactive(input$agg_calculate, {
-    req(input$aggregate_by)
-    
-    # set featureID in count_df to aggregation level
-    count_df <- improxy$work_db$asv %>% arrange(featureID)
-    
-    # copy taxonomy table
-    new_featID <- improxy$work_db$tax %>%
-      arrange(featureID) %>%
-      select(featureID, .data[[input$aggregate_by]]) %>%
-      mutate(newID = .data[[input$aggregate_by]],
-             newID = ifelse(is.na(newID), paste(input$aggregate_by, 'NA', sep="."), 
-                            newID))
-    
-    # updating count featureID
-    count_df$featureID <- new_featID$newID
-    sampleID <- colnames(count_df)
-    sampleID <- sampleID[sampleID != 'featureID']
-    sampleID <- sprintf("`%s`", sampleID)
-    
-    # build formula
-    yvar <- paste(as.character(sampleID), collapse=',')
-    f <- sprintf("cbind(%s) ~ featureID", yvar)
-
-    # perform aggregation with base::aggregate  
-    aggregate(formula = formula(f), data = count_df, FUN = sum)
-  })
-
-  # update taxonomy table-------------------------------------------------------
-  aggregated_tax <- eventReactive(input$agg_calculate, {
-    req(input$aggregate_by)
-    tax_level <- c('Kingdom','Phylum','Class','Order', 'Family','Genus',
-                   'Species','featureID')
-    
-    if(input$aggregate_by != 'featureID') {
-      
-      # copy tax data over taxa up to aggregated level
-      out <- as.data.frame(improxy$work_db$tax)
-      
-      # set all tax levels lower than aggregated level to NA
-      ind <- which(tax_level == input$aggregate_by) + 1
-      to_na <- tax_level[ind:length(tax_level)]
-      
-      
-      out[, to_na] <- NA
-      
-      # set sequence column to NA
-      out$sequence <- NA
-      
-      # update Taxon column
-      ind <- which(tax_level == input$aggregate_by)
-      
-      Taxon <- stringr::str_split(out$Taxon, ";", simplify = TRUE)
-      
-      if(ind == 1) {
-        Taxon <- Taxon[,ind]
-      } else {
-        Taxon <- apply(Taxon[,1:ind], 1, paste, collapse = ";")  
-      }
-      
-      out$Taxon <- Taxon
-      
-      # remove redundant entries
-      out <- unique(out)
-      
-      # record how many ASVs aggregated
-      n_collapse <- improxy$work_db$tax %>%
-        group_by(.data[[input$aggregate_by]]) %>%
-        summarise(n_collapse = n())
-      
-      out <- merge(out, n_collapse, input$aggregate_by)
-      
-      # set new featureID
-      out$featureID <- out[, input$aggregate_by]
-
-    } else {
-      out <- as.data.frame(improxy$work_db$tax)
-      out$n_collapse <- 1
-    }
-
-    # set column order
-    out <- out[,c('featureID', 'n_collapse', tax_level[-length(tax_level)], 'Taxon','sequence')]
-    out
-  })
-
-  # show aggregated tables
-  output$agg_preview_tax <- DT::renderDataTable({
-    
-    out <- aggregated_tax() %>%
-      mutate_all(as.character)
-    DT::datatable(out,
-                  extensions = 'Buttons', 
-                  options = list(scrollX = TRUE, dom = 'Blfrtip', 
-                                 buttons = c('copy','csv')))
-  })
-
-  output$agg_preview_count <- DT::renderDataTable({
-    DT::datatable(aggregated_count(),
-                  extensions = 'Buttons',
-                  options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
-  })
-  
-  # store data in reactiveValues to pass onto submodules------------------------
+  # initiate value to pass into submodules--------------------------------------
   bridge <- reactiveValues()
   observe({
-    bridge$work_db <- list(met = improxy$work_db$met,
-                           asv = aggregated_count(),
-                           tax = aggregated_tax() %>% select(-n_collapse))
+    bridge$qualfilt_db <- improxy$work_db
+    bridge$agg_input <- list(
+      aggregate_by = input$aggregate_by,
+      agg_calculate = input$agg_calculate
+    )
+  })
+  # initiate list to pass onto report submodule
+  for_report <- reactiveValues()
+  
+  # store values to pass to report
+  observe({
+    req(input$agg_calculate)
+    for_report$params <- list(
+      # sample filter
+      met1 = improxy$work_db$met,
+      sample_select_prompt = improxy$work_db$sample_select_prompt,
+      sample_select = improxy$work_db$sample_select
+    )
+  })
+  # aggregate features----------------------------------------------------------
+  withBusyIndicatorServer('agg_calculate', 'beta_ui_1', {
+    agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
     
   })
-  
+
+  output$check <- renderPrint({
+
+  })
+
+  # store data in reactiveValues to pass onto submodules
+  observe({
+    req(input$agg_calculate)
+    if(!is.null(agg_output$agg)) {
+      tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
+      
+      # add aggregate features to bridge to be passed to submodules
+      bridge$work_db <- list(
+        met = improxy$work_db$met,
+        asv = agg_output$output$aggregated_count,
+        tax = tax_entry
+      )
+      # add aggregate features to report params
+      for_report$params$aggregate_by <- agg_output$output$aggregate_by
+      for_report$params$aggregated_count <- agg_output$output$aggregated_count
+      for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
+    } else { # agg_result starts out as NULL initially. else stops that from causing app to crash
+      bridge$work_db <- list(
+        met = improxy$work_db$met,
+        asv = improxy$work_db$asv,
+        tax = improxy$work_db$tax
+      )
+      
+      # add aggregate features to report params
+      for_report$params$aggregate_by <- NA
+      for_report$params$aggregated_count <- improxy$work_db$asv
+      for_report$params$aggregated_tax <- improxy$work_db$tax
+    }
+
+  })
+
   # filter features-------------------------------------------------------------
   # render sidebar controls - filter yes/no
   observeEvent(input$asv_select_prompt, {
     toggle("asv_filter_options_ui", condition = input$asv_select_prompt == 'some')
   })
-  
+
   # pass in filter menu controls
   bridge$filter_input <- reactiveValues()
   observe({
@@ -342,107 +272,60 @@ mod_beta_server <- function(input, output, session, improxy){
     bridge$filter_input$asv_filter_options <- input$asv_filter_options
     bridge$filter_input$submit_asv <- input$submit_asv
   })
-  
+
   withBusyIndicatorServer('submit_asv', 'beta_ui_1', {
     # submodule returns list of filtered met, asv and tax tables
-    cross_mod <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
+    filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
   })
-  
+
   # add filtered data to bridge
   bridge$filtered <- reactiveValues()
   observe({
-    bridge$filtered <- cross_mod$filtered 
+    bridge$filtered <- filter_output$filtered
   })
-  
+
+  # update report params
+  observe({
+    req(input$submit_asv)
+    #feature filter
+    for_report$params$asv_select_prompt <- input$asv_select_prompt
+    for_report$params$asv_filter_options <- input$asv_filter_options
+    for_report$params$cutoff_method <- filter_output$params$cutoff_method
+    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
+    for_report$params$prevalence <- filter_output$params$prevalence
+    for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
+    for_report$params$asv_remove <- filter_output$params$asv_remove
+    for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot
+    for_report$params$prev_read_plot <- filter_output$params$prev_read_plot
+    for_report$params$empty_sample <- filter_output$params$empty_sample
+    for_report$params$empty_asv <- filter_output$params$empty_asv
+    for_report$params$met2 <- filter_output$filtered$met
+    for_report$params$tax2 <- filter_output$filtered$tax
+  })
+
   # transform filtered data-----------------------------------------------------
-  
-  asv_transform <- eventReactive(input$submit_transform, {
-    req(input$transform_method)
-    
-    withBusyIndicatorServer('submit_transform', 'beta_ui_1', {
-      asv_df <- as.data.frame(bridge$filtered$asv)
-      rownames(asv_df) <- asv_df$featureID
-      asv_df <- asv_df[, colnames(asv_df) != 'featureID']
-      
-      if(input$transform_method == 'clr') {
-        ## generate Monte Carlo samples from Dirichlet distribution
-        ## aldex2 zero handling: rows with 0 reads in each sample are deleted prior to analysis
-        ## use geometric mean abundance of features
-        
-        asv_clr <- ALDEx2::aldex.clr(asv_df, conds = bridge$filtered$met$sampleID,
-                                     useMC = TRUE)
-        clr_instance <- lapply(ALDEx2::getMonteCarloInstances(asv_clr),
-                               function(m){t(apply(m,1,median))})
-        ## samples in columns
-        clr_df <- data.frame(matrix(unlist(clr_instance),
-                                    ncol = length(clr_instance),
-                                    byrow = FALSE,
-                                    dimnames = list(colnames(clr_instance[[1]]),
-                                                    names(clr_instance))),
-                             stringsAsFactors=FALSE)
-        out <- clr_df
-      }
-      if(input$transform_method == 'log10') {
-        out <- apply(asv_df, 2, function(x) log10(x + 1*10^-6))
-      }
-      if(input$transform_method == 'percent') {
-        calc <- bridge$filtered$asv %>%
-          gather('sampleID','read_count', -featureID) %>%
-          group_by(sampleID) %>%
-          mutate(sample_total = sum(read_count),
-                 samp_rel_abund = read_count / sample_total * 100) %>%
-          ungroup() %>%
-          select(-read_count, -sample_total) %>%
-          spread(sampleID, samp_rel_abund)
-        
-        out <- as.data.frame(calc %>% select(-featureID))
-        rownames(out) <- calc$featureID
-        
-      }
-      if(input$transform_method == 'none') {
-        out <- asv_df
-      }
-      out  
-    })
+
+  observe({
+    bridge$transform_input <- list(
+      transform_method = input$transform_method,
+      submit_transform = input$submit_transform
+    )
   })
-  
-  output$preview_transform <- DT::renderDataTable({
-    req(input$submit_transform, input$transform_method)
-    
-    # by default, only show first 50 samples + 8 tax columns
-    if(ncol(asv_transform()) <= 58) {
-      # if less than 50 samples, show all
-      col_ind <- 1:ncol(asv_transform()) # index of columns to show
-      vis_val <- TRUE
-    }
-    else {
-      col_ind <- 59:ncol(asv_transform()) # index of columns to hide
-      vis_val <- FALSE
-    }
-    
-    DT::datatable(asv_transform(),
-                  extensions = list(c('Buttons', 'FixedColumns')),
-                  options = list(
-                    pageLength = 30,
-                    scrollX = TRUE,
-                    dom = 'Blfrtip',
-                    buttons = list(c('copy','csv'),
-                                   list(extend = 'colvis')),
-                    fixedColumns=list(leftColumns = 2),
-                    columnDefs = list(
-                      list(targets = col_ind, visible = vis_val)
-                    ))) %>%
-      DT::formatRound(column = colnames(asv_transform()), digits = 3)
+  withBusyIndicatorServer("submit_transform", "beta_ui_1", {
+    transform_output <- callModule(mod_transform_server, "transform_ui_1", bridge)
   })
-  
-  # add transformed data to bridge
-  bridge$asv_transform <- reactiveValues()
+
+  # add transformed data to reactive values
   observe({
     req(input$submit_transform, input$transform_method)
-    bridge$transform_method <- input$transform_method
-    bridge$asv_transform <- asv_transform()
+    
+    # add to bridge
+    bridge$asv_transform <- transform_output$output$asv_transform
+    
+    # add to report params
+    for_report$params$transform_method <- input$transform_method
+    for_report$params$asv_transform <- transform_output$output$asv_transform
   })
-  
 
   # Dissimilarity server--------------------------------------------------------
   # render dissimilarity menu item
@@ -451,51 +334,73 @@ mod_beta_server <- function(input, output, session, improxy){
       sidebarMenu(menuItem('Sample Dissimilarity', tabName = 'diss_tab'))
     }
   })
-  
+
   # render controls - dissimilarity
   output$diss_grp_ui <- renderUI({
     selectInput(ns('diss_grp'), "Compare Sample Groups",
                  choices = colnames(improxy$work_db$met), selected = 'sampleID')
   })
-  
+
   output$diss_panel_ui <- renderUI({
     selectInput(ns('diss_panel'), "panel by",
                 choices = c('none', colnames(improxy$work_db$met)),
                 selected = 'none')
   })
-  
+
   bridge$diss_input <- reactiveValues()
   observe({
     bridge$diss_input$diss_grp <- input$diss_grp
     bridge$diss_input$diss_panel <- input$diss_panel
     bridge$diss_input$diss_calculate <- input$diss_calculate
   })
-  
+
   withBusyIndicatorServer('diss_calculate','beta_ui_1', {
     dissimilarity <- callModule(mod_ov_diss_server, "ov_diss_ui_1", bridge = bridge)
   })
-  
+
+  # dissimilarity
+  observe({
+    req(input$transform_method)
+    if(input$transform_method == 'percent') {
+      req(input$diss_grp, input$diss_panel, input$diss_calculate)
+      for_report$params$diss_grp <- input$diss_grp
+      for_report$params$diss_panel <- input$diss_panel
+      for_report$params$validation_msg <- dissimilarity$output$validation_msg
+      for_report$params$diss_msg <- dissimilarity$output$diss_msg
+      for_report$params$diss_result <- dissimilarity$output$diss_result
+      for_report$params$p_diss <- dissimilarity$output$p_diss
+      for_report$params$diss_stat <- dissimilarity$output$diss_stat
+    }
+  })
   
   # PCoA server-----------------------------------------------------------------
   # render pcoa distance ui
   output$pcoa_dist_ui <- renderUI({
     if(input$transform_method == 'percent') choices <- 'bray'
     else choices <- c("manhattan", "euclidean", "canberra")
-    
+
     selectInput(ns('pcoa_dist'), "Distance method",
                 choices = choices,
                 selected = choices[1])
   })
-  
+
   bridge$pcoa_input <- reactiveValues()
   observe({
     bridge$pcoa_input$pcoa_dist <- input$pcoa_dist
     bridge$pcoa_input$pcoa_calculate <- input$pcoa_calculate
   })
-  
+
   withBusyIndicatorServer('pcoa_calculate', 'beta_ui_1', {
-    pcoa_result <- callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", bridge = bridge)
-      
+    pcoa_output <- callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1", bridge = bridge)
+
+  })
+
+  observe({
+    req(input$pcoa_calculate)
+    # pcoa
+    for_report$params$pcoa_dist <- input$pcoa_dist
+    for_report$params$pcoa_summary <- pcoa_output$pcoa$pcoa_summary
+    for_report$params$p_pcoa <- pcoa_output$output$p_pcoa
   })
   
   # render pca menu item--------------------------------------------------------
@@ -504,10 +409,10 @@ mod_beta_server <- function(input, output, session, improxy){
       sidebarMenu(menuItem('PCA', tabName = 'pca_tab'))
     }
   })
-  
+
   # PCA server------------------------------------------------------------------
   output$pca_scale_ui <- renderUI({
-    if(any(asv_transform() < 0)) {
+    if(any(bridge$asv_transform < 0)) {
       choices <- c("none" = "none",
                    "unit-variance scaling" = 'UV',
                    "vast scaling" = 'vast')
@@ -518,12 +423,12 @@ mod_beta_server <- function(input, output, session, improxy){
                    "pareto scaling" = 'pareto',
                    "vast scaling" = 'vast')
     }
-    
+
     radioButtons(ns('pca_scale'), "Scale",
                  choices = choices,
                  selected = 'UV')
   })
-  
+
   # pass pca reactive inputs to submodule
   bridge$pca_input <- reactiveValues()
   observe({
@@ -534,106 +439,41 @@ mod_beta_server <- function(input, output, session, improxy){
       bridge$pca_input$pca_scale <- input$pca_scale
     }
   })
+  
   withBusyIndicatorServer('pca_calculate', 'beta_ui_1', {
-    pca_result <- callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
+    pca_output <- callModule(mod_ov_pca_server, "ov_pca_ui_1", bridge = bridge)
   })
-  # PERMANOVA ------------------------------------------------------------------
   
-  permanova_result <- callModule(mod_ov_permanova_server, "ov_permanova_ui_1",
-                                 bridge = bridge)
-  
-  output$check <- renderPrint({
-
-  })
-  # initiate list to pass onto report submodule---------------------------------
-  for_report <- reactiveValues()
-  observe({
-    req(input$agg_calculate)
-    for_report$params <- list(
-      # sample filter
-      met1 = improxy$work_db$met,
-      sample_select_prompt = improxy$work_db$sample_select_prompt,
-      sample_select = improxy$work_db$sample_select,
-      # aggregate features
-      aggregate_by = input$aggregate_by,
-      aggregated_count = aggregated_count(),
-      aggregated_tax = aggregated_tax()
-    )
-  })
-    
-    observe({
-      req(input$submit_asv)
-      #feature filter
-      for_report$params$asv_select_prompt <- input$asv_select_prompt
-      for_report$params$asv_filter_options <- input$asv_filter_options
-      for_report$params$cutoff_method <- cross_mod$params$cutoff_method
-      for_report$params$asv_cutoff <- cross_mod$params$asv_cutoff
-      for_report$params$prevalence <- cross_mod$params$prevalence
-      for_report$params$asv_cutoff_msg <- cross_mod$params$asv_cutoff_msg
-      for_report$params$asv_remove <- cross_mod$params$asv_remove
-      for_report$params$prev_agg_plot <- cross_mod$params$prev_agg_plot
-      for_report$params$prev_read_plot <- cross_mod$params$prev_read_plot
-      for_report$params$empty_sample <- cross_mod$params$empty_sample
-      for_report$params$empty_asv <- cross_mod$params$empty_asv
-      for_report$params$met2 <- cross_mod$filtered$met
-      for_report$params$tax2 <- cross_mod$filtered$tax
-    })
-    
-    observe({
-      req(input$submit_transform)
-      # feature transformation
-      for_report$params$transform_method <- input$transform_method
-      for_report$params$asv_transform <- asv_transform()
-    })
-    
-    observe({
-      req(input$pcoa_calculate)
-      # pcoa
-      for_report$params$pcoa_dist <- input$pcoa_dist
-      for_report$params$pcoa_summary <- pcoa_result$pcoa$pcoa_summary
-      for_report$params$p_pcoa <- pcoa_result$pcoa$p_pcoa
-    })
-
   # pca
   observe({
     req(input$transform_method)
     if(input$transform_method != 'percent') {
       req(input$pca_calculate, input$pca_scale)
       for_report$params$pca_scale <- input$pca_scale
-      for_report$params$pca_summary <- pca_result$pca$pca_summary
-      for_report$params$p_pca <- pca_result$pca$p_pca
-    } 
-  })
-  
-  # dissimilarity
-  observe({
-    req(input$transform_method)
-    if(input$transform_method == 'percent') {
-      req(input$diss_grp, input$diss_panel, input$diss_calculate)
-      for_report$params$diss_grp <- input$diss_grp
-      for_report$params$diss_panel <- input$diss_panel
-      for_report$params$validation_msg <- dissimilarity$diss$validation_msg
-      for_report$params$diss_msg <- dissimilarity$diss$diss_msg
-      for_report$params$diss_result <- dissimilarity$diss$diss_result
-      for_report$params$p_diss <- dissimilarity$diss$p_diss
-      for_report$params$diss_stat <- dissimilarity$diss$diss_stat
+      for_report$params$pca_summary <- pca_output$output$pca_summary
+      for_report$params$p_pca <- pca_output$output$p_pca
     }
   })
   
+  # PERMANOVA ------------------------------------------------------------------
+
+  permanova_output <- callModule(mod_ov_permanova_server, "ov_permanova_ui_1",
+                                 bridge = bridge)
+
   # permanova
-  observeEvent(permanova_result$permanova$permanova_calculate, {
+  observeEvent(permanova_output$output$permanova_calculate, {
     for_report$params$permanova_stratify <-
-      permanova_result$permanova$permanova_stratify
+      permanova_output$output$permanova_stratify
     for_report$params$permanova_dist <-
-      permanova_result$permanova$permanova_dist
+      permanova_output$output$permanova_dist
     for_report$params$permanova_terms <-
-      permanova_result$permanova$permanova_terms
+      permanova_output$output$permanova_terms
     for_report$params$permanova_formula <-
-      permanova_result$permanova$permanova_formula
+      permanova_output$output$permanova_formula
     for_report$params$permanova_summary <-
-      permanova_result$permanova$permanova_summary
+      permanova_output$output$permanova_summary
   })
-  
+
   # build report
   callModule(mod_report_server, "beta_report_ui", bridge = for_report,
              template = "beta_report",

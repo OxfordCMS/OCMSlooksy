@@ -40,10 +40,13 @@ app_ui <- function() {
                tabPanel(title = "\u03B1-Diversity", value = 'alpha',
                         icon = icon("seedling"), mod_alpha_ui("alpha_ui_1")),
 
-               # Beta diversity------------------------------------------------
+               # Beta diversity-------------------------------------------------
                tabPanel(title = "\u03B2-Diversity", value = 'beta',
-                        icon = icon("project-diagram"), mod_beta_ui("beta_ui_1"))
+                        icon = icon("project-diagram"), mod_beta_ui("beta_ui_1")),
                
+               # Feature Proportionality----------------------------------------
+               tabPanel(title = "Feature Comparsion", value = 'prop',
+                        icon = icon("chart-line"), mod_prop_ui("prop_ui_1"))
               
                # # Prepare dataset for analysis-----------------------------------
                # tabPanel(title = "Prepare Data Set", value = 'prepare',

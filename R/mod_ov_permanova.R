@@ -81,7 +81,7 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   })
   
   output$permanova_dist_ui <- renderUI({
-    if(bridge$transform_method == 'percent') choices <- 'bray'
+    if(bridge$transform_input$transform_method == 'percent') choices <- 'bray'
     else choices <- c("manhattan", "euclidean", "canberra")
     
     selectInput(ns('permanova_dist'), "Distance method",
@@ -136,7 +136,7 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   
   cross_module <- reactiveValues()
   observe({
-    cross_module$permanova <- list(
+    cross_module$output <- list(
       permanova_stratify = input$stratify,
       permanova_dist = input$permanova_dist,
       permanova_calculate = input$permanova_calculate,

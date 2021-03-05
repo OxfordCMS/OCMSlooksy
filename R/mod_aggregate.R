@@ -141,7 +141,6 @@ mod_aggregate_server <- function(input, output, session, bridge){
   # initiate return list
   cross_module <- reactiveValues()
   observe({
-    req(bridge$agg_input$agg_calculate)
     cross_module$output <- list(
       aggregate_by = bridge$agg_input$aggregate_by,
       aggregated_count = aggregated_count(),

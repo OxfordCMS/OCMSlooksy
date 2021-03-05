@@ -2,8 +2,8 @@
 
 usethis::use_data("example_data")
 
-save_dir <- "/gfs/devel/syen/OCMSlooksy/data-raw/"
-save_dir <- "~/OCMSlooksy/data-raw/"
+save_dir <- "/gfs/devel/syen/OCMSlooksy/data-raw"
+# save_dir <- "~/OCMSlooksy/data-raw/"
 # create database
 con <- dbConnect(RSQLite::SQLite(), file.path(save_dir, "example_database.db"))
 
@@ -14,38 +14,22 @@ for(i in 1:length(example_tables)) {
   
   entry <- read.csv(file.path(save_dir, example_tables[i]),
                     header = TRUE)
-  dbWriteTable(con, str_extract(example_tables[i], '.*(?=.csv)'), entry, overwrite = TRUE)
+  dbWriteTable(con, stringr::str_extract(example_tables[i], '.*(?=.csv)'), entry, overwrite = TRUE)
 }
 
 # read in data on filtering and removing chimeras and save as one table
-work_path <- "/gfs/work/syen/testdada2/analysis/dada2/"
-infiles = list.files(path=file.path(work_path, "filtered.dir"), 
-                     pattern = "*summary.tsv")
+work_path <- "/gfs/work/syen/testdada2/analysis/dada2"
 
 # put into one table
-filtered <- c()
-for(i in infiles) {
-  curr_file <- file.path(work_path, "filtered.dir", i)
-  entry = read.csv(curr_file, header=T, stringsAsFactors=F, sep="\t")
-  
-  filtered <- rbind(filtered, entry)
-}
+filtered <- read.csv("/gfs/work/syen/testdada2/analysis/dada2/filtered.dir/merged_filter_summary.tsv", header=T, stringsAsFactors=F, sep="\t")
 
-infiles = list.files(path=file.path(work_path, "abundance.dir"), 
-                     pattern = "*summary.tsv")
 
 # put into one table
-nochim <- c()
-for(i in infiles) {
-  curr_file <- file.path(work_path, "abundance.dir", i)
-  entry = read.csv(curr_file, header=T, stringsAsFactors=F, sep="\t")
-  
-  nochim <- rbind(nochim, entry)
-}
+nochim <- read.csv("/gfs/work/syen/testdada2/analysis/dada2/abundance.dir/merged_qc_summary.tsv", header=T, stringsAsFactors=F, sep="\t")
 
 # Add table to database
-dbWriteTable(con, 'merged_filter_summary', filtered)
-dbWriteTable(con, 'merged_qc_summary', nochim)
+dbWriteTable(con, 'merged_filter_summary', filtered, overwrite=TRUE)
+dbWriteTable(con, 'merged_qc_summary', nochim, overwrite=TRUE)
 
 
 # writing database table into list to save as RData file

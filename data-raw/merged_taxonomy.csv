@@ -12,7 +12,7 @@ ASV010,GTGC,k__Bacteria,p__Firmicutes,c__c4,o__o4,f__f4,g__g5,s__s10,k__Bacteria
 ASV011,AACT,k__Bacteria,p__Firmicutes,c__c4,o__o4,f__f4,g__g5,s__s11,k__Bacteria;p__Firmicutes;c__c4;o__o4;f__f4;g__g5;s__s11
 ASV012,TGTC,k__Bacteria,p__Firmicutes,c__c4,o__o4,f__f4,g__g5,s__s12,k__Bacteria;p__Firmicutes;c__c4;o__o4;f__f4;g__g5;s__s12
 ASV013,GCAC,k__Bacteria,p__Firmicutes,c__c4,o__o4,f__f4,g__g5,s__s13,k__Bacteria;p__Firmicutes;c__c4;o__o4;f__f4;g__g5;s__s13
-ASV014,GTGA,k__Bacteria,p__Firmicutes,c__c4,o__o4,f__f4,g__g6,s__s14,k__Bacteria;p__Firmicutes;c__c4;o__o4;f__f4;g__g6;s__s14
+ASV014,GTGA,k__Bacteria,p__Firmicutes,c__c5,o__o5,f__f5,g__g6,s__s14,k__Bacteria;p__Firmicutes;c__c5;o__o5;f__f5;g__g6;s__s14
 ASV015,GAGA,k__Bacteria,p__Firmicutes,c__c5,o__o5,f__f5,g__g6,s__s15,k__Bacteria;p__Firmicutes;c__c5;o__o5;f__f5;g__g6;s__s15
 ASV016,CTCT,k__Bacteria,p__Firmicutes,c__c5,o__o5,f__f5,g__g6,s__s16,k__Bacteria;p__Firmicutes;c__c5;o__o5;f__f5;g__g6;s__s16
 ASV017,GCGC,k__Bacteria,p__Firmicutes,c__c5,o__o5,f__f5,g__g6,s__s17,k__Bacteria;p__Firmicutes;c__c5;o__o5;f__f5;g__g6;s__s17
@@ -23,7 +23,7 @@ ASV021,GGTA,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f8,g__g9,s__s21,k__Bact
 ASV022,AAGC,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f8,g__g9,s__s22,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f8;g__g9;s__s22
 ASV023,AAGT,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f8,g__g9,s__s23,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f8;g__g9;s__s23
 ASV024,GGTC,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f8,g__g9,s__s24,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f8;g__g9;s__s24
-ASV025,GGCT,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f8,g__g10,s__s25,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f8;g__g10;s__s25
+ASV025,GGCT,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f9,g__g10,s__s25,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f9;g__g10;s__s25
 ASV026,TTCA,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f9,g__g10,s__s26,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f9;g__g10;s__s26
 ASV027,TTGT,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f9,g__g10,s__s27,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f9;g__g10;s__s27
 ASV028,TACG,k__Bacteria,p__Actinobacteria,c__c8,o__o8,f__f9,g__g10,s__s28,k__Bacteria;p__Actinobacteria;c__c8;o__o8;f__f9;g__g10;s__s28

@@ -2,35 +2,10 @@
 
 usethis::use_data("example_data")
 
-save_dir <- "/gfs/devel/syen/OCMSlooksy/data-raw"
-# save_dir <- "~/OCMSlooksy/data-raw/"
+# save_dir <- "/gfs/devel/syen/OCMSlooksy/data-raw"
+save_dir <- "./data-raw"
 # create database
-con <- dbConnect(RSQLite::SQLite(), file.path(save_dir, "example_database.db"))
-
-# read in example data from csv files
-example_tables <- list.files(save_dir, ".csv")
-example_tables <- example_tables[1:2]
-for(i in 1:length(example_tables)) {
-  
-  entry <- read.csv(file.path(save_dir, example_tables[i]),
-                    header = TRUE)
-  dbWriteTable(con, stringr::str_extract(example_tables[i], '.*(?=.csv)'), entry, overwrite = TRUE)
-}
-
-# read in data on filtering and removing chimeras and save as one table
-work_path <- "/gfs/work/syen/testdada2/analysis/dada2"
-
-# put into one table
-filtered <- read.csv("/gfs/work/syen/testdada2/analysis/dada2/filtered.dir/merged_filter_summary.tsv", header=T, stringsAsFactors=F, sep="\t")
-
-
-# put into one table
-nochim <- read.csv("/gfs/work/syen/testdada2/analysis/dada2/abundance.dir/merged_qc_summary.tsv", header=T, stringsAsFactors=F, sep="\t")
-
-# Add table to database
-dbWriteTable(con, 'merged_filter_summary', filtered, overwrite=TRUE)
-dbWriteTable(con, 'merged_qc_summary', nochim, overwrite=TRUE)
-
+con <- dbConnect(RSQLite::SQLite(), file.path(save_dir, "DSS_DB"))
 
 # writing database table into list to save as RData file
 # extract data tables
@@ -46,5 +21,7 @@ for(i in 1:length(table_ls)) {
 # close connection
 dbDisconnect(con)
 
+# add metadata to list
+example_data$metadata <- read.csv(file.path(save_dir, "dss_metadata.tsv"), sep="\t")
 
 save(example_data, 'example_data', file = './data/example_data.RData')

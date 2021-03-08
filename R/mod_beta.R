@@ -88,7 +88,7 @@ mod_beta_ui <- function(id){
                                        'percent abundance' = 'percent'),
                            selected = 'clr'),
               withBusyIndicatorUI(
-                actionButton(ns('submit_transform'), "Transform Counts")    
+                actionButton(ns('submit_transform'), "Apply change")    
               )
             )
           ),

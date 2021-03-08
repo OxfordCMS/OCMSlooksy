@@ -137,7 +137,7 @@ mod_prop_ui <- function(id){
                   h1('Pairwise Feature Comparison'),
                   tags$div(
                     'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', code('propr'), 'is used to calculate proportionality. [link to propr vignettes]', br(),
-                    "Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by ", code('ALDEx2'), "applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution with spurious correlations with zero counts in this step if your dataset has sparse (high proportion of zeros)" ,
+                    "Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by ", code('ALDEx2'), "applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution that spurious correlations may occur with zero counts if your dataset is sparse (high proportion of zeros)" ,
                     br()
                   ),
                   br(),
@@ -629,6 +629,9 @@ mod_prop_server <- function(input, output, session, improxy){
   
   output$prop_summary <- DT::renderDataTable({
     DT::datatable(prop_summary(), filter='none', rownames=FALSE,
+                  extensions = 'Buttons',
+                  options = list(dom = 'Brti', buttons = c('copy','csv'),
+                                 paging=FALSE, searching=FALSE),
                   caption="Rho distribution in filtered pair-wise proportionality matrix")
   })
   
@@ -698,7 +701,9 @@ mod_prop_server <- function(input, output, session, improxy){
     DT::datatable(rho_df() %>%
                     mutate(prop = round(prop, digits = 3)),
                   colnames = c('Feature 1','Feature 2','Rho'),
-                  options = list(searchHighlight = TRUE), filter = 'top',
+                  options = list(searchHighlight = TRUE, scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')),
+                  filter = 'top', extensions = 'Buttons',
                   selection = list(mode = "multiple", selected = 1))
   })
   
@@ -815,14 +820,14 @@ mod_prop_server <- function(input, output, session, improxy){
   })
   
   output$plot_meta <- renderPlotly({
-    if(any(add_line()$npoint > 2)) {
+    # if(any(add_line()$npoint > 2)) {
       ggplotly(p_meta())
         # layout(boxmode='group')
-    }
-    else {
-      ggplotly(p_meta())
-    }
-    
+    # }
+    # else {
+    #   ggplotly(p_meta())
+    # }
+    # 
   })
   
   # download data

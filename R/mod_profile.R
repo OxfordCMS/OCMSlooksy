@@ -111,26 +111,38 @@ mod_profile_server <- function(input, output, session, improxy){
   bar_data <- reactive({
   req(input$bar_tax, input$bar_x, input$bar_panel)
     
-    col_keep <- c(input$bar_tax, input$bar_x)
-    if(input$bar_panel != 'none') {
-      col_keep <- c(col_keep, input$bar_panel)
+    if(input$bar_panel == 'none') {
+      out <- improxy$work_db$work %>%
+        # sample total read count
+        group_by(sampleID) %>%
+        mutate(sample_total = sum(read_count)) %>%
+        # aggregate on taxon within each sample
+        group_by(sampleID, !!sym(input$bar_tax)) %>%
+        summarise(!!input$bar_x := .data[[input$bar_x]], 
+                  tax_cnt = sum(read_count), 
+                  tax_rel = tax_cnt / sample_total) %>%
+        # mean of aggregated counts within selected group
+        group_by(!!sym(input$bar_x), !!sym(input$bar_tax)) %>%
+        summarise(cnt_abund = mean(tax_cnt),
+                  rel_abund = mean(tax_rel))
+    } else {
+      out <- improxy$work_db$work %>%
+        # sample total read count
+        group_by(sampleID) %>%
+        mutate(sample_total = sum(read_count)) %>%
+        # aggregate on taxon within each sample
+        group_by(sampleID, !!sym(input$bar_tax)) %>%
+        summarise(!!input$bar_x := .data[[input$bar_x]], 
+                  !!input$bar_panel := .data[[input$bar_panel]],
+                  tax_cnt = sum(read_count), 
+                  tax_rel = tax_cnt / sample_total) %>%
+        # mean of aggregated counts within selected group
+        group_by(!!sym(input$bar_x), !!sym(input$bar_tax)) %>%
+        summarise(!!input$bar_panel := .data[[input$bar_panel]],
+                  cnt_abund = mean(tax_cnt),
+                  rel_abund = mean(tax_rel)) %>%
+        distinct()
     }
-    
-    out <- improxy$work_db$work %>%
-      # sample total read count
-      group_by(sampleID) %>%
-      mutate(sample_total = sum(read_count)) %>%
-      # aggregate on taxon within each sample
-      group_by(sampleID, !!sym(input$bar_tax)) %>%
-      mutate(tax_cnt = sum(read_count), tax_rel = tax_cnt / sample_total) %>%
-      ungroup() %>%
-      distinct(!!!syms(col_keep), tax_cnt, tax_rel) %>%
-      # mean of aggregated counts within selected group
-      group_by(!!sym(input$bar_x), !!sym(input$bar_tax)) %>%
-      mutate(cnt_abund = mean(tax_cnt),
-             rel_abund = mean(tax_rel)) %>%
-      ungroup()
-    
     out
   })
 
@@ -146,9 +158,18 @@ mod_profile_server <- function(input, output, session, improxy){
 
   bar_table <- reactive({
     req(input$bar_tax, input$bar_x, input$bar_y)
-    bar_data() %>% 
-      select(!!sym(input$bar_x), !!sym(input$bar_y), !!sym(input$bar_tax)) %>%
-      spread(!!sym(input$bar_x), !!sym(input$bar_y))
+    if(input$bar_panel == 'none') {
+      out <- bar_data() %>% 
+        distinct(!!sym(input$bar_x), !!sym(input$bar_y), !!sym(input$bar_tax)) %>%
+        spread(!!sym(input$bar_x), !!sym(input$bar_y))  
+    } else {
+      out <- bar_data() %>% 
+        distinct(!!sym(input$bar_x), !!sym(input$bar_panel), 
+                 !!sym(input$bar_y), !!sym(input$bar_tax)) %>%
+        unite(x, !!sym(input$bar_x), !!sym(input$bar_panel)) %>%
+        spread(x, !!sym(input$bar_y))  
+    }
+    out
   })
   output$bar_table <- DT::renderDataTable({
     
@@ -156,42 +177,18 @@ mod_profile_server <- function(input, output, session, improxy){
     x_name <- colnames(out)
     x_name <- x_name[x_name != input$bar_tax]
 
-    # by default, only show first 50 samples + 8 tax columns
-    if(ncol(out) <= 51) {
-      # if less than 50 samples, show all
-      col_ind <- 1:ncol(out) # index of columns to show
-      vis_val <- TRUE
-    }
-    else {
-      col_ind <- 52:ncol(out) # index of columns to hide
-      vis_val <- FALSE
-    }
-
-
+    out <- DT::datatable(out,  extensions = 'Buttons',
+                         options = list(
+                           scrollX = TRUE,
+                           dom = 'Blfrtip',
+                           buttons = c('copy','csv')))
     if(input$bar_y == 'rel_abund') {
-      DT::datatable(out,  extensions = 'Buttons',
-                    options = list(
-                      pageLength = 30,
-                      scrollX = TRUE,
-                      dom = 'Blfrtip',
-                      buttons = list(c('copy','csv'), list(extend = 'colvis')),
-                      columnDefs = list(
-                        list(targets = col_ind, visible = vis_val)
-                      ))) %>%
+       out %>%
         DT::formatRound(column = x_name, digits = 3)
     }
     else {
-      DT::datatable(out,extensions = 'Buttons',
-                    options = list(
-                      pageLength = 30,
-                      scrollX = TRUE,
-                      dom = 'Blfrtip',
-                      buttons = list(c('copy','csv'), list(extend = 'colvis')),
-                      columnDefs = list(
-                        list(targets = col_ind, visible = vis_val)
-                      )))
+      out
     }
-
   })
 
   p_bar <- reactive({

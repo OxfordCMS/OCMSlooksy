@@ -106,7 +106,7 @@ mod_prop_ui <- function(id){
       dashboardBody(
         box(
           width = '100%', br(), br(), br(),
-          wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
           tabItems(
             # info tab body-----------------------------------------------------
             tabItem(

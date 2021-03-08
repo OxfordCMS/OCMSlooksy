@@ -174,7 +174,8 @@ mod_import_server <- function(input, output, session, parent_session) {
       RSQLite::dbDisconnect(con)
 
       table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
-                    'merged_filter_summary','merged_qc_summary') # need ymltable
+                    'merged_filter_summary','merged_qc_summary', 
+                    'parameter_table')
       
       data_ls
     }
@@ -189,8 +190,9 @@ mod_import_server <- function(input, output, session, parent_session) {
   observe({
     
     table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
-                  'merged_filter_summary','merged_qc_summary') # need ymltable
+                  'merged_filter_summary','merged_qc_summary', 'parameter_table') 
     
+    # check sample IDs match
     metaID <- sort(as.character(data_set()$metadata$sampleID))
     dbID <- sort(as.character(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID']))
     
@@ -246,7 +248,8 @@ mod_import_server <- function(input, output, session, parent_session) {
       Sys.sleep(1)
       # show menu items
       output$metadata_menu <- renderMenu({
-        menuItem('Metadata Preview', tabName = 'metadata_menu_tab', selected = TRUE)
+        menuItem('Metadata Preview', tabName = 'metadata_menu_tab', 
+                 selected = TRUE)
       })
       
       output$asv_menu <- renderMenu({

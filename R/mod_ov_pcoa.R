@@ -410,7 +410,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # initiate return list
   cross_module <- reactiveValues()
   observe({
-    cross_module$pcoa <- list(
+    cross_module$output <- list(
       pcoa_summary = pcoa_summary(),
       p_pcoa = p_pcoa()
     )

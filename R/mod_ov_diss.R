@@ -401,7 +401,7 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   # initiate return list
   cross_module <- reactiveValues()
   observe({
-    cross_module$diss <- list(
+    cross_module$output <- list(
       validation_msg = validation_msg(),
       diss_result = diss_result(),
       p_diss = p_diss(),
@@ -411,9 +411,9 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   
   observe({
     if(validation_stat() != FALSE) {
-      cross_module$diss$diss_stat <- diss_stat()
+      cross_module$output$diss_stat <- diss_stat()
     } else {
-      cross_module$diss$diss_stat <- "All observations are in the same group or not enough samples per group. Group-wise comparisons not performed."
+      cross_module$output$diss_stat <- "All observations are in the same group or not enough samples per group. Group-wise comparisons not performed."
     }
   })
   return(cross_module)

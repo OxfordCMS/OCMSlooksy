@@ -1,0 +1,283 @@
+---
+title: "Feature Comparison Report"
+author: "Your Name"
+date: "The Date"
+output: output_format
+always_allow_html: true
+params:
+  sample_select_prompt: NA
+  sample_select: NA
+  met1: NA
+  aggregate_by: NA
+  aggregated_count: NA
+  aggregated_tax: NA
+  asv_select_prompt: NA
+  asv_filter_options: NA
+  cutoff_method: NA
+  asv_cutoff: NA
+  prevalence: NA
+  asv_cutoff_msg: NA
+  asv_remove: NA
+  prev_agg_plot: NA
+  prev_read_plot: NA
+  empty_sample: NA
+  empty_asv: NA
+  met2: NA
+  tax2: NA,
+  prop_fdr_summary: NA
+  rho_cutoff: NA,
+  rho_filter: NA
+  rho_operator: NA
+  rho_range: NA,
+  rho_summary: NA,
+  prop_summary: NA,
+  prop_hclust_method: NA,
+  prop_dist_method: NA,
+  hmap_tax_label: NA,
+  hmap_prop: NA,
+  prop_meta_x: NA,
+  pairs_to_vis: NA
+  prop_table: NA,
+  p_pair: NA,
+  prop_plot_meta: NA
+---
+
+```{r setup, include=FALSE}
+require(dplyr)
+require(tidyr)
+require(knitr)
+require(ggplot2)
+require(kableExtra)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE, warning = FALSE, 
+                      message = TRUE, result = 'asis', 
+                      fig.width = 8, fig.height = 6)
+```
+
+
+# Data Preparation
+## Filtering Samples
+### Parameters selected:
+```{r sample-filter}
+sample_select_prompt_out <- switch(params$sample_select_prompt, 
+                                   all = "Use all samples",
+                                   include = "Include selected samples",
+                                   exclude = "Exclude selected samples")
+
+if(params$sample_select_prompt == 'all') {
+  sample_select_out <- 'Not applicable'
+} else {
+  sample_select_out <- paste0(' ', params$sample_select, collapse="\n")
+}
+```
+
+* Samples to include in analysis: `r sample_select_prompt_out`
+* Samples selected: `r sample_select_out`
+
+### Samples included in analysis:
+```{r sample-table}
+kable(params$met1) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+## Aggregating Features
+### Parameters selected:
+
+* Aggregating feature counts at the `r params$aggregate_by` level
+* The number of features collapsed is listed in the `n_collapse` column
+
+### Aggregated Features
+#### Aggregated Taxonomy Table
+```{r agg-tax}
+kable(params$aggregated_tax) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+#### Aggregated Count table
+```{r agg-count}
+kable(params$aggregated_count) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+## Filtering Features
+### Parameters selected:
+```{r feat-filter}
+# features to exclude from analysis
+asv_select_prompt_out <- switch(params$asv_select_prompt,
+                                all = 'Use all features',
+                                some = 'Filter features')
+```
+
+* Features to exclude from analysis: `r asv_select_prompt_out`
+
+```{r feat-param}
+# Filter features by
+if(params$asv_select_prompt == 'some') {
+  asv_filter_options_out <- switch(params$asv_filter_options,
+                                   asv_by_count = 'read count',
+                                   asv_by_select = 'selection')
+} else {
+  asv_filter_options_out <- 'Not applicable'
+}
+
+if(params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count') {
+  # Set filter cut-off by
+  cutoff_method_out <- switch(
+    params$cutoff_method,
+    abs_count = 'Read count',
+    percent_sample = 'Percent of total read count of each sample',
+    percent_total = 'Percent of total read count of dataset'
+  )
+
+  # Read count cut-off
+  asv_cutoff_out <- params$asv_cutoff
+
+  # Feature prevalence
+  prevalence_out <- params$prevalence
+
+  # filter message
+  asv_cutoff_msg_out <- params$asv_cutoff_msg
+} else {
+  cutoff_method_out <- 'Not applicable'
+  asv_cutoff_out <- 'Not applicable'
+  prevalence_out <- 'Not applicable'
+  asv_cutoff_msg_out <- 'Features not filtered by read count'
+  
+}
+```
+
+`r if(params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count') {
+  paste("* Filter features by:", asv_filter_options_out, sep=" ")
+  paste("* Set filter cut-off by:", cutoff_method_out, sep=" ")
+  paste("* Read count cut-off:", asv_cutoff_out, sep=" ")
+  paste("* Feature prevalence (# of samples):", prevalence_out, sep=" ")
+  "\n"
+  asv_cutoff_msg_out
+}`
+
+```{r, eval=params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count', fig.cap="Distribution of feature prevalence based on aggregated read count. Each point is a feature, with y-axis as the sum of read counts of a given feature across all samples and x-axis as the number of samples in which a given feature is observed."}
+
+params$prev_agg_plot
+```
+
+```{r feat-text, eval=params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_count', fig.cap="Distribution of feature prevalence based on read count. Each point is feature of a sample, with y-axis as the read count and x-axis as the number of samples in which a given feature is observed."}
+
+params$prev_read_plot
+```
+
+`r if(params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_select') {
+  paste("* Filter features by: ", asv_filter_options_out, sep=" ")
+  "* Features selected to be excluded:"
+}`
+
+```{r feat-table-select, eval = params$asv_select_prompt == 'some' & params$asv_filter_options == 'asv_by_select'}
+out <- params$tax1 %>% 
+  filter(featureID %in% params$asv_remove) %>% 
+  relocate(sequence, .after=last_col())
+kable(out) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+`r if(length(params$empty_sample) > 0) {
+  sprintf("%s samples contained 0 reads after ASV filtering. The following samples have been removed:\n%s", length(params$empty_sample), paste(params$empty_sample, collapse="\n"))
+}`
+
+`r if(length(params$empty_asv) > 0) {
+sprintf("%s asvs contained 0 reads in all samples after ASV filtering. The following asvs have been removed:\n%s", length(params$empty_asv), paste(params$empty_asv, collapse="\n"))
+}`
+
+### Features included in analysis:
+```{r feat-table-keep}
+out <- params$tax2 %>% 
+  relocate(sequence, .after=last_col())
+
+kable(out) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+## Pairwise Feature Comparison
+One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho ($\rho$), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package `propr` is used to calculate proportionality. [link to propr vignettes]. Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by `ALDEx2`, applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution that spurious correlations may occur with zero counts if your dataset is sparse (high proportion of zeros).
+
+When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho $\ge$ |0.6|.
+
+Pairwise feature comparision results in a matrix of rho values, to show the proportionaity of a given feature with all other features. The rho values are summarised in the histogram in the centre. You can the relationship between all feature pairs, but in cases where there are many features, this may result in an unreasonable number of feature pairs to visualise. You can choose to filter rho values based a set of rho cutoffs. You can choose 'outside range' to examine stronger associations (more extreme values of rho), or the 'inside range' to examine the weaker associations.
+
+### Rho False Discovery Rate
+```{r}
+params$prop_fdr_summary
+```
+
+### Summary of Rho Values
+**Parameters selected:**
+
+* `r switch(params$rho_filter, 
+            all = "Show all pairs", 
+            filter = "Filter by rho")`
+`r if(params$rho_filter != 'all') {
+  sprintf("* Rho cutoff: %s", paste(params$rho_cutoff, collapse=", "))
+  sprintf("* Keep Rho values: %s", 
+          switch(params$rho_operator, 
+                 inside = "inside range (weak associations)",
+                 outside = "outside range (strong associations)"))
+}`
+
+```{r}
+params$rho_range
+```
+
+```{r}
+params$rho_summary
+```
+
+```{r}
+kable(params$prop_summary, caption="Rho distribution in filtered pair-wise proportionality matrix") %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="300px")
+```
+
+### Proportionality Matrix
+**Heirchical cluster parameters selected:**
+
+* Linkage method: `r params$prop_hclust_method`
+* Distance method: `r params$prop_dist_method`
+* Label taxa by: `r params$hmap_tax_label`
+
+```{r}
+params$hmap_prop
+```
+
+### Visualizing Feature Pairs
+```{r}
+kable(params$prop_table, row.names=NA, digit=3,
+      caption="Full table of pairwise feature proportionality measures") %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="500px")
+```
+
+**Feature pairs selected for visualization:**
+```{r}
+out <- data.frame(matrix(unlist(params$pairs_to_vis), 
+                         nrow=length(params$pairs_to_vis),
+                         byrow = TRUE),
+                  stringsAsFactors=FALSE)
+kable(out, row.names=NA, col.names=c('feature1','feature2','rho')) %>%
+  kable_styling("striped", full_width = TRUE) %>% 
+  scroll_box(width="100%", height="300px")
+```
+
+#### Feature Pairs
+```{r}
+params$p_pair
+```
+
+#### By Metadata
+
+* x-axis: `r params$prop_meta_x`
+
+```{r}
+params$prop_plot_meta
+```

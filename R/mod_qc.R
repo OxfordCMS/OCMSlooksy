@@ -411,7 +411,7 @@ mod_qc_server <- function(input, output, session, improxy){
   # Render reactive widgets-----------------------------------------------------
   output$sample_select_ui <- renderUI({
     choices <- colnames(met())
-    radioButtons(ns('sample_select'), label = "Group samples by:",
+    selectInput(ns('sample_select'), label = "Group samples by:",
                  choices = choices, selected = 'sampleID')
   })
 
@@ -809,7 +809,7 @@ mod_qc_server <- function(input, output, session, improxy){
   pdata_samdistr <- reactive({
     req(input$sample_select)
     met <- improxy$data_db$metadata
-    asv <- improxy$data_db$merged_abundance_id[,met$sampleID]
+    asv <- improxy$data_db$merged_abundance_id[,as.character(met$sampleID)]
     rownames(met) <- met$sampleID
     samdistr <- data.frame(count=colSums(asv))
     rownames(samdistr) <- met$sampleID

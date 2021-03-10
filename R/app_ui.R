@@ -33,7 +33,7 @@ app_ui <- function() {
                         mod_qualityfilter_ui("qualityfilter_ui_1")),
 
                # relative abundance profiles------------------------------------
-               tabPanel(title = "Relative Abundance", value = 'profile',
+               tabPanel(title = "Microbiome Profile", value = 'profile',
                         icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),
                
                # Alpha diversity------------------------------------------------

@@ -45,10 +45,11 @@ mod_qc_ui <- function(id){
           conditionalPanel(
             condition = "input.menu === 'group_distribution_tab'",
             br(), hr(),
-            div(style="text-align: center",
-                tags$b('Input controls')),
-
             fixedPanel(
+              width = 225,
+              div(style="text-align: center",
+                  tags$b('Input controls')),
+  
               # choose sample group
               uiOutput(ns('sample_select_ui'))
             )
@@ -734,8 +735,8 @@ mod_qc_server <- function(input, output, session, improxy){
       select(-sequence, -Taxon) %>%
       gather('tax_class', 'assignment', -featureID) %>%
       group_by(tax_class) %>%
-      summarise(n_NA = sum(is.na(assignment)),
-                n_ass = sum(!is.na(assignment)))
+      summarise(n_NA = sum(grepl('unclassified',assignment)),
+                n_ass = sum(!grepl('unclassified',assignment)))
     out
   })
 

@@ -231,7 +231,7 @@ mod_beta_server <- function(input, output, session, improxy){
   # store data in reactiveValues to pass onto submodules
   observe({
     req(input$agg_calculate)
-    if(!is.null(agg_output$agg)) {
+    if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
       
       # add aggregate features to bridge to be passed to submodules
@@ -240,23 +240,20 @@ mod_beta_server <- function(input, output, session, improxy){
         asv = agg_output$output$aggregated_count,
         tax = tax_entry
       )
-      # add aggregate features to report params
-      for_report$params$aggregate_by <- agg_output$output$aggregate_by
-      for_report$params$aggregated_count <- agg_output$output$aggregated_count
-      for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
-    } else { # agg_result starts out as NULL initially. else stops that from causing app to crash
-      bridge$work_db <- list(
-        met = improxy$work_db$met,
-        asv = improxy$work_db$asv,
-        tax = improxy$work_db$tax
-      )
       
-      # add aggregate features to report params
-      for_report$params$aggregate_by <- NA
-      for_report$params$aggregated_count <- improxy$work_db$asv
-      for_report$params$aggregated_tax <- improxy$work_db$tax
+    } else { 
+      # agg_output starts out as NULL initially. else statement stops that from causing app to crash
+      bridge$work_db <- 'tempstring'
     }
-
+    
+  })
+  
+  observe({
+    req(input$agg_calculate)
+    # add aggregate features to report params
+    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregated_count <- agg_output$output$aggregated_count
+    for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
 
   # filter features-------------------------------------------------------------

@@ -29,6 +29,7 @@ params:
   bar_table: NA
   p_bar: NA
   p_zero: NA
+  binary_hmap: NA
 ---
 
 
@@ -215,6 +216,14 @@ params$p_bar +
 ## Profile Sparsity
 It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity).
 
+### Histogram of the zero content of samples
 ```{r}
 params$p_zero
+```
+
+### Presence/Absence heatmap
+Count data converted into binary, where 0 = absent and 1 = present can be shown as a heatmap. Samples and features are clustered based on Jaccard distance, and complete linkage.
+
+```{r, fig.height=40/2.54}
+params$binary_hmap
 ```

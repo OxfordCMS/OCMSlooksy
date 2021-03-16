@@ -159,7 +159,7 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
   
   output$preview_sample <- DT::renderDataTable({
     req(input$submit_sample)
-    DT::datatable(met_filtered(), extensions = 'Buttons', 
+    DT::datatable(met_filtered(), filter='top', extensions = 'Buttons', 
                   options = list(scrollX = TRUE, 
                                  pageLength = 30,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))

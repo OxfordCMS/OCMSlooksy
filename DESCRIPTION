@@ -39,6 +39,7 @@ Imports:
     shinydashboard,
     shinyjqui,
     shinyjs,
+    sortable,
     tidyr,
     tibble,
     vegan,

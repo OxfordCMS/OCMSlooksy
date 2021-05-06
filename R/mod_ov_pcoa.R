@@ -19,7 +19,7 @@
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('Subcheck'), br(), verbatimTextOutput(ns('check'))),
+    # wellPanel(width = 12, h3('Subcheck'), br(), verbatimTextOutput(ns('check'))),
     h1("Principal Coordinate Analysis"),
     tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
     hidden(div(
@@ -418,8 +418,8 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   })
   
   # # check
-  output$check <- renderPrint({
-  })
+  # output$check <- renderPrint({
+  # })
   
   return(cross_module)
 }

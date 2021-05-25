@@ -1,7 +1,6 @@
 ---
-title: "Beta Diversity Report"
-author: "Your Name"
-date: "The Date"
+title: "Differential Abundance Report"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 output: output_format
 always_allow_html: true
 params:
@@ -24,26 +23,16 @@ params:
   empty_asv: NA
   met2: NA
   tax2: NA
-  transform_method: NA
-  asv_transform: NA
-  pcoa_dist: NA
-  pcoa_summary: NA
-  p_pcoa: NA
-  pca_scale: NA
-  pca_summary: NA
-  p_pca: NA
-  diss_grp: NA
-  diss_panel: NA
-  validation_msg: NA
-  diss_msg: NA
-  diss_result: NA
-  p_diss: NA
-  diss_stat: NA
-  permanova_terms: NA
-  permanova_stratify: NA
-  permanova_dist: NA
-  permanova_formula: NA
-  permanova_summary: NA
+  deseq_variable: NA
+  deseq_group1: NA
+  deseq_group2: NA
+  dds_result: NA
+  cutoff_pval: NA
+  cutoff_fc: NA
+  p_volcano: NA
+  p_lfc: NA
+  p_box: NA
+  selected_feat: NA
 ---
 
 ```{r setup, include=FALSE}
@@ -203,98 +192,48 @@ kable(out) %>%
   scroll_box(width="100%", height="500px")
 ```
 
-## Read Count Transformation
-### Parameters selected
-Transformation method: `r params$transform_method`
+# Differential abundance analysis
+## Modelling microbiome with DESeq2
+### Parameters selected:
 
-### Transformed Counts
-```{r transform-count}
-kable(params$asv_transform) %>%
+* Observational variable: `r params$deseq_variable`
+* Group 1: `r params$deseq_group1`
+* Group 2: `r params$deseq_group2`
+
+### Model results
+```{r deseq-results}
+kable(params$dds_result) %>%
   kable_styling("striped", full_width = TRUE) %>% 
   scroll_box(width="100%", height="500px")
 ```
 
-`r if(params$transform_method == 'percent') {
-  sprintf(
-  "## Sample Dissimilarity \n
-   ### Parameters selected \n
-   Compare sample groups: %s \n
-   Panel by: %s \n\n
-   Using Bray-Curtis distance metric to measure the sample-wise dissimilarity. Dissimilarity is calculated for pair-wise samples within the groups of the selected metadata variable (phenotype). \n\n
-   %s \n\n
-   %s \n\n", 
-   params$diss_grp, params$diss_panel, params$validation_msg, params$diss_msg
-  )
-}`
+## Visualising differential abundance
+### Parameters selected:
 
-```{r diss-plot, eval=params$transform_method == 'percent'}
-params$p_diss
+* Signficance cut-off, adjusted p-value: `r params$cutoff_val`
+* Signficance cut-off, log2 fold-change: `r params$cutoff_fc`
+
+```{r volcano}
+params$p_volcano
 ```
 
-```{r diss-stat, eval=!is.na(params$diss_stat)}
-kable(params$diss_stat)  %>%
-  kable_styling("striped", full_width = TRUE) %>% 
-  scroll_box(width="100%", height="250px")
+```{r lfc}
+params$p_lfc
 ```
 
-```{r diss-result, eval=params$transform_method == 'percent'}
-kable(params$diss_result)  %>%
-  kable_styling("striped", full_width = TRUE) %>% 
-  scroll_box(width="100%", height="250px")
-```
+* selected features: `r params$selected_feat`
 
-## PCOA
-### Parameters selected
-Distance method: `r params$pcoa_dist`
-
-### PCOA Summary
-```{r pcoa-summary}
-kable(params$pcoa_summary) %>%
-  kable_styling("striped", full_width = TRUE) %>% 
-  scroll_box(width="100%", height="250px")
-```
-
-### PCOA Plot
-```{r pcoa-plot}
-params$p_pcoa
-```
-
-`r if(params$transform_method != 'percent') {
-  sprintf(
-    "## PCA \n
-    ### Parameters selected \n
-    PCA normalization: %s\n\n", params$pca_scale)
-  "### PCA Summary"
-}`
-  
-```{r pca-summary, eval=params$transform_method != 'percent'}
-kable(params$pca_summary) %>%
-  kable_styling("striped", full_width = TRUE) %>% 
-  scroll_box(width="100%", height="250px")
-```
-
-`r if(params$transform_method != 'percent') {"### PCA Plot"}`
-
-```{r pca-plot, eval=params$transform_method != 'percent'}
-params$p_pca
-```
-
-## PERMANOVA
-
-### Parameters selected
-
-* Terms: `r params$permanova_terms`
-* Group by: `r params$permanova_stratify`
-* Distance metric: `r params$permanova_dist`
-
-**PERMANOVA Formula**
 ```{r}
-params$permanova_formula
-```
+# get height of figure
+show_box <- !is.na(params$selected_feat)
+if(show_box) {
+  h <- length(params$selected_feat)
+  h <- ceiling(h/4) + 2
+} else {
+  h <- 1
+}
 
-### PERMANOVA Summary
-```{r}
-kable(params$permanova_summary) %>%
-  kable_styling("striped", full_width = TRUE) %>% 
-  scroll_box(width="100%", height="200px")
+```
+```{r box, eval=show_box, fig.height=h}
+params$p_box
 ```

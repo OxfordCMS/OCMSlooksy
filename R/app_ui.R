@@ -13,47 +13,51 @@ app_ui <- function() {
     # List the first level UI elements here 
     # h3('Check'),
     # verbatimTextOutput('check'),
-    navbarPage(title = "OCMSlooksy", id = 'tabs', position = 'fixed-top',
+    navbarPage(
+      title = "OCMSlooksy", id = 'tabs', position = 'fixed-top',
 
-               # Introduction---------------------------------------------------
-               tabPanel(title = "Introduction", value = 'intro', icon = icon("book"),
-                        mod_intro_ui("intro_ui_1")),
-
-               # Import data----------------------------------------------------
-               tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
-                        mod_import_ui("import_ui_1")),
-
-               # # QC report----------------------------------------------------
-               tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
-                        mod_qc_ui("qc_ui_1")),
-
-               # Quality filter samples-----------------------------------------
-               tabPanel(title = "Filter Samples", value = 'qualityfilter',
-                        icon = icon("filter"),
-                        mod_qualityfilter_ui("qualityfilter_ui_1")),
-
-               # relative abundance profiles------------------------------------
-               tabPanel(title = "Microbiome Profile", value = 'profile',
-                        icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),
-               
-               # Alpha diversity------------------------------------------------
-               tabPanel(title = "\u03B1-Diversity", value = 'alpha',
-                        icon = icon("seedling"), mod_alpha_ui("alpha_ui_1")),
-
-               # Beta diversity-------------------------------------------------
-               tabPanel(title = "\u03B2-Diversity", value = 'beta',
-                        icon = icon("project-diagram"), mod_beta_ui("beta_ui_1")),
-               
-               # Feature Proportionality----------------------------------------
-               tabPanel(title = "Feature Comparsion", value = 'prop',
-                        icon = icon("chart-line"), mod_prop_ui("prop_ui_1")),
-              
-               # Diffential abundance-------------------------------------------
-               tabPanel(title = "Differential Abundance", value = 'diff',
-                        icon = icon("balance-scale-left"), 
-                        mod_diff_abund_ui("diff_abund_ui_1"))
-
-    ))
+      # Introduction---------------------------------------------------
+      tabPanel(title = "Introduction", value = 'intro', icon = icon("book"),
+              mod_intro_ui("intro_ui_1")),
+      
+      # Import data----------------------------------------------------
+      tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
+              mod_import_ui("import_ui_1")),
+      
+      # # QC report----------------------------------------------------
+      tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
+              mod_qc_ui("qc_ui_1")),
+      
+      # Quality filter samples-----------------------------------------
+      tabPanel(title = "Filter Samples", value = 'qualityfilter',
+              icon = icon("filter"),
+              mod_qualityfilter_ui("qualityfilter_ui_1")),
+      
+      navbarMenu(
+        "Analysis tasks",
+        # relative abundance profiles------------------------------------
+        tabPanel(title = "Microbiome Profile", value = 'profile',
+                icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),
+        
+        # Alpha diversity------------------------------------------------
+        tabPanel(title = "\u03B1-Diversity", value = 'alpha',
+                icon = icon("seedling"), mod_alpha_ui("alpha_ui_1")),
+        
+        # Beta diversity-------------------------------------------------
+        tabPanel(title = "\u03B2-Diversity", value = 'beta',
+                icon = icon("project-diagram"), mod_beta_ui("beta_ui_1")),
+        
+        # Feature Proportionality----------------------------------------
+        tabPanel(title = "Feature Comparsion", value = 'prop',
+                icon = icon("chart-line"), mod_prop_ui("prop_ui_1")),
+        
+        # Diffential abundance-------------------------------------------
+        tabPanel(title = "Differential Abundance", value = 'diff',
+                icon = icon("balance-scale-left"), 
+                mod_diff_abund_ui("diff_abund_ui_1"))
+      ) # end navbarMenu
+    ) # end navbarpage
+  )
 }
 
 #' @import shiny

@@ -138,16 +138,37 @@ mod_profile_ui <- function(id){
               tabName = "sparsity_tab",
               column(
                 width = 12,
-                h1("Profile Sparsity"),
-                tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity)."),
-                column(
-                  width=1, style='padding:0px;',
-                  mod_download_ui(ns("download_sparse"))
+                fluidRow(
+                  h1("Profile Sparsity"),
+                  tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity).")  
                 ),
-                column(
-                  width = 11, style = 'padding:0px;',
-                  plotlyOutput(ns('zero_content')) %>%
-                    shinycssloaders::withSpinner()
+                fluidRow(
+                  h2('Histogram of the zero content of samples'),
+                  column(
+                    width=1, style='padding:0px;',
+                    mod_download_ui(ns("download_sparse"))
+                  ),
+                  column(
+                    width = 11, style = 'padding:0px;',
+                    plotlyOutput(ns('zero_content')) %>%
+                      shinycssloaders::withSpinner()
+                  )  
+                ),
+                fluidRow(
+                  br(),
+                  h2('Presence/Absence heatmap'),
+                  tags$div(
+                    "Count data converted into binary, where 0 = absent and 1 = present can be shown as a heatmap. Samples and features are clustered based on Jaccard distance, and complete linkage."
+                  ),
+                  column(
+                    width=1, style='padding:0px;',
+                    mod_download_ui(ns("download_binary_hmap"))
+                  ),
+                  column(
+                    width = 11, style = 'padding:0px;',
+                    shinyjqui::jqui_resizable(plotlyOutput(ns('binary_hmap'))) %>%
+                      shinycssloaders::withSpinner()
+                  )  
                 )
               )
             ),
@@ -470,21 +491,55 @@ mod_profile_server <- function(input, output, session, improxy){
 
   # download data
   for_download2 <- reactiveValues()
-  observe({
+  observeEvent(bridge$filtered,{
     req(input$agg_calculate, input$submit_asv)
     for_download2$figure <- p_zero()
     for_download2$fig_data <- zero_content()
   })
-  
-  callModule(mod_download_server, "download_sparse", 
+
+  callModule(mod_download_server, "download_sparse",
              bridge = for_download2, 'sparsity')
+
+  # parameterizing heat map object
+  hmap <- reactive({
+    heatmaply::heatmapr(
+      x = binary_mat(),
+      distfun = vegan::vegdist,
+      dist_method = 'jaccard',
+      hclust_method = 'complete',
+      dendrogram = 'both',
+      show_dendrogram = c(TRUE, TRUE),
+      show_grid = TRUE
+    )
+  })
+  
+  binary_hmap <- reactive({
+    heatmaply::heatmaply(hmap(), node_type = 'heatmap',
+                         key.title = NULL)
+  })
+  # plot heat map
+  output$binary_hmap <- renderPlotly({
+    binary_hmap()
+  })
+  
+  # download data
+  for_download3 <- reactiveValues()
+  observeEvent(bridge$filtered,{
+    req(input$agg_calculate, input$submit_asv)
+    for_download3$figure <- binary_hmap()
+    for_download3$fig_data <- as.data.frame(binary_mat()) %>% 
+      tibble::rownames_to_column('featureID')
+  })
+  
+  callModule(mod_download_server, "download_binary_hmap",
+             bridge = for_download3, 'sparsity_hmap', 
+             dl_options=c('html','csv','RDS','zip'))
+  
   
   # send to report
-  observe({
-    req(input$agg_calculate, input$submit_asv)
-    if(!is.null(bridge$filtered) & nrow(zero_content()) > 0) {
-      for_report$params$p_zero <- p_zero()  
-    }
+  observeEvent(bridge$filtered, {
+    for_report$params$p_zero <- p_zero()
+    for_report$params$binary_hmap <- binary_hmap()
   })
   
   # build report

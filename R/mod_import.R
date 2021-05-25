@@ -258,26 +258,22 @@ mod_import_server <- function(input, output, session, parent_session) {
     msg
   })
   
-  import_status <- reactive({
-    shiny::validate(
-      # data_set contains necessary tables
-      need(any(table_ls %in% names(data_set())),
-           "database file missing necessary table(s)."),
+  import_status <- reactiveVal("No data imported")
+  observeEvent(input$launch,{
+    if(!any(table_ls %in% names(data_set()))) {
+      import_status("database file missing necessary table(s).")
+    } else if(!"sampleID" %in% colnames(data_set()$metadata)) {
       # metadata must have sampleID as a identifier
-      need("sampleID" %in% colnames(data_set()$metadata), 
-           "Metadata must include 'sampleID'."),
+      import_status("Metadata must include 'sampleID'.")
+    } else if(any(duplicated(data_set()$metadata$sampleID))) {
       # sampleID must be unique
-      need(!any(duplicated(data_set()$metadata$sampleID)),
-           "Sample identifiers (sampleID) must be unique."),
+      import_status("Sample identifiers (sampleID) must be unique.")
+    } else if(!identical(metaID(), dbID())) {
       # sampleID matches merge_abundance_id samples exactly
-      need(identical(metaID(), dbID()),
-           sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg())),
-      errorClass = 'importError'
-    )
-    if(class(data_set()) == 'list') {
-      "Data validation successful"
-    } else {
-      "Data not valid"
+      import_status(sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg()))
+    }
+    if(class(data_set()) == 'list' | input$example == TRUE) {
+      import_status("Data validation successful")
     }
   })
   

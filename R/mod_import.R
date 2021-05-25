@@ -68,19 +68,25 @@ mod_import_ui <- function(id){
           # info tab------------------------------------------------------------
           tabItem(
             tabName = 'info_tab_import',
-            column(width = 12,
-              h1('Import Data'),
-              tags$div("Importing the 16S rRNA gene sequences and associated data tables is the first step in the analysis. This is done be uploading the database file produced by the OCMS 16S analysis pipeline. If your data has not been processed through this pipeline, a helper tool is available to help you format your data accordingly (see below for details).", br(),
-              h2('Additional Resources'),
-              "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
-              a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
-              br(),
-              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the create_db() function. See ", code("?OCMSlooksy::create_db()"), "for details."),
-              br(),
-              "You can find a tutorial on how to use this app on the", 
-              a("OCMS blog", href = "https://oxfordcms.github.io/OCMS-blog/"),
-              div(style="font-weight: bold",
-                  textOutput(ns('import_status')))
+            column(
+              width = 12,
+              fluidRow(
+                h1('Import Data'),
+                tags$div("Importing the 16S rRNA gene sequences and associated data tables is the first step in the analysis. This is done be uploading the database file produced by the OCMS 16S analysis pipeline. If your data has not been processed through this pipeline, a helper tool is available to help you format your data accordingly (see below for details).", br(),
+                         h2('Additional Resources'),
+                         "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
+                         a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
+                         br(),
+                         "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the create_db() function. See ", code("?OCMSlooksy::create_db()"), "for details."),
+                br(),
+                "You can find a tutorial on how to use this app on the", 
+                a("OCMS blog", href = "https://oxfordcms.github.io/OCMS-blog/")
+              ),
+              fluidRow(
+                div(style="font-weight: bold",
+                    textOutput(ns('import_status')))
+              )
+              
             )
           ),
           # Preview of metadata-------------------------------------------------
@@ -126,11 +132,16 @@ mod_import_ui <- function(id){
 mod_import_server <- function(input, output, session, parent_session) {
   ns <- session$ns
   
+  # activate launch button once uploaded or if using example data
+  observe({
+    toggleState('launch', condition = (input$example == TRUE || 
+       (!is.null(input$metadata_file) | !is.null(input$db_file$datapath))))
+  })
+  
   data_set <- eventReactive(input$launch, {
     # read in database file-----------------------------------------------------
     if(input$example == FALSE) {
       req(input$db_file, input$metadata_file)
-      
       
       # initialize list of dataframes
       data_ls <- list()
@@ -216,18 +227,18 @@ mod_import_server <- function(input, output, session, parent_session) {
   })
   
   # validate dataset------------------------------------------------------------
-  observe({
-    
-    table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
-                  'merged_filter_summary','merged_qc_summary', 'parameter_table') 
-    
+  table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
+                'merged_filter_summary','merged_qc_summary', 'parameter_table') 
+  
+  metaID <- reactive(sort(as.character(data_set()$metadata$sampleID)))
+  dbID <- reactive({
+    sort(as.character(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID']))
+  })
+  msg <- reactive({
     # check sample IDs match
-    metaID <- sort(as.character(data_set()$metadata$sampleID))
-    dbID <- sort(as.character(colnames(data_set()[['merged_abundance_id']])[colnames(data_set()[['merged_abundance_id']]) != 'featureID']))
-    
-    ref <- unique(c(metaID, dbID))
-    checkID <- data.frame(refID = ref, metadataID = ref %in% metaID, 
-                          databaseID = ref %in% dbID) 
+    ref <- unique(c(metaID(), dbID()))
+    checkID <- data.frame(refID = ref, metadataID = ref %in% metaID(), 
+                          databaseID = ref %in% dbID()) 
     only_in_db <- as.character(checkID$refID[checkID$metadataID == FALSE])
     only_in_met <- as.character(checkID$refID[checkID$databaseID == FALSE])
 
@@ -244,27 +255,34 @@ mod_import_server <- function(input, output, session, parent_session) {
       msg <- paste(msg, entry, collapse='')
     }
     
-    output$import_status <- renderText({
-      
-      shiny::validate(
-        # data_set contains necessary tables
-        need(any(table_ls %in% names(data_set())),
-             "database file missing necessary table(s)."),
-        # metadata must have sampleID as a identifier
-        need("sampleID" %in% colnames(data_set()$metadata), 
-             "Metadata must include 'sampleID'."),
-        # sampleID must be unique
-        need(!any(duplicated(data_set()$metadata$sampleID)),
-             "Sample identifiers (sampleID) must be unique."),
-        # sampleID matches merge_abundance_id samples exactly
-        need(identical(metaID, dbID),
-             sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg)),
-        errorClass = 'importError'
-      )
-      if(class(data_set()) == 'list') {
-        "Data validation successful"
-      }
-    })
+    msg
+  })
+  
+  import_status <- reactive({
+    shiny::validate(
+      # data_set contains necessary tables
+      need(any(table_ls %in% names(data_set())),
+           "database file missing necessary table(s)."),
+      # metadata must have sampleID as a identifier
+      need("sampleID" %in% colnames(data_set()$metadata), 
+           "Metadata must include 'sampleID'."),
+      # sampleID must be unique
+      need(!any(duplicated(data_set()$metadata$sampleID)),
+           "Sample identifiers (sampleID) must be unique."),
+      # sampleID matches merge_abundance_id samples exactly
+      need(identical(metaID(), dbID()),
+           sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg())),
+      errorClass = 'importError'
+    )
+    if(class(data_set()) == 'list') {
+      "Data validation successful"
+    } else {
+      "Data not valid"
+    }
+  })
+  
+  output$import_status <- renderText({
+    import_status()
   })
   
   # # Check
@@ -368,12 +386,14 @@ mod_import_server <- function(input, output, session, parent_session) {
   # return dataset
   cross_module = reactiveValues()
   observe({
+    
     cross_module$data_db <- data_set()
     # adding long data formats to data list to be passed along in modules
     cross_module$asv_gather <- asv_gather()
     cross_module$asv_tax <- asv_tax()
     cross_module$asv_met <- asv_met()
     cross_module$work <- work()
+    cross_module$import_status <- import_status()
   })
   return(cross_module)
 

@@ -17,6 +17,8 @@ app_server <- function(input, output, session) {
   #   print(names(cross_module1$data_db))
   #   print('parameter_table' %in% names(cross_module1$data_db))
   # })
+  
+  # hide qc tab if parameter table not detected
   observe({
     if('parameter_table' %in% names(cross_module1$data_db)) {
       showTab(inputId = 'tabs', target = 'qc')
@@ -24,6 +26,17 @@ app_server <- function(input, output, session) {
     }
     else {
       hideTab(inputId = 'tabs', target = "qc")
+    }
+  })
+  
+  # hide sample filter tab and analysis task tab if upload not successful
+  observe({
+    req(input$launch)
+    if(cross_module1$import_status == "Data validation successful") {
+      showTab(inputId = 'tabs', target = 'qualityfilter')
+    }
+    else {
+      hideTab(inputId = 'tabs', target = 'qualityfilter')
     }
   })
   

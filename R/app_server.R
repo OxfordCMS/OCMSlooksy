@@ -42,5 +42,6 @@ app_server <- function(input, output, session) {
   # feature proportionality
   callModule(mod_prop_server, "prop_ui_1", cross_module2)
   
-  # callModule(mod_overview_server, "overview_ui_1", cross_module2)
+  # differential abundance
+  callModule(mod_diff_abund_server, "diff_abund_ui_1", cross_module2)
 }

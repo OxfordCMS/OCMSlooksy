@@ -1,7 +1,6 @@
 ---
-title: "Profile Report"
-author: "Your Name"
-date: "The Date"
+title: "Differential Abundance Report"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
 output: output_format
 always_allow_html: true
 params:
@@ -23,14 +22,18 @@ params:
   empty_sample: NA
   empty_asv: NA
   met2: NA
-  tax2: NA,
-  bar_x: NA
-  bar_y: NA
-  bar_table: NA
-  p_bar: NA
-  p_zero: NA
+  tax2: NA
+  deseq_variable: NA
+  deseq_group1: NA
+  deseq_group2: NA
+  dds_result: NA
+  cutoff_pval: NA
+  cutoff_fc: NA
+  p_volcano: NA
+  p_lfc: NA
+  p_box: NA
+  selected_feat: NA
 ---
-
 
 ```{r setup, include=FALSE}
 require(dplyr)
@@ -42,7 +45,6 @@ knitr::opts_chunk$set(echo = FALSE, cache = FALSE, warning = FALSE,
                       message = TRUE, result = 'asis', 
                       fig.width = 8, fig.height = 6)
 ```
-
 
 
 # Data Preparation
@@ -190,31 +192,48 @@ kable(out) %>%
   scroll_box(width="100%", height="500px")
 ```
 
-# Microbiome Profiles
+# Differential abundance analysis
+## Modelling microbiome with DESeq2
+### Parameters selected:
 
-```{r}
-bar_y_out <- switch(params$bar_y,
-                    rel_abund = 'Relative abundance',
-                    cnt_abund = 'Read count')
-```
+* Observational variable: `r params$deseq_variable`
+* Group 1: `r params$deseq_group1`
+* Group 2: `r params$deseq_group2`
 
-Observing `r bar_y_out` based on `r params$bar_x`. 
-Abundance values aggregated at `r params$aggregate_by` level. The mean relative abundance is shown when selected group variable contains multiple samples.
-
-```{r}
-kable(params$bar_table, caption=sprintf("%s level microbiome profile", params$aggregate_by)) %>%
+### Model results
+```{r deseq-results}
+kable(params$dds_result) %>%
   kable_styling("striped", full_width = TRUE) %>% 
   scroll_box(width="100%", height="500px")
 ```
 
-```{r, fig.height=30/2.54}
-params$p_bar +
-  theme(legend.position = 'bottom')
+## Visualising differential abundance
+### Parameters selected:
+
+* Signficance cut-off, adjusted p-value: `r params$cutoff_val`
+* Signficance cut-off, log2 fold-change: `r params$cutoff_fc`
+
+```{r volcano}
+params$p_volcano
 ```
 
-## Profile Sparsity
-It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity).
+```{r lfc}
+params$p_lfc
+```
+
+* selected features: `r params$selected_feat`
 
 ```{r}
-params$p_zero
+# get height of figure
+show_box <- !is.na(params$selected_feat)
+if(show_box) {
+  h <- length(params$selected_feat)
+  h <- ceiling(h/4) + 2
+} else {
+  h <- 1
+}
+
+```
+```{r box, eval=show_box, fig.height=h}
+params$p_box
 ```

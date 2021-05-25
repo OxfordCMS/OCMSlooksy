@@ -173,17 +173,46 @@ mod_import_server <- function(input, output, session, parent_session) {
       # close connection
       RSQLite::dbDisconnect(con)
 
-      table_ls <- c('merged_abundance_id', 'merged_taxonomy', 'metadata',
-                    'merged_filter_summary','merged_qc_summary', 
-                    'parameter_table')
-      
-      data_ls
     }
     
     # Use example dataset-------------------------------------------------------
     else {
-      switch(input$example, {data_ls <- OCMSlooksy::example_data})  }
+      switch(input$example, {data_ls <- OCMSlooksy::example_data})  
+    }
 
+    # roll down taxonomy for unclassified taxa--------------------------------
+    tax_df <- data_ls$merged_taxonomy %>%
+      mutate_all(as.character)
+    
+    tax_level <- c('Kingdom','Phylum','Class','Order','Family','Genus',
+                   'Species')
+    
+    # work with one column at a time -- not checking Kingdom level
+    for(i in 2:length(tax_level)) {
+      
+      # find row with na in current tax_level
+      na_ind <- which(is.na(tax_df[tax_level[i]]))
+      
+      if(length(na_ind) != 0) {
+        
+        # look at column before
+        curr <- tax_df[, c(tax_level[i-1], tax_level[i])]
+        
+        # make updated tax_df labels
+        curr <- curr %>%
+          mutate(updated = ifelse(
+            is.na(.data[[tax_level[i]]]), # if current taxon is NA
+            # prefix with prev level
+            paste(.data[[tax_level[i-1]]], 'unclassified',sep = '_'),
+            .data[[tax_level[i]]])) # else keep as current taxaon
+        
+        # update entire row tax_df table
+        tax_df[na_ind, tax_level[i:length(tax_level)]] <- curr$updated[na_ind]
+      }
+    }
+    data_ls$merged_taxonomy <- tax_df
+    
+    data_ls
   })
   
   # validate dataset------------------------------------------------------------
@@ -273,7 +302,8 @@ mod_import_server <- function(input, output, session, parent_session) {
     data_set()$merged_taxonomy
   })
 
-  # combine tables into working dataframes to reduce loading times downstream
+  # combine tables into working dataframes--------------------------------------
+  # reduce loading times downstream
   asv_gather <- eventReactive(input$launch, {
     asv() %>%
       gather('sampleID','read_count', -featureID)
@@ -309,32 +339,20 @@ mod_import_server <- function(input, output, session, parent_session) {
     out <- asv_tax() %>%
       spread(sampleID, read_count)
     
-    # by default, only show first 50 samples + 8 tax columns
-    if(ncol(out) <= 58) {
-      # if less than 50 samples, show all
-      col_ind <- 1:ncol(out) # index of columns to show
-      vis_val <- TRUE
-    }
-    else {
-      col_ind <- 59:ncol(out) # index of columns to hide
-      vis_val <- FALSE
-    }
     DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')), 
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE, 
                     dom = 'Blfrtip', 
-                    buttons = list(c('copy','csv'), 
-                                   list(extend = 'colvis')),
-                    fixedColumns=list(leftColumns = 2),
-                    columnDefs = list(
-                      list(targets = col_ind, visible = vis_val)
-                    )))
+                    buttons = c('copy','csv'),
+                    fixedColumns=list(leftColumns = 2)
+                    ))
   })
 
   output$tax_preview <- DT::renderDT({
     
-    DT::datatable(tax() %>% relocate(sequence, .after=last_col()), extensions = 'Buttons', 
+    DT::datatable(tax() %>% relocate(sequence, .after=last_col()), 
+                  extensions = 'Buttons', 
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE, 

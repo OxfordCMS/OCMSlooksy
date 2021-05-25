@@ -33,7 +33,7 @@ app_ui <- function() {
                         mod_qualityfilter_ui("qualityfilter_ui_1")),
 
                # relative abundance profiles------------------------------------
-               tabPanel(title = "Relative Abundance", value = 'profile',
+               tabPanel(title = "Microbiome Profile", value = 'profile',
                         icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),
                
                # Alpha diversity------------------------------------------------
@@ -46,17 +46,12 @@ app_ui <- function() {
                
                # Feature Proportionality----------------------------------------
                tabPanel(title = "Feature Comparsion", value = 'prop',
-                        icon = icon("chart-line"), mod_prop_ui("prop_ui_1"))
+                        icon = icon("chart-line"), mod_prop_ui("prop_ui_1")),
               
-               # # Prepare dataset for analysis-----------------------------------
-               # tabPanel(title = "Prepare Data Set", value = 'prepare',
-               #          icon = icon("filter"), mod_setup_ui("setup_ui_1")),
-               # 
-               # # Overview samples------------------------------------------------
-               # tabPanel(title = "Overview", value = 'overview', icon = icon("binoculars"),
-               #          mod_overview_ui("overview_ui_1"))
-
-               # Explore Beta-Diversity-----------------------------------------
+               # Diffential abundance-------------------------------------------
+               tabPanel(title = "Differential Abundance", value = 'diff',
+                        icon = icon("balance-scale-left"), 
+                        mod_diff_abund_ui("diff_abund_ui_1"))
 
     ))
 }

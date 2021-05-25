@@ -23,7 +23,7 @@ params:
   empty_sample: NA
   empty_asv: NA
   met2: NA
-  tax2: NA,
+  tax2: NA
   transform_method: NA
   asv_transform: NA
   pcoa_dist: NA

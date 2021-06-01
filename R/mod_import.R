@@ -272,7 +272,7 @@ mod_import_server <- function(input, output, session, parent_session) {
       # sampleID matches merge_abundance_id samples exactly
       import_status(sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg()))
     }
-    if(class(data_set()) == 'list' | input$example == TRUE) {
+    if(class(data_set()) == 'list') {
       import_status("Data validation successful")
     }
   })
@@ -374,6 +374,9 @@ mod_import_server <- function(input, output, session, parent_session) {
                     buttons = c('copy','csv')))
   })
 
+  # output$check <- renderPrint({
+  #   cross_module$import_status
+  # })
   # jump to next tab------------------------------------------------------------
   # observeEvent(input$next_tab, {
   #   updateTabsetPanel(session, "tabs", selected = "prepare")

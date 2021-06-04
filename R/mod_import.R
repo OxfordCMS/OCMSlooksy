@@ -84,7 +84,9 @@ mod_import_ui <- function(id){
               ),
               fluidRow(
                 div(style="font-weight: bold",
-                    textOutput(ns('import_status')))
+                    textOutput(ns('import_status'))  %>%
+                      shinycssloaders::withSpinner()
+                    )
               )
               
             )
@@ -139,91 +141,94 @@ mod_import_server <- function(input, output, session, parent_session) {
   })
   
   data_set <- eventReactive(input$launch, {
-    # read in database file-----------------------------------------------------
-    if(input$example == FALSE) {
-      req(input$db_file, input$metadata_file)
-      
-      # initialize list of dataframes
-      data_ls <- list()
-      
-      # read in metadata
-      metadata <- reactive({
-        req(input$metadata_file)
-
-        ext <- tools::file_ext(input$metadata_file$name)
-        out <- switch(ext,
-                 csv = vroom::vroom(input$metadata_file$datapath, delim = ","),
-                 tsv = vroom::vroom(input$metadata_file$datapath, delim = "\t"),
-                 validate("Invalid file; Please upload a .csv or .tsv file"))
+    withBusyIndicatorServer("launch", 'import_ui_1',{
+      Sys.sleep(1)
+      # read in database file-----------------------------------------------------
+      if(input$example == FALSE) {
+        req(input$db_file, input$metadata_file)
         
-        # check for spaces or special characters
-        check_char <- any(grepl("[^[:alnum:]_]", colnames(out)))
+        # initialize list of dataframes
+        data_ls <- list()
         
-        if(check_char) {
-          # remove all spaces and special characters
-          new_colname <- gsub("[^[:alnum:]_]", "_", colnames(out))
-          colnames(out) <- new_colname
+        # read in metadata
+        metadata <- reactive({
+          req(input$metadata_file)
+  
+          ext <- tools::file_ext(input$metadata_file$name)
+          out <- switch(ext,
+                   csv = vroom::vroom(input$metadata_file$datapath, delim = ","),
+                   tsv = vroom::vroom(input$metadata_file$datapath, delim = "\t"),
+                   validate("Invalid file; Please upload a .csv or .tsv file"))
+          
+          # check for spaces or special characters
+          check_char <- any(grepl("[^[:alnum:]_]", colnames(out)))
+          
+          if(check_char) {
+            # remove all spaces and special characters
+            new_colname <- gsub("[^[:alnum:]_]", "_", colnames(out))
+            colnames(out) <- new_colname
+          }
+          out
+        })
+        
+        data_ls[['metadata']] <- metadata()
+        
+        # read in database
+        con <- RSQLite::dbConnect(RSQLite::SQLite(), input$db_file$datapath)
+        
+        # extract data tables
+        table_ls <- RSQLite::dbListTables(con)
+        
+        for(i in 1:length(table_ls)) {
+          query <- sprintf("SELECT * FROM %s", table_ls[i])
+          entry <- RSQLite::dbGetQuery(con, query)
+          
+          data_ls[[table_ls[i]]] <- entry
         }
-        out
-      })
-      
-      data_ls[['metadata']] <- metadata()
-      
-      # read in database
-      con <- RSQLite::dbConnect(RSQLite::SQLite(), input$db_file$datapath)
-      
-      # extract data tables
-      table_ls <- RSQLite::dbListTables(con)
-      
-      for(i in 1:length(table_ls)) {
-        query <- sprintf("SELECT * FROM %s", table_ls[i])
-        entry <- RSQLite::dbGetQuery(con, query)
-        
-        data_ls[[table_ls[i]]] <- entry
+        # close connection
+        RSQLite::dbDisconnect(con)
+  
       }
-      # close connection
-      RSQLite::dbDisconnect(con)
-
-    }
-    
-    # Use example dataset-------------------------------------------------------
-    else {
-      switch(input$example, {data_ls <- OCMSlooksy::example_data})  
-    }
-
-    # roll down taxonomy for unclassified taxa--------------------------------
-    tax_df <- data_ls$merged_taxonomy %>%
-      mutate_all(as.character)
-    
-    tax_level <- c('Kingdom','Phylum','Class','Order','Family','Genus',
-                   'Species')
-    
-    # work with one column at a time -- not checking Kingdom level
-    for(i in 2:length(tax_level)) {
       
-      # find row with na in current tax_level
-      na_ind <- which(is.na(tax_df[tax_level[i]]))
-      
-      if(length(na_ind) != 0) {
-        
-        # look at column before
-        curr <- tax_df[, c(tax_level[i-1], tax_level[i])]
-        
-        # make updated tax_df labels
-        curr <- curr %>%
-          mutate(updated = ifelse(
-            is.na(.data[[tax_level[i]]]), # if current taxon is NA
-            # prefix with prev level
-            paste(.data[[tax_level[i-1]]], 'unclassified',sep = '_'),
-            .data[[tax_level[i]]])) # else keep as current taxaon
-        
-        # update entire row tax_df table
-        tax_df[na_ind, tax_level[i:length(tax_level)]] <- curr$updated[na_ind]
+      # Use example dataset-------------------------------------------------------
+      else {
+        switch(input$example, {data_ls <- OCMSlooksy::example_data})  
       }
-    }
-    data_ls$merged_taxonomy <- tax_df
-    
-    data_ls
+  
+      # roll down taxonomy for unclassified taxa--------------------------------
+      tax_df <- data_ls$merged_taxonomy %>%
+        mutate_all(as.character)
+      
+      tax_level <- c('Kingdom','Phylum','Class','Order','Family','Genus',
+                     'Species')
+      
+      # work with one column at a time -- not checking Kingdom level
+      for(i in 2:length(tax_level)) {
+        
+        # find row with na in current tax_level
+        na_ind <- which(is.na(tax_df[tax_level[i]]))
+        
+        if(length(na_ind) != 0) {
+          
+          # look at column before
+          curr <- tax_df[, c(tax_level[i-1], tax_level[i])]
+          
+          # make updated tax_df labels
+          curr <- curr %>%
+            mutate(updated = ifelse(
+              is.na(.data[[tax_level[i]]]), # if current taxon is NA
+              # prefix with prev level
+              paste(.data[[tax_level[i-1]]], 'unclassified',sep = '_'),
+              .data[[tax_level[i]]])) # else keep as current taxaon
+          
+          # update entire row tax_df table
+          tax_df[na_ind, tax_level[i:length(tax_level)]] <- curr$updated[na_ind]
+        }
+      }
+      data_ls$merged_taxonomy <- tax_df
+      
+      data_ls
+    })
   })
   
   # validate dataset------------------------------------------------------------
@@ -287,23 +292,21 @@ mod_import_server <- function(input, output, session, parent_session) {
   # })
   # Launch dataset-------------------------------------------------------------
   observeEvent(input$launch, {
-    withBusyIndicatorServer("launch", 'import_ui_1', {
-      Sys.sleep(1)
-      # show menu items
-      output$metadata_menu <- renderMenu({
-        menuItem('Metadata Preview', tabName = 'metadata_menu_tab', 
-                 selected = TRUE)
-      })
-      
-      output$asv_menu <- renderMenu({
-        menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
-      })
-      
-      output$tax_menu <- renderMenu({
-        menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
-      })
+
+    # show menu items
+    output$metadata_menu <- renderMenu({
+      menuItem('Metadata Preview', tabName = 'metadata_menu_tab', 
+               selected = TRUE)
     })
     
+    output$asv_menu <- renderMenu({
+      menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
+    })
+    
+    output$tax_menu <- renderMenu({
+      menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
+    })
+
   })  
 
   asv <- eventReactive(input$launch, {
@@ -385,7 +388,6 @@ mod_import_server <- function(input, output, session, parent_session) {
   # return dataset
   cross_module = reactiveValues()
   observe({
-    
     cross_module$data_db <- data_set()
     # adding long data formats to data list to be passed along in modules
     cross_module$asv_gather <- asv_gather()

@@ -48,9 +48,9 @@ mod_qualityfilter_ui <- function(id){
       ), # end dashboard sidebar
       dashboardBody(
         box(width = '100%', height = 'auto', br(),br(), br(),
-            fluidRow(
-              box(width = 12, h3('Check'),
-                  verbatimTextOutput(ns('check')))),
+            # fluidRow(
+            #   box(width = 12, h3('Check'),
+            #       verbatimTextOutput(ns('check')))),
             fluidRow(
               column(
                 width = 12,
@@ -80,11 +80,10 @@ mod_qualityfilter_ui <- function(id){
 mod_qualityfilter_server <- function(input, output, session, improxy){
   ns <- session$ns
   
-  # check
-  output$check <- renderPrint({
-    print(rows_selected())
-    print(input$sample_options_ui_rows_selected)
-  })
+  # # check
+  # output$check <- renderPrint({
+  #   
+  # })
   # import data into module
   met <- reactive(improxy$data_db$metadata)
   asv <- reactive(improxy$data_db$merged_abundance_id)

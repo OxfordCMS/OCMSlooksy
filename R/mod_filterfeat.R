@@ -40,8 +40,8 @@ mod_filterfeat_ui <- function(id){
               radioButtons(
                 ns('cutoff_method'), 'Set filter cutoff by:',
                 c('Read count' = 'abs_count',
-                  'Percent of total read count of each sample' = 'percent_sample',
-                  'Percent of total read count of dataset' = 'percent_total'),
+                  'Read count as percent of sample' = 'percent_sample',
+                  'Read count as percent of dataset' = 'percent_total'),
                 selected = 'abs_count')
             )
           ),
@@ -55,24 +55,30 @@ mod_filterfeat_ui <- function(id){
                          textOutput(ns('cutoff_max'), inline = TRUE)),
                 br(),
                 uiOutput(ns('asv_cutoff_ui')),
-                uiOutput(ns('prevalence_ui')),
-                tags$b(textOutput(ns('asv_cutoff_msg')) %>%
-                         shinycssloaders::withSpinner()),
-                checkboxInput(ns("show_prev_plot"), "Show read prevalence plot")
+                uiOutput(ns('prevalence_ui'))
               )
             )) # end cutoff_limit
           ),
           column(
             width = 5, br(),
             hidden(div(
-              id = ns('prev_read_plot_div'),
+              id = ns('hist_div'),
               tabsetPanel(
                 type = "tabs",
-                tabPanel("Aggregated view",
-                         plotlyOutput(ns('prev_agg_plot')) %>%
+                tabPanel("Prevalence",
+                         plotlyOutput(ns('hist_prev_plot')) %>%
                            shinycssloaders::withSpinner()),
-                tabPanel("Expanded view",
-                         plotlyOutput(ns('prev_read_plot')) %>%
+                tabPanel("Read count",
+                         tags$p("default view shows first 10 bins. Double click to zoom out and see full plot area."),
+                         plotlyOutput(ns('hist_readcount_plot')) %>%
+                           shinycssloaders::withSpinner()),
+                tabPanel("% of Sample",
+                         tags$p("default view shows first 15 bins. Double click to zoom out and see full plot area."),
+                         plotlyOutput(ns('hist_samptot_plot')) %>%
+                           shinycssloaders::withSpinner()),
+                tabPanel("% of Data set",
+                         tags$p("default view shows first 20 bins. Double click to zoom out and see full plot area."),
+                         plotlyOutput(ns('hist_datatot_plot')) %>%
                            shinycssloaders::withSpinner())
               )
             ))
@@ -108,6 +114,30 @@ mod_filterfeat_ui <- function(id){
           htmlOutput(ns('secondary_filter_asv_ui'))
         )
       ))
+    ),
+    fluidRow(
+      hidden(div(
+        id = ns('prev_read_plot_div'),
+        column(
+          width=7,
+          tabsetPanel(
+            type = "tabs",
+            tabPanel("Aggregated view",
+                     plotlyOutput(ns('prev_agg_plot')) %>%
+                       shinycssloaders::withSpinner()),
+            tabPanel("Expanded view",
+                     plotlyOutput(ns('prev_read_plot')) %>%
+                       shinycssloaders::withSpinner())
+          )
+        ),
+        column(
+          width = 5,
+          wellPanel(
+            tags$b(textOutput(ns('asv_cutoff_msg')) %>%
+                     shinycssloaders::withSpinner()) 
+          )
+        )
+      ))  
     ),
     column(
       width = 12,
@@ -145,10 +175,11 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     toggle(id = 'asv_option_count',
            condition = grepl('asv_by_count', bridge$filter_input$asv_filter_options))
     show(id = "cutoff_limit")
+    show(id = "hist_div")
   })
 
-  observeEvent(input$show_prev_plot, {
-    toggle(id = 'prev_read_plot_div', condition = input$show_prev_plot == TRUE)
+  observeEvent(bridge$filter_input$submit_asv, {
+    show(id = 'prev_read_plot_div')
   })
 
   # by selected ASV
@@ -181,23 +212,23 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       step <- 1000
       default_value <- 1
 
-      msg <- 'Keeping REPLACE1/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2 in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
+      msg <- 'Keeping N_KEEP/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2 in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
     }
     if(input$cutoff_method == 'percent_sample') {
       label <- 'Read count cut-off (% of sample total):'
       max_cutoff <- 100
       step <- 0.01
-      default_value = 0.01
+      default_value = 0.001
 
-      msg <- 'Keeping REPLACE1/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2% of sample total read count in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
+      msg <- 'Keeping N_KEEP/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2% of sample total read count in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
     }
     if(input$cutoff_method == 'percent_total') {
       label <- 'Read count cut-off (% of dataset total):'
       max_cutoff <- 100
-      step <- 0.01
-      default_value = 0.01
+      step <- 0.002
+      default_value = 0.0001
 
-      msg <- 'Keeping REPLACE1/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2% of dataset total read count in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
+      msg <- 'Keeping N_KEEP/TOT_FEAT (REL_FEAT%) features with read counts >= REPLACE2% of dataset total read count in >= REPLACE3/TOT_SAMP (REL_SAMP%) samples'
     }
 
     list('label' = label, 'max_cutoff' = max_cutoff, 'step' = step,
@@ -215,7 +246,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     req(input$cutoff_method)
     ui_entry()$max_cutoff})
 
-  asv_cutoff_msg <- reactive({
+  asv_cutoff_msg <- eventReactive(bridge$filter_input$submit_asv, {
     req(input$cutoff_method, input$prevalence, input$asv_cutoff)
     tot_feat <- wip() %>% filter(read_count > 0)
     tot_feat <- length(unique(tot_feat$featureID))
@@ -224,7 +255,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     tot_samp <- length(unique(met()$sampleID))
     rel_samp <- as.numeric(input$prevalence) / tot_samp * 100
     rel_samp <- round(rel_samp, 1)
-    out <- gsub("REPLACE1", as.character(length(to_keep())), ui_entry()$msg)
+    out <- gsub("N_KEEP", as.character(length(to_keep())), ui_entry()$msg)
     out <- gsub("TOT_FEAT", as.character(tot_feat), out)
     out <- gsub("REL_FEAT", as.character(rel_feat), out)
     out <- gsub("REL_FEAT", as.character(rel_feat), out)
@@ -238,93 +269,181 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     asv_cutoff_msg()
   })
 
+  asv_table_select <- reactive({
+    tax() %>%
+      left_join(asv(), 'featureID') %>%
+      select(-Taxon, -sequence) %>%
+      arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
+  })
+  
   # by selecting ASVs
   output$asv_table_select <- DT::renderDataTable({
     req(bridge$filter_input$asv_filter_options)
 
-
-    out <- tax() %>%
-      left_join(wip(), 'featureID') %>%
-      select(-Taxon, -sequence) %>%
-      spread(sampleID, read_count) %>%
-      arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
-
-    # by default, only show first 50 samples + 8 tax columns
-    if(ncol(out) <= 58) {
-      # if less than 50 samples, show all
-      col_ind <- 1:ncol(out) # index of columns to show
-      vis_val <- TRUE
-    }
-    else {
-      col_ind <- 59:ncol(out) # index of columns to hide
-      vis_val <- FALSE
-    }
-
-    DT::datatable(out, filter = 'top',
-                  extensions = list(c('Buttons', 'FixedColumns')),
+    DT::datatable(asv_table_select(), filter = 'top',
+                  extensions = 'Buttons',
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE,
                     dom = 'Blfrtip',
-                    buttons = list(c('copy','csv'),
-                                   list(extend = 'colvis')),
-                    filter = 'top',
-                    columnDefs = list(
-                      list(targets = col_ind, visible = vis_val)
-                    )))
+                    buttons = c('copy','csv'),
+                    filter = 'top'))
   })
 
   # prepare asv dataframe-------------------------------------------------------
-  working_asv <- reactive({
-
-    if(bridge$filter_input$asv_select_prompt == 'some') {
-      dataset_total <- sum(wip()$read_count)
-
-      out <- wip() %>%
-        # calculate relative abundance as dataset total
-        mutate(ds_rel_abund = read_count / dataset_total * 100) %>%
-        # calculate relative abundance as sample total
-        group_by(sampleID) %>%
-        mutate(sample_total = sum(read_count)) %>%
-        group_by(sampleID, featureID) %>%
-        mutate(samp_rel_abund = read_count / sample_total * 100) %>%
-        ungroup()
-      out
-
-    }
-    else {
-      wip()
-    }
+  asv_mat <- reactive({
+    as.data.frame(asv()) %>%
+    column_to_rownames('featureID')
   })
+  
+  # get sample prevalence for features
+  prev_data <- reactive({
+    # convert asv counts to binary
+    binary <- (asv_mat() != 0) * 1 # true means present
+    rowSums(binary)
+  })
+  
+  # relative abundance based on sample total
+  relab_samptot <- reactive({
+    # convert to relative abundance
+    apply(asv_mat(), 2, function(x) x/sum(x))
+  })
+  
+  relab_datatot <- reactive({
+    data_total <- sum(asv_mat())
+    asv_mat() / data_total
+  })
+  
+  # generate histograms to help picking read count and prevalence cutoffs-------
+  hist_prev_pdata <- reactive({
+    enframe(prev_data(), 'featureID','prevalence')
+  })
+  
+  hist_samptot_pdata <- reactive({
+    as.data.frame(relab_samptot()) %>%
+      rownames_to_column('featureID') %>%
+      gather('sampleID', 'relab_samptot', -featureID)
+  })
+  
+  hist_datatot_pdata <- reactive({
+    as.data.frame(relab_datatot()) %>%
+      rownames_to_column('featureID') %>%
+      gather('sampleID', 'relab_datatot', -featureID)
+  })
+  
+  vline <- function(x = 0, color = "darkred") {
+    list(
+      type = "line", 
+      y0 = 0, 
+      y1 = 1, 
+      yref = "paper",
+      x0 = x, 
+      x1 = x, 
+      line = list(color = color, linetype='dashed')
+    )
+  }
+  
+  # render histogram outputs
+  output$hist_prev_plot <- renderPlotly({
+    plot_ly(nbinsx=nrow(met())) %>% 
+      add_histogram(x=hist_prev_pdata()$prevalence) %>%
+      layout(shapes=list(vline(input$prevalence)),
+             bargap=0.1)
+    # ggplotly(hist_prev_plot())
+  })
+  output$hist_readcount_plot <- renderPlotly({
+    # set default zoom to first 10 bins
+    out <- plot_ly(nbinsx=ceiling(max(wip()$read_count)/2)) %>% 
+      add_histogram(x=wip()$read_count) %>%
+      layout(bargap=0.1,
+             xaxis=list(range=c(0,20)))
+    
+    if(input$cutoff_method == 'abs_count') {
+      out <- out %>%
+        layout(shapes=list(vline(input$asv_cutoff)))
+    }
+    
+    out
+    # ggplotly(hist_readcount_plot())
+  })
+  output$hist_samptot_plot <- renderPlotly({
+    # set default zoom to first 10 bins
+    out <- plot_ly(nbinsx=1000) %>% 
+      add_histogram(x=hist_samptot_pdata()$relab_samptot) %>%
+      layout(bargap=0.1,
+             xaxis=list(range=c(0,0.015)))
+    
+    if(input$cutoff_method == 'percent_sample') {
+      out <- out %>%
+        layout(shapes=list(vline(input$asv_cutoff)))
+    }
+    
+    out
+    # ggplotly(hist_samptot_plot())
+  })
+  output$hist_datatot_plot <- renderPlotly({
+    # set default zoom to first 10 bins
+    out <- plot_ly(nbinsx=1000) %>% 
+      add_histogram(x=hist_datatot_pdata()$relab_datatot) %>%
+      layout(bargap=0.1,
+             xaxis=list(range=c(0,0.001)))
+    
+    if(input$cutoff_method == 'percent_total') {
+      out <- out %>%
+        layout(shapes=list(vline(input$asv_cutoff)))
+    }
+    
+    out
+    #ggplotly(hist_datatot_plot())
+  })
+  
+  # working_asv <- reactive({
+  # 
+  #   if(bridge$filter_input$asv_select_prompt == 'some') {
+  #     dataset_total <- sum(wip()$read_count)
+  # 
+  #     out <- wip() %>%
+  #       # calculate relative abundance as dataset total
+  #       mutate(ds_rel_abund = read_count / dataset_total * 100) %>%
+  #       # calculate relative abundance as sample total
+  #       group_by(sampleID) %>%
+  #       mutate(sample_total = sum(read_count)) %>%
+  #       group_by(sampleID, featureID) %>%
+  #       mutate(samp_rel_abund = read_count / sample_total * 100) %>%
+  #       group_by(featureID) %>%
+  #       mutate(prev_observed = sum(read_count >= input$asv_cutoff)) %>%
+  #       ungroup()
+  #     out
+  # 
+  #   }
+  #   else {
+  #     wip()
+  #   }
+  # })
 
+  # check
+  output$check <- renderPrint({
+
+  })
+  
   # define ASVs to keep---------------------------------------------------------
-  to_keep <- reactive({
+  to_keep <- eventReactive(bridge$filter_input$submit_asv, {
     req(bridge$filter_input$asv_filter_options)
     if(bridge$filter_input$asv_filter_options == 'asv_by_count') {
       req(input$cutoff_method, input$asv_cutoff, input$prevalence)
 
       # count cut-off
       if(input$cutoff_method == 'abs_count') {
-
-        out <- working_asv() %>%
-          group_by(featureID) %>%
-          mutate(prev_observed = sum(read_count >= input$asv_cutoff)) %>%
-          filter(read_count >= input$asv_cutoff & prev_observed >= input$prevalence)
+        out <- asv()[rowSums(asv_mat() >= input$asv_cutoff) >= input$prevalence,]
       }
       # cut-off based on percent of sample total
       if(input$cutoff_method == 'percent_sample') {
-        out <- working_asv() %>%
-          group_by(featureID) %>%
-          mutate(prev_observed = sum(samp_rel_abund >= input$asv_cutoff)) %>%
-          filter(samp_rel_abund >= input$asv_cutoff & prev_observed >= input$prevalence)
+        out <- asv()[rowSums(relab_samptot() >= input$asv_cutoff) >= input$prevalence,]
 
       }
       # cut-off based on percent of dataset total
       if(input$cutoff_method == 'percent_total') {
-        out <- working_asv() %>%
-          group_by(featureID) %>%
-          mutate(prev_observed = sum(ds_rel_abund >= input$asv_cutoff)) %>%
-          filter(ds_rel_abund >= input$asv_cutoff & prev_observed >= input$prevalence)
+        out <- asv()[rowSums(relab_datatot() >= input$asv_cutoff) >= input$prevalence,]
       }
     }
 
@@ -332,11 +451,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     if(bridge$filter_input$asv_filter_options == 'asv_by_select') {
       req(input$asv_table_select_rows_selected)
 
-      out <- tax() %>%
-        left_join(wip(), 'featureID') %>%
-        select(-Taxon, -sequence) %>%
-        spread(sampleID, read_count) %>%
-        arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species) %>%
+      out <- asv_table_select() %>%
         slice(-c(input$asv_table_select_rows_selected)) %>%
         gather('sampleID', 'read_count', -featureID)
     }
@@ -345,7 +460,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   })
 
   # show ASVs removed-----------------------------------------------------------
-  asv_remove <- reactive({
+  asv_remove <- eventReactive(bridge$filter_input$submit_asv, {
     featID <- unique(wip()$featureID)
     featID[!featID %in% to_keep()]
   })
@@ -354,40 +469,36 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     sprintf("Removing %s Features", length(asv_remove()))
   })
 
-
   # giving preview on read and prevalence
-  prev_agg_plot <- reactive({
+  prev_agg_plot <- eventReactive(bridge$filter_input$submit_asv, {
     scaleFUN <- function(x) sprintf("%.0f", x)
     
-    req(bridge$filter_input$asv_filter_options)
+    req(bridge$filter_input$asv_filter_options, input$cutoff_method)
     
     if(input$cutoff_method == 'abs_count') {
-      y = 'agg_count'
-      ylab <- 'Aggregated Read count'
+      pdata <- wip() %>%
+        group_by(featureID) %>%
+        summarise(y = mean(read_count))
+      ylab <- 'Mean Read count'
     }
     if(input$cutoff_method == 'percent_total') {
-      y = 'agg_ds_rel'
-      ylab <- 'Aggregated Relative abundance\n(% of total reads)'
+      pdata <- hist_datatot_pdata() %>%
+        group_by(featureID) %>%
+        summarise(y = mean(relab_datatot))
+      ylab <- 'Mean Relative abundance\n(% of total reads)'
     }
     if(input$cutoff_method == 'percent_sample') {
-      y = 'agg_samp_rel'
-      ylab <- 'Aggregated Relative abundance\n(% of sample)'
+      pdata <- hist_samptot_pdata() %>%
+        group_by(featureID) %>%
+        summarise(y = mean(relab_samptot))
+      ylab <- 'Mean Relative abundance\n(% of sample)'
     }
+  
+    pdata <- pdata %>%
+      left_join(hist_prev_pdata(), 'featureID') %>%
+      mutate(colour = ifelse(featureID %in% to_keep(), 'to keep', 'to remove'))
     
-    pdata <- working_asv() %>%
-      group_by(featureID) %>%
-      # number of samples in which asv meets read cutoff
-      mutate(prev_observed = sum(read_count >= input$asv_cutoff)) %>%
-      group_by(featureID) %>%
-      summarise(prev_observed = prev_observed,
-                agg_count = sum(read_count),
-                agg_samp_rel = sum(samp_rel_abund),
-                agg_ds_rel = sum(ds_rel_abund)) %>%
-      mutate(colour = ifelse(featureID %in% to_keep(),
-                             'to keep', 'to remove')) %>%
-      distinct()
-    
-    p <- ggplot(pdata, aes_string(x = 'prev_observed', y = y, colour = 'colour')) +
+    p <- ggplot(pdata, aes(x = prevalence, y = y, colour = colour)) +
       geom_point(aes(text=sprintf("featureID: %s", featureID)), alpha = 0.5, size = 2) +
       xlab('ASV prevalence (# of samples)') +
       ylab(ylab) +
@@ -403,32 +514,32 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       layout(legend = list(orientation = "h", x = -0.5, y = -1))
   })
 
-  prev_read_plot <- reactive({
+  prev_read_plot <- eventReactive(bridge$filter_input$submit_asv, {
     scaleFUN <- function(x) sprintf("%.0f", x)
     
     req(bridge$filter_input$asv_filter_options)
     
     if(input$cutoff_method == 'abs_count') {
-      y = 'read_count'
+      pdata <- wip() %>%
+        rename(y = 'read_count')
       ylab <- 'Read count'
     }
     if(input$cutoff_method == 'percent_total') {
-      y = 'ds_rel_abund'
+      pdata <- hist_datatot_pdata() %>%
+        rename(y = 'relab_datatot')
       ylab <- 'Relative abundance\n(% of total reads)'
     }
     if(input$cutoff_method == 'percent_sample') {
-      y = 'samp_rel_abund'
-      ylab <- 'Relative abundance\n(% of sample)'
+      pdata <- hist_samptot_pdata() %>%
+        rename(y = 'relab_samptot')
+      ylab <- 'Mean Relative abundance\n(% of sample)'
     }
     
-    pdata <- working_asv() %>%
-      group_by(featureID) %>%
-      # number of samples in which asv meets read cutoff
-      mutate(prev_observed = sum(read_count >= input$asv_cutoff),
-             colour = ifelse(featureID %in% to_keep(), 'to keep', 'to remove')) %>%
-      distinct()
+    pdata <- pdata %>%
+      left_join(hist_prev_pdata(), 'featureID') %>%
+      mutate(colour = ifelse(featureID %in% to_keep(), 'to keep', 'to remove'))
     
-    p <- ggplot(pdata, aes_string(x = 'prev_observed', y = y, colour = 'colour')) +
+    p <- ggplot(pdata, aes(x = prevalence, y = y, colour = colour)) +
       geom_point(aes(text=sprintf("featureID: %s<br>sampleID: %s",
                                   featureID, sampleID)),
                  alpha = 0.5, size = 2) +
@@ -449,12 +560,11 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   asv_filtered <- eventReactive(bridge$filter_input$submit_asv, {
 
     if(bridge$filter_input$asv_select_prompt == 'some') {
-      working_asv() %>%
-        filter(featureID %in% to_keep())  %>%
-        select(-ds_rel_abund, -samp_rel_abund, -sample_total)
+      wip() %>%
+        filter(featureID %in% to_keep())
     }
     else {
-      working_asv()
+      wip()
     }
   })
 
@@ -558,27 +668,14 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       select(-Taxon, -sequence) %>%
       arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
 
-    # by default, only show first 50 samples + 8 tax columns
-    if(ncol(out) <= 58) {
-      # if less than 50 samples, show all
-      col_ind <- 1:ncol(out) # index of columns to show
-      vis_val <- TRUE
-    }
-    else {
-      col_ind <- 59:ncol(out) # index of columns to hide
-      vis_val <- FALSE
-    }
-    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')),
+    DT::datatable(out, extensions = 'Buttons',
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE,
                     dom = 'Blfrtip',
-                    buttons = list(c('copy','csv'),
-                                   list(extend = 'colvis')),
-                    fixedColumns=list(leftColumns = 2),
-                    columnDefs = list(
-                      list(targets = col_ind, visible = vis_val)
-                    )))
+                    buttons = c('copy','csv'),
+                    fixedColumns=list(leftColumns = 2)
+                    ))
   })
 
   # add filtered tables to bridge reactive-------------------------------------
@@ -605,10 +702,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   })
   
 
-  # check
-  output$check <- renderPrint({
-  })
-  
+
   return(cross_mod)
 }
     

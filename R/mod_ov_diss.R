@@ -219,8 +219,9 @@ mod_ov_diss_server <- function(input, output, session, bridge){
     out
   })
   
-  output$diss_result <- DT::renderDataTable({
+  output$diss_result <- DT::renderDataTable(server = FALSE, {
     DT::datatable(diss_result(),
+                  rownames = FALSE,
                   extensions = 'Buttons',
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
@@ -328,10 +329,11 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   })
 
 
-  output$diss_stat <- DT::renderDataTable({
+  output$diss_stat <- DT::renderDataTable(server = FALSE, {
 
     DT::datatable(diss_stat() %>%
                     select(-.y., -p.format, ), extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE, dom = 'Blfrtip',
                                  buttons = c('copy','csv'))) %>%
       DT::formatRound(column = 'p', digits = 3)

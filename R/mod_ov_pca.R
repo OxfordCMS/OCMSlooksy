@@ -327,8 +327,9 @@ mod_ov_pca_server <- function(input, output, session, bridge){
     summary_wip
   })
 
-  output$summary_pca <- DT::renderDataTable({
+  output$summary_pca <- DT::renderDataTable(server = FALSE, {
     DT::datatable(pcx_summary(), extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)

@@ -265,8 +265,9 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   })
   
   # by selecting ASVs
-  output$asv_table_select <- DT::renderDataTable({
+  output$asv_table_select <- DT::renderDataTable(server = FALSE, {
     DT::datatable(asv_table_select(), filter = 'top',
+                  rownames = FALSE,
                   options = list(
                     pageLength = 15,
                     scrollX = TRUE,
@@ -671,7 +672,7 @@ withBusyIndicatorServer('submit_asv', 'filterfeat_ui_1', {
     }
   })
 
-  output$preview_asv <- DT::renderDataTable({
+  output$preview_asv <- DT::renderDataTable(server = FALSE, {
     validate(need(!is.null(filter_result$to_keep), "No filtering performed"))
     out <- tax() %>%
       right_join(asv_filtered() %>%
@@ -680,6 +681,7 @@ withBusyIndicatorServer('submit_asv', 'filterfeat_ui_1', {
       arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
 
     DT::datatable(out, extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE,

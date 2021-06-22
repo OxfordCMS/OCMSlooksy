@@ -150,19 +150,21 @@ mod_aggregate_server <- function(input, output, session, bridge){
   })
   
   # show aggregated tables
-  output$agg_preview_tax <- DT::renderDataTable({
+  output$agg_preview_tax <- DT::renderDataTable(server = FALSE, {
     
     out <- aggregated_tax() %>%
       mutate_all(as.character)
     DT::datatable(out,
+                  rownames = FALSE,
                   extensions = 'Buttons', 
                   options = list(scrollX = TRUE, dom = 'Blfrtip', 
                                  buttons = c('copy','csv')))
   })
   
-  output$agg_preview_count <- DT::renderDataTable({
+  output$agg_preview_count <- DT::renderDataTable(server = FALSE, {
     DT::datatable(aggregated_count(),
                   extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })

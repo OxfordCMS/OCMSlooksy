@@ -326,7 +326,7 @@ mod_profile_server <- function(input, output, session, improxy){
     out
   })
 
-  output$bar_table <- DT::renderDataTable({
+  output$bar_table <- DT::renderDataTable(sever = FALSE, {
     req(input$aggregate_by, input$submit_bar)
     out <- bar_table()
     x_name <- colnames(out)
@@ -335,6 +335,7 @@ mod_profile_server <- function(input, output, session, improxy){
 
     out <- DT::datatable(out, colnames = x_name,
                          extensions = 'Buttons',
+                         rownames = FALSE,
                          options = list(
                            scrollX = TRUE,
                            dom = 'Blfrtip',

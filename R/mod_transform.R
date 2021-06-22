@@ -110,12 +110,13 @@ mod_transform_server <- function(input, output, session, bridge){
   })
   
   
-  output$preview_transform <- DT::renderDataTable({
+  output$preview_transform <- DT::renderDataTable(server = FALSE, {
     req(input$submit_transform, 
         input$transform_method)
     
     DT::datatable(asv_transform(),
                   extensions = list('Buttons'),
+                  rownames = FALSE,
                   options = list(
                     scroller = TRUE,
                     scrollX = TRUE,

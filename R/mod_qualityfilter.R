@@ -85,9 +85,10 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
   })
   
   
-  output$sample_options_ui <- DT::renderDataTable({
+  output$sample_options_ui <- DT::renderDataTable(server = FALSE, {
     out <- met()
-    DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
+    DT::datatable(out, filter = 'top', rownames = FALSE,
+                  options = list(scrollX = TRUE))
   })
   
   all_sample <- reactive(met()$sampleID)
@@ -135,10 +136,11 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
     'Samples included in analysis:'
   })
   
-  output$preview_sample <- DT::renderDataTable({
+  output$preview_sample <- DT::renderDataTable(server = FALSE, {
     req(rows_selected())
     
     DT::datatable(met_filtered(), filter='top', extensions = 'Buttons', 
+                  rownames = FALSE,
                   options = list(scrollX = TRUE, 
                                  pageLength = 30,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))

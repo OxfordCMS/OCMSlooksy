@@ -377,7 +377,7 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
   # Filtering-------------------------------------------------------------------
-  output$filter_yml <- DT::renderDataTable({
+  output$filter_yml <- DT::renderDataTable(server = FALSE, {
 
     # add dada2 function that corresponds to yml parameters
     out <- yml() %>%
@@ -385,6 +385,7 @@ mod_qc_server <- function(input, output, session, improxy){
 
     DT::datatable(out, colnames = c('pipeline task','dada2 function',
                                     'parameter','value'),
+                  rownames = FALSE,
                   options = list(scrollX = TRUE))
   })
 
@@ -423,13 +424,14 @@ mod_qc_server <- function(input, output, session, improxy){
              'qc-filtered')
 
   # Chimera removal-------------------------------------------------------------
-  output$denoise_yml <- DT::renderDataTable({
+  output$denoise_yml <- DT::renderDataTable(server = FALSE, {
 
     out <- yml() %>%
       filter(task == 'sample_inference')
 
     DT::datatable(out, colnames = c('pipeline task','dada2 function',
                                     'parameter','value'),
+                  rownames = FALSE,
                   options = list(scrollX = TRUE))
 
   })
@@ -622,12 +624,13 @@ mod_qc_server <- function(input, output, session, improxy){
   # read count distribution of taxa---------------------------------------------
 
   # add dada2 functions corresponding to yml parameters
-  output$taxonomy_yml <- DT::renderDataTable({
+  output$taxonomy_yml <- DT::renderDataTable(server = FALSE, {
     out <- yml() %>%
       filter(task == "taxonomy")
 
     DT::datatable(out, colnames = c('pipeline task','dada2 function',
                                     'parameter','value'),
+                  rownames = FALSE,
                   options = list(scrollX = TRUE))
   })
   # customize count data based on selected taxonomic level
@@ -652,10 +655,11 @@ mod_qc_server <- function(input, output, session, improxy){
     })
   })
 
-  output$tax_distrib_table <- DT::renderDataTable({
+  output$tax_distrib_table <- DT::renderDataTable(server = FALSE, {
     out <- tax_distrb_df()
     colnames(out) <- c(input$tax_level, "Read Count", "Relative Abundance")
     DT::datatable(out,  extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })

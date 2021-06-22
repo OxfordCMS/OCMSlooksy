@@ -11,7 +11,7 @@ mod_diff_abund_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
-      wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+      # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
       navlistPanel(
         '',
         id = 'menu', 
@@ -351,10 +351,11 @@ mod_diff_abund_server <- function(input, output, session, improxy){
       tibble::rownames_to_column('featureID')
   })
   
-  output$dds_result <- DT::renderDataTable({
+  output$dds_result <- DT::renderDataTable(server = FALSE, {
     DT::datatable(
       dds_result(), 
       filter='top',
+      rownames = FALSE,
       extensions = 'Buttons', 
       options = list(scrollX = TRUE, dom = 'Blfrtip', 
                      buttons = c('copy','csv'))

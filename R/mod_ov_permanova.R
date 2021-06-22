@@ -132,9 +132,9 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   })
   
   # permanova result summary
-  output$permanova_summary <- DT::renderDataTable({
+  output$permanova_summary <- DT::renderDataTable(server = FALSE, {
     out <- as.data.frame(fit()$aov.tab)
-    DT::datatable(out)
+    DT::datatable(out, rownames = FALSE)
   })
   
   cross_module <- reactiveValues()

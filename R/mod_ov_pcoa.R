@@ -215,9 +215,10 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
     vegan::vegdist(t(bridge$asv_transform), method = input$pcoa_dist)
   })
   
-  output$dist_table <- DT::renderDataTable({
+  output$dist_table <- DT::renderDataTable(server = FALSE, {
     DT::datatable(as.data.frame(as.matrix(dist_data())), 
                   extensions = 'Buttons', 
+                  rownames = FALSE,
                   options = list(scrollX = TRUE, 
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
@@ -312,8 +313,9 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
     t(out)
   })
   
-  output$pcoa_summary <- DT::renderDataTable({
+  output$pcoa_summary <- DT::renderDataTable(server = FALSE, {
     DT::datatable(pcoa_summary(), 
+                  rownames = FALSE,
                   extensions = 'Buttons',
                   options = list(scrollX = TRUE, 
                                  dom = 'Blfrtip', buttons = c('copy','csv'))) %>%

@@ -504,7 +504,7 @@ mod_prop_server <- function(input, output, session, improxy){
       mutate(rho = round(rho, digits=3))
   })
   
-  output$prop_summary <- DT::renderDataTable({
+  output$prop_summary <- DT::renderDataTable(server = FALSE, {
     DT::datatable(prop_summary(), filter='none', rownames=FALSE,
                   extensions = 'Buttons',
                   options = list(dom = 'Brti', buttons = c('copy','csv'),
@@ -574,9 +574,10 @@ mod_prop_server <- function(input, output, session, improxy){
              'heatmap', dl_options = c('html','csv','RDS','zip'))
   
   # select ASV pairs from table
-  output$prop_table <- DT::renderDataTable({
+  output$prop_table <- DT::renderDataTable(server = FALSE, {
     DT::datatable(rho_df() %>%
                     mutate(prop = round(prop, digits = 3)),
+                  rownames = FALSE,
                   colnames = c('Feature 1','Feature 2','Rho'),
                   options = list(searchHighlight = TRUE, scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv')),

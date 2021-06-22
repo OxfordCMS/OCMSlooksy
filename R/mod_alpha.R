@@ -263,11 +263,12 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   # show tables
-  output$alpha_table <- DT::renderDataTable({
+  output$alpha_table <- DT::renderDataTable(server = FALSE, {
     out <- bridge$filtered$met %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID')
     DT::datatable(out, extensions = 'Buttons', 
+                  rownames = FALSE,
                   options = list(scrollX = TRUE, dom = 'Blfrtip', 
                                  buttons = c('copy','csv'))) %>%
       DT::formatRound(column = colnames(alpha_result())[2:ncol(alpha_result())], digits = 3)
@@ -283,7 +284,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     }
   })
   
-  output$alpha_test <- DT::renderDataTable({
+  output$alpha_test <- DT::renderDataTable(server = FALSE, {
     validate(
       need(max(grp_tally()) != 1, "Only one observation per group. Group-wise comparisons not performed"),
       need(length(grp_tally()) > 1, "All observations are in the same group. Group-wise comparisons not performed")
@@ -291,6 +292,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     
     DT::datatable(alpha_stat() %>%
                     select(-.y., -p.format, ), extensions = 'Buttons', 
+                  rownames = FALSE,
                   options = list(scrollX = TRUE, dom = 'Blfrtip', 
                                  buttons = c('copy','csv'))) %>%
       DT::formatRound(column = 'p', digits = 3)

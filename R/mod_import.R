@@ -23,106 +23,97 @@
 mod_import_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      dashboardSidebar(
-        sidebarMenu(id = 'menu',
-                    br(),
-          menuItem('Task Info', tabName = 'info_tab_import', 
-                   icon = icon('info-circle'), selected = TRUE),
-          menuItem('Upload Dataset', tabName = 'upload', selected = FALSE, 
-                   startExpanded = TRUE,
-                   # Use sample dataset?
-                   shinyWidgets::materialSwitch(
-                     ns("example"), "Example dataset",
-                     inline = TRUE, value = FALSE, status = 'success'),
-                   br(),
-                   conditionalPanel(
-                     condition = paste0("input['", ns('example'), "'] == false"),
-                     # Upload sqlite database file
-                     fileInput(ns("db_file"), "Database file"),
-                     fileInput(ns("metadata_file"), "Metadata file", 
-                               accept = c('.csv','.tsv'))),
-                   br(),
-                   
-                   # Launch data
-                   withBusyIndicatorUI(
-                     actionButton(ns('launch'), 'Launch Dataset', class = "btn-primary")
-                   ),
-                   br(), hr()),
-          
-          menuItemOutput(ns('metadata_menu')),
-          menuItemOutput(ns('asv_menu')),
-          menuItemOutput(ns('tax_menu'))
-      )),
-      
-      dashboardBody(
-        box(width = "100%",
-            br(),br(), br(),
-
+    fluidPage(
+      navlistPanel(
+        'sidebartitle',
+        id = 'menu',
+        well=FALSE,
+        widths=c(3,9),
         # fluidRow(
-        #   box(width = 12, h3('Check'),
-        #       verbatimTextOutput(ns('check')))),
-        tabItems(
-          
-          # info tab------------------------------------------------------------
-          tabItem(
-            tabName = 'info_tab_import',
+        #   verbatimTextOutput(ns('check'))),
+        
+        tabPanel(
+          'Upload Data Set',
+          id = 'upload_data_tab',
+          fluidRow(
+            br(), br(),
+            h1('Upload Data Set'),
             column(
-              width = 12,
-              fluidRow(
-                h1('Import Data'),
-                tags$div("Importing the 16S rRNA gene sequences and associated data tables is the first step in the analysis. This is done be uploading the database file produced by the OCMS 16S analysis pipeline. If your data has not been processed through this pipeline, a helper tool is available to help you format your data accordingly (see below for details).", br(),
-                         h2('Additional Resources'),
-                         "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
-                         a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
-                         br(),
-                         "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the create_db() function. See ", code("?OCMSlooksy::create_db()"), "for details."),
-                br(),
-                "You can find a tutorial on how to use this app on the", 
-                a("OCMS blog", href = "https://oxfordcms.github.io/OCMS-blog/")
-              ),
-              fluidRow(
-                div(style="font-weight: bold",
-                    textOutput(ns('import_status'))  %>%
-                      shinycssloaders::withSpinner()
-                    )
-              )
+              width=5,
+              # Use sample dataset?
+              shinyWidgets::materialSwitch(
+                ns("example"), "Example dataset",
+                inline = TRUE, value = FALSE, status = 'success'),
+              br(),
+              conditionalPanel(
+                condition = paste0("input['", ns('example'), "'] == false"),
+                # Upload sqlite database file
+                fileInput(ns("db_file"), "Database file"),
+                fileInput(ns("metadata_file"), "Metadata file", 
+                          accept = c('.csv','.tsv'))),
+              br(),
               
-            )
-          ),
-          # Preview of metadata-------------------------------------------------
-          tabItem(
-            tabName = 'metadata_menu_tab',
-            fluidRow(
-              column(width = 12,
-                     h1('Preview of metadata'),
-                     DT::dataTableOutput(ns('metadata_preview'))  %>%
-                       shinycssloaders::withSpinner()
-                    ))),
-          
-          # Preview of read count-----------------------------------------------
-          tabItem(
-            tabName = 'asv_menu_tab',
-            fluidRow(
-              column(width = 12,
-                     h1('Preview of sequence counts'),
-                     DT::dataTableOutput(ns('asv_preview'))  %>%
-                       shinycssloaders::withSpinner()
-                    )),
+              # Launch data
+              withBusyIndicatorUI(
+                actionButton(ns('launch'), 'Launch Dataset', class = "btn-primary")
+              )
             ),
-          tabItem(
-            tabName = 'tax_menu_tab',
-            column(width = 12,
-                   h1('Preview of taxonomy'),
-                   DT::dataTableOutput(ns('tax_preview'))  %>%
-                     shinycssloaders::withSpinner()
-                  ))
+            column(
+              width=7,
+              p("Importing the 16S rRNA gene sequences and associated data tables is the first step in the analysis. This is done be uploading the database file produced by the OCMS 16S analysis pipeline. If your data has not been processed through this pipeline, a helper tool is available to help you format your data accordingly (see below for details).", br(),
+              h2('Additional Resources'),
+              "The database file produced from the OCMS pipeline is a sqlite relational database framework. You can access the data tables in the database by using GUI sqlite tools such as", 
+              a('SQLite Browser', href = 'https://sqlitebrowser.org'), ".", 
+              br(),
+              "If your data has not been processed through the OCMS pipeline, you can format data tables into a sqlite database file using the create_db() function. See ", code("?OCMSlooksy::create_db()"), "for details."),
+              br(),
+              "You can find a tutorial on how to use this app on the", 
+              a("OCMS blog", href = "https://oxfordcms.github.io/OCMS-blog/")
+            ),
+            br(), hr(style="border-top: 1px solid #000000;")
+          ),
+          fluidRow(
+            div(style="font-weight: bold",
+                textOutput(ns('import_status'))  %>%
+                  shinycssloaders::withSpinner()
+            )
+          )
+        ),
+        # Preview of metadata-------------------------------------------------
+        tabPanel(
+          'Preview metadata',
+          id = 'metadata_menu_tab',
+          fluidRow(
+            br(), br(),
+            h1('Preview Metadata'),
+            DT::dataTableOutput(ns('metadata_preview'))  %>%
+              shinycssloaders::withSpinner()
+          )
+        ),
+        # Preview of read count-----------------------------------------------
+        tabPanel(
+          'Preview counts',
+          id = 'asv_menu_tab',
+          fluidRow(
+            br(), br(),
+            h1('Preview Sequence Counts'),
+            DT::dataTableOutput(ns('asv_preview'))  %>%
+              shinycssloaders::withSpinner()
+          ),
+        ),
+        tabPanel(
+          'Preview Taxonomy',
+          id = 'tax_menu_tab',
+          fluidRow(
+            br(), br(),
+            h1('Preview of taxonomy'),
+            DT::dataTableOutput(ns('tax_preview'))  %>%
+              shinycssloaders::withSpinner()
           )
         )
-      )
-    )
-  )
+      ) # end navlistPanel
+    ) # end fluidPage
+  ) # end taglist
 }
 
 # Module Server-----------------------------------------------------------------
@@ -139,11 +130,25 @@ mod_import_server <- function(input, output, session, parent_session) {
     toggleState('launch', condition = (input$example == TRUE || 
        (!is.null(input$metadata_file) | !is.null(input$db_file$datapath))))
   })
+  observe({
+    toggleState('metadata_menu_tab', 
+                condition = import_status() == 'Data validation successful')
+    # # show menu items
+    # if(import_status() == "Data validation successful") {
+    #   showTab(inputId = 'menu', target = 'metadata_menu_tab')
+    #   showTab(inputId = 'menu', target = "asv_menu_tab")
+    #   showTab(inputId = 'menu', target = "tax_menu_tab")
+    # } else {
+    #   hideTab(inputId = 'menu', target = 'metadata_menu_tab')
+    #   hideTab(inputId = 'menu', target = "asv_menu_tab")
+    #   hideTab(inputId = 'menu', target = "tax_menu_tab")
+    # }
+  })
   
   data_set <- eventReactive(input$launch, {
     withBusyIndicatorServer("launch", 'import_ui_1',{
       Sys.sleep(1)
-      # read in database file-----------------------------------------------------
+      # read in database file--------------------------------------------------
       if(input$example == FALSE) {
         req(input$db_file, input$metadata_file)
         
@@ -190,7 +195,7 @@ mod_import_server <- function(input, output, session, parent_session) {
   
       }
       
-      # Use example dataset-------------------------------------------------------
+      # Use example dataset-----------------------------------------------------
       else {
         switch(input$example, {data_ls <- OCMSlooksy::example_data})  
       }
@@ -291,23 +296,6 @@ mod_import_server <- function(input, output, session, parent_session) {
   #
   # })
   # Launch dataset-------------------------------------------------------------
-  observeEvent(input$launch, {
-
-    # show menu items
-    output$metadata_menu <- renderMenu({
-      menuItem('Metadata Preview', tabName = 'metadata_menu_tab', 
-               selected = TRUE)
-    })
-    
-    output$asv_menu <- renderMenu({
-      menuItem('Sequence Count Preview', tabName = 'asv_menu_tab')
-    })
-    
-    output$tax_menu <- renderMenu({
-      menuItem('Taxonomy Preview', tabName = 'tax_menu_tab')
-    })
-
-  })  
 
   asv <- eventReactive(input$launch, {
     data_set()$merged_abundance_id

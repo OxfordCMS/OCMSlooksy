@@ -10,308 +10,241 @@
 mod_prop_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      dashboardSidebar(
-        sidebarMenu(
-          id = 'menu', br(),
-          menuItem('Task Info', tabName = 'info_tab_prop', 
-                   icon = icon('info-circle'), selected = TRUE),
-          menuItem('Aggregate Features', tabName = 'tab_agg_prop'),
-          menuItem('Filter Features', tabName = 'tab_filter_prop'),
-          # menuItem('Read Count Transformation', tabName = "tab_transform_prop"),
-          menuItem('Feature Comparison', tabName = 'prop_tab'),
-          menuItem('Report', tabName = "prop_report_tab"),
+    fluidPage(
+      navlistPanel(
+        '',
+        id = 'menu',
+        well=FALSE,
+        widths=c(3,9),
+        # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+        # info tab body-----------------------------------------------------
+        tabPanel(
+          "Task info",
+          value = 'info_tab_prop',
+          icon = icon('info-circle'),
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              h1("Feature Comparison")
+            )
+          )
           
-          # aggregate menu controls---------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'tab_agg_prop'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')
+        ), # end tabPanel
+        # aggregate tab body------------------------------------------------
+        tabPanel(
+          'Aggregate Features',
+          value = 'tab_agg_prop',
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_aggregate_ui(ns("aggregate_ui_1"))
+            )
+          )
+        ), # end tabPanel
+        # filter tab body---------------------------------------------------
+        tabPanel(
+          'Filter Features',
+          value = "tab_filter_prop",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))    
+            )
+          )
+        ),
+        # Proportionality body----------------------------------------------
+        tabPanel(
+          "Pairwise Feature Comparison",
+          value = "prop_tab",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12, 
+              h1('Pairwise Feature Comparison'),
+              tags$div(
+                'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', code('propr'), 'is used to calculate proportionality. [link to propr vignettes]', br(),
+                "Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by ", code('ALDEx2'), "applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution that spurious correlations may occur with zero counts if your dataset is sparse (high proportion of zeros)" ,
+                br()
+              ),
+              br(),
+              column(
+                width = 8,
+                verbatimTextOutput(ns('prop_fdr_summary')) %>%
+                  shinycssloaders::withSpinner()
+              ),
+              column(
+                width = 4,
+                tags$div(
+                  "When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho \u2265 |0.6|."), br()
+              ),
+              br()
+            ) # end column 12
+          ), # end fulidRow
+          fluidRow(
+            width = 12,
+            column(
+              width = 4,
+              h3("Summary of Rho Values"),
+              radioButtons(ns('rho_filter'), NULL,
+                           choices = c('Show all pairs' = 'all',
+                                       'Filter by rho' = 'filter'),
+                           inline = TRUE, selected = 'all'),
+              hidden(div(
+                id = ns('rho_slider_div'),
+                tags$style(HTML(".irs-bar {background: none; border: none}")),
+                tags$style(HTML("irs-grid-pol.small {height: 0px;}")),
+                tags$style(HTML(".irs-grid-text { font-size: 11pt; }")),
+                sliderInput(ns('rho_cutoff'), "Rho cutoff", 
+                            min = -1, max = 1,
+                            value = c(-0.6, 0.6), step = 0.01),
+                radioButtons(
+                  ns("rho_operator"), "Keep Rho values",
+                  choices = c(
+                    'inside range (weak associations)'='inside',
+                    'outside range (strong associations)' = 'outside'),
+                  selected = 'outside')
+              )), # end hidden div rho_slider_div
+              actionButton(ns('show_rho'), "Show feature pairs")
             ),
-            fixedPanel(
-              radioButtons(ns('aggregate_by'), "Aggregate counts by:",
-                           choices = c('featureID','Kingdom','Phylum','Class',
-                                       'Order','Family','Genus','Species'),
-                           selected = 'Genus'),
-              withBusyIndicatorUI(
-                actionButton(ns('agg_calculate'), "Aggregate")
+            column(
+              width = 4,
+              br(),
+              plotOutput(ns('rho_range'), height = "150px") %>%
+                shinycssloaders::withSpinner()
+            ),
+            column(
+              width = 4, tags$div(
+                br(),
+                "Pairwise feature comparision results in a matrix of rho values, to show the proportionaity of a given feature with all other features. The rho values are summarised in the histogram in the centre. You can the relationship between all feature pairs, but in cases where there are many features, this may result in an unreasonable number of feature pairs to visualise. You can choose to filter rho values based a set of rho cutoffs. You can choose 'outside range' to examine stronger associations (more extreme values of rho), or the 'inside range' to examine the weaker associations. Click `show feature pairs` to update the plots."  
               )
             )
-          ),
-          # filter menu controls------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'tab_filter_prop'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')),
-            
-            fixedPanel(
-              radioButtons(ns('asv_select_prompt'), 
-                           "Features to exclude from analysis:",
-                           choices = c('Use all features' = 'all', 
-                                       'Filter features' = 'some'),
-                           selected = 'all'),
-              
-              hidden(
-                div(id = ns('asv_filter_options_ui'),
-                    radioButtons(
-                      ns('asv_filter_options'), 'Filter features by:',
-                      choices = c('read count' = 'asv_by_count',
-                                  'selection' = 'asv_by_select'),
-                      selected = "asv_by_count")
-                )),
-              withBusyIndicatorUI(
-                actionButton(ns('submit_asv'), "Filter features")))  
-          )
-          # # transform menu controls---------------------------------------------
-          # conditionalPanel(
-          #   condition = "input.menu === 'tab_transform_prop'",
-          #   hr(),
-          #   tags$div(
-          #     style = 'text-align: center',
-          #     tags$b('Input controls')),
-          #   fixedPanel(
-          #     radioButtons(ns('transform_method'),
-          #                  tags$div(title = "CLR transforamtion may take a few minutes for large datasets", "Transformation method:"),
-          #                  choices = c('none' = 'none', 
-          #                              'centre log-ratio' = 'clr',
-          #                              'log10 of percent abundance' = 'log10',
-          #                              'percent abundance' = 'percent'),
-          #                  selected = 'clr'),
-          #     withBusyIndicatorUI(
-          #       actionButton(ns('submit_transform'), "Transform Counts")    
-          #     )
-          #   )
-          # )
-          
-          # proportionality menu controls-----------------------------------------
-          # conditionalPanel(
-          #   condition = "input.menu === 'prop_tab'",
-          #   br(), hr(),
-          #   fixedPanel(
-          #     width = 225,
-          #     tags$div(style = "text-align: center",
-          #              tags$b("Proportionality Parameters")),
-          #     withBusyIndicatorUI(
-          #       actionButton(ns('prop_calculate'), 'Calculate')
-          #     )
-          #   )
-          # )
-        )),
-      # dashboard body----------------------------------------------------------
-      dashboardBody(
-        box(
-          width = '100%', br(), br(), br(),
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
-          tabItems(
-            # info tab body-----------------------------------------------------
-            tabItem(
-              tabName = 'info_tab_prop',
-              h1("Feature Comparison")
-            ), # end tabItem
-            # aggregate tab body------------------------------------------------
-            tabItem(
-              tabName = 'tab_agg_prop',
-              mod_aggregate_ui(ns("aggregate_ui_1"))
-            ), # end tabItem
-            # filter tab body---------------------------------------------------
-            tabItem(
-              tabName = "tab_filter_prop",
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
-            ), # end tabItem
-            # # transform tab body------------------------------------------------
-            # tabItem(
-            #   tabName = 'tab_transform_prop',
-            #   mod_transform_ui(ns("transform_ui_1"))
-            # ), # end tabItem
-            # Proportionality body------------------------------------------------
-            tabItem(
-              tabName = "prop_tab",
-              fluidRow(
-                column(
-                  width = 12, 
-                  h1('Pairwise Feature Comparison'),
-                  tags$div(
-                    'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', code('propr'), 'is used to calculate proportionality. [link to propr vignettes]', br(),
-                    "Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by ", code('ALDEx2'), "applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution that spurious correlations may occur with zero counts if your dataset is sparse (high proportion of zeros)" ,
-                    br()
-                  ),
-                  br(),
-                  column(
-                    width = 8,
-                    verbatimTextOutput(ns('prop_fdr_summary')) %>%
-                      shinycssloaders::withSpinner()
-                  ),
-                  column(
-                    width = 4,
-                    tags$div(
-                      "When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho \u2265 |0.6|."), br()
-                  ),
-                  br()
-                ) # end column 12
-              ), # end fulidRow
-              fluidRow(
+          ), # end fluidRow 12
+          fluidRow(
+            column(
+              width = 8,
+              plotOutput(ns('rho_summary')) %>%
+                shinycssloaders::withSpinner()
+            ),
+            column(
+              width = 4,
+              DT::dataTableOutput(ns('prop_summary')) %>%
+                shinycssloaders::withSpinner()
+            )
+          ), # end fluidRow 12
+          fluidRow(
+            hidden(div(
+              id = ns('prop_hmap_div'),
+              column(
+                width = 12,
+                h3('Proportionality Matrix'),
+                wellPanel(
+                  tags$b("Heirchical Cluster Parameters"),
+                  fluidRow(
+                    column(
+                      width = 3,
+                      selectInput(
+                        ns('hclust_method'), "Linkage method",
+                        choices = c('complete','ward.D2','average','centroid'),
+                        selected = 'ward.D2'),
+                      selectInput(
+                        ns('dist_method'), "Distance method",
+                        choices = c('manhattan','euclidean','chisq',
+                                    'binomial','manahalanobis','chord'),
+                        selected = 'manhattan')),
+                    column(
+                      width = 3,
+                      checkboxGroupInput(
+                        ns('show_dendro'), 'Show dendrogram',
+                        choices = c('x-axis' = 'show_dendro_x',
+                                    'y-axis' = 'show_dendro_y'),
+                        selected = c('show_dendro_x', 'show_dendro_y'))),
+                    column(
+                      width = 3,
+                      uiOutput(ns("hmap_tax_label_ui"))
+                    )
+                  ) # end fluid row
+                ) # end well panel
+              ), # end column 12
+              column(
                 width = 12,
                 column(
-                  width = 4,
-                  h3("Summary of Rho Values"),
-                  radioButtons(ns('rho_filter'), NULL,
-                               choices = c('Show all pairs' = 'all',
-                                           'Filter by rho' = 'filter'),
-                               inline = TRUE, selected = 'all'),
-                  hidden(div(
-                    id = ns('rho_slider_div'),
-                    tags$style(HTML(".irs-bar {background: none; border: none}")),
-                    tags$style(HTML("irs-grid-pol.small {height: 0px;}")),
-                    tags$style(HTML(".irs-grid-text { font-size: 11pt; }")),
-                    sliderInput(ns('rho_cutoff'), "Rho cutoff", 
-                                min = -1, max = 1,
-                                value = c(-0.6, 0.6), step = 0.01),
-                    radioButtons(
-                      ns("rho_operator"), "Keep Rho values",
-                      choices = c(
-                        'inside range (weak associations)'='inside',
-                        'outside range (strong associations)' = 'outside'),
-                      selected = 'outside')
-                  )), # end hidden div rho_slider_div
-                  actionButton(ns('show_rho'), "Show feature pairs")
+                  width = 1, style = 'padding:0px;',
+                  mod_download_ui(ns("download_prop_hmap"))
                 ),
                 column(
-                  width = 4,
-                  br(),
-                  plotOutput(ns('rho_range'), height = "150px") %>%
-                    shinycssloaders::withSpinner()
-                ),
-                column(
-                  width = 4, tags$div(
-                    br(),
-                    "Pairwise feature comparision results in a matrix of rho values, to show the proportionaity of a given feature with all other features. The rho values are summarised in the histogram in the centre. You can the relationship between all feature pairs, but in cases where there are many features, this may result in an unreasonable number of feature pairs to visualise. You can choose to filter rho values based a set of rho cutoffs. You can choose 'outside range' to examine stronger associations (more extreme values of rho), or the 'inside range' to examine the weaker associations. Click `show feature pairs` to update the plots."  
-                  )
+                  width = 11, style = 'padding:0px;',
+                  shinyjqui::jqui_resizable(
+                    plotlyOutput(ns('hmap_prop'), 
+                                 width = '100%', height = 'auto'))
                 )
-              ), # end fluidRow 12
-              fluidRow(
-                column(
-                  width = 8,
-                  plotOutput(ns('rho_summary')) %>%
-                    shinycssloaders::withSpinner()
-                ),
-                column(
-                  width = 4,
-                  DT::dataTableOutput(ns('prop_summary')) %>%
-                    shinycssloaders::withSpinner()
-                )
-              ), # end fluidRow 12
-              fluidRow(
-                hidden(div(
-                  id = ns('prop_hmap_div'),
-                  column(
-                    width = 12,
-                    h3('Proportionality Matrix'),
-                    wellPanel(
-                      tags$b("Heirchical Cluster Parameters"),
-                      fluidRow(
-                        column(
-                          width = 3,
-                          selectInput(
-                            ns('hclust_method'), "Linkage method",
-                            choices = c('complete','ward.D2','average','centroid'),
-                            selected = 'ward.D2'),
-                          selectInput(
-                            ns('dist_method'), "Distance method",
-                            choices = c('manhattan','euclidean','chisq',
-                                        'binomial','manahalanobis','chord'),
-                            selected = 'manhattan')),
-                        column(
-                          width = 3,
-                          checkboxGroupInput(
-                            ns('show_dendro'), 'Show dendrogram',
-                            choices = c('x-axis' = 'show_dendro_x',
-                                        'y-axis' = 'show_dendro_y'),
-                            selected = c('show_dendro_x', 'show_dendro_y'))),
-                        column(
-                          width = 3,
-                          uiOutput(ns("hmap_tax_label_ui"))
-                        )
-                      ) # end fluid row
-                    ) # end well panel
-                  ), # end column 12
-                  column(
-                    width = 12,
+              )) # end hidden div - prop_hmap_div
+            ) # end column 12
+          ), # end fluid row
+          
+          fluidRow(
+            width = 12,
+            hidden(div(
+              id = ns('prop_vispair_div'),
+              column(
+                width = 12,
+                h3('Visualizing Feature Pairs'),
+                DT::dataTableOutput(ns('prop_table')),
+                tabsetPanel(
+                  type = 'tabs',
+                  tabPanel(
+                    "Feature Pairs",
                     column(
-                      width = 1, style = 'padding:0px;',
-                      mod_download_ui(ns("download_prop_hmap"))
+                     width = 1, style = 'padding:0px;',
+                     mod_download_ui(ns("download_pairs"))
                     ),
                     column(
-                      width = 11, style = 'padding:0px;',
-                      shinyjqui::jqui_resizable(
-                        plotlyOutput(ns('hmap_prop'), 
-                                     width = '100%', height = 'auto'))
+                     width = 11, style = 'padding:0px;',
+                     shinyjqui::jqui_resizable(
+                       plotlyOutput(ns("plot_pair"), width = '100%',
+                                    height = 'auto'))
+                     )
+                  ), # end tabPanel
+                  tabPanel(
+                    "By Metadata",
+                    column(
+                      width = 12,
+                      uiOutput(ns("meta_x_ui"))),
+                    column(
+                      width = 12,
+                      column(
+                       width = 1, style = 'padding:0px;',
+                       mod_download_ui(ns("download_pairs_meta"))
+                      ),
+                      column(
+                       width = 11, style = 'padding:0px',
+                       shinyjqui::jqui_resizable(
+                         plotlyOutput(ns("plot_meta"), width = '100%',
+                                      height = 'auto')
+                       )
+                      )
                     )
-                  )) # end hidden div - prop_hmap_div
-                ) # end column 12
-              ), # end fluid row
-              
-              fluidRow(
-                width = 12,
-                hidden(div(
-                  id = ns('prop_vispair_div'),
-                  column(
-                    width = 12,
-                    h3('Visualizing Feature Pairs'),
-                    DT::dataTableOutput(ns('prop_table')),
-                    tabsetPanel(
-                      type = 'tabs',
-                      tabPanel(
-                        "Feature Pairs",
-                        column(
-                         width = 1, style = 'padding:0px;',
-                         mod_download_ui(ns("download_pairs"))
-                        ),
-                        column(
-                         width = 11, style = 'padding:0px;',
-                         shinyjqui::jqui_resizable(
-                           plotlyOutput(ns("plot_pair"), width = '100%',
-                                        height = 'auto'))
-                         )
-                      ), # end tabPanel
-                      tabPanel(
-                        "By Metadata",
-                        column(
-                          width = 12,
-                          uiOutput(ns("meta_x_ui"))),
-                        column(
-                          width = 12,
-                          column(
-                           width = 1, style = 'padding:0px;',
-                           mod_download_ui(ns("download_pairs_meta"))
-                          ),
-                          column(
-                           width = 11, style = 'padding:0px',
-                           shinyjqui::jqui_resizable(
-                             plotlyOutput(ns("plot_meta"), width = '100%',
-                                          height = 'auto')
-                           )
-                          )
-                        )
-                      ) # end tabPanel
-                    ) # end prop tabset
-                  ) # end column 12
-                )) # end hidden div
-              ) # end fluidRow 12
-            ), # end tabItem
-            tabItem(
-              tabName = 'prop_report_tab',
+                  ) # end tabPanel
+                ) # end prop tabset
+              ) # end column 12
+            )) # end hidden div
+          ) # end fluidRow 12
+        ), # end tabPanel
+        tabPanel(
+          'Report',
+          value = 'prop_report_tab',
+          fluidRow(
+            column(
+              width = 12,
               mod_report_ui(ns("prop_report_ui"))
             )
-          ) # end tabItems
-        ) # end box
-      ) # end dashbaoad body
-    )
-  )
+          )
+        ) # end tabPanel
+      ) # end navlistpanel
+    ) # end fluidPage
+  ) # end taglist
 }
     
 #' prop Server Function
@@ -321,16 +254,14 @@ mod_prop_server <- function(input, output, session, improxy){
   ns <- session$ns
   
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues()
+  bridge <- reactiveValues(transform_method = NULL, aggregate_by = NULL)
   observe({
     bridge$qualfilt_db <- improxy$work_db
-    bridge$agg_input <- list(
-      aggregate_by = input$aggregate_by,
-      agg_calculate = input$agg_calculate
-    )
   })
   # initiate list to pass onto report submodule
   for_report <- reactiveValues()
+  
+  # store values to pass to report
   observe({
     for_report$params <- list(
       # sample filter
@@ -340,13 +271,10 @@ mod_prop_server <- function(input, output, session, improxy){
     )
   })
   # aggregate features----------------------------------------------------------
-  withBusyIndicatorServer('agg_calculate', 'prop_ui_1', {
-    agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
-  })
+  agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
   
   # store data in reactiveValues to pass onto submodules
   observe({
-    req(input$agg_calculate)
     if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
       
@@ -356,7 +284,8 @@ mod_prop_server <- function(input, output, session, improxy){
         asv = agg_output$output$aggregated_count,
         tax = tax_entry
       )
-      
+      # record aggregate by
+      bridge$aggregate_by <- agg_output$output$aggregate_by
     } else { 
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
@@ -365,45 +294,29 @@ mod_prop_server <- function(input, output, session, improxy){
   })
   
   observe({
-    req(input$agg_calculate)
     # add aggregate features to report params
     for_report$params$aggregate_by <- agg_output$output$aggregate_by
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
   
-
   # filter features-------------------------------------------------------------
-  # render sidebar controls - filter yes/no
-  observeEvent(input$asv_select_prompt, {
-    toggle("asv_filter_options_ui", condition = input$asv_select_prompt == 'some')
-  })
   
-  # pass in filter menu controls
-  bridge$filter_input <- reactiveValues()
-  observe({
-    bridge$filter_input$asv_select_prompt <- input$asv_select_prompt
-    bridge$filter_input$asv_filter_options <- input$asv_filter_options
-    bridge$filter_input$submit_asv <- input$submit_asv
-  })
+  # submodule returns list of filtered met, asv and tax tables
   
-  withBusyIndicatorServer('submit_asv', 'prop_ui_1', {
-    # submodule returns list of filtered met, asv and tax tables
-    filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
-  })
+  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
   
   # add filtered data to bridge
-  bridge$filtered <- reactiveValues()
   observe({
     bridge$filtered <- filter_output$filtered
   })
   
   # update report params
   observe({
-    req(input$submit_asv)
     #feature filter
-    for_report$params$asv_select_prompt <- input$asv_select_prompt
-    for_report$params$asv_filter_options <- input$asv_filter_options
+    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_filter_options <-
+      filter_output$params$asv_filter_options
     for_report$params$cutoff_method <- filter_output$params$cutoff_method
     for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
     for_report$params$prevalence <- filter_output$params$prevalence
@@ -416,31 +329,6 @@ mod_prop_server <- function(input, output, session, improxy){
     for_report$params$met2 <- filter_output$filtered$met
     for_report$params$tax2 <- filter_output$filtered$tax
   })
-  
-
-  # # transform filtered data-----------------------------------------------------
-  # 
-  # observe({
-  #   bridge$transform_input <- list(
-  #     transform_method = input$transform_method,
-  #     submit_transform = input$submit_transform
-  #   )
-  # })
-  # withBusyIndicatorServer("submit_transform", "prop_ui_1", {
-  #   transform_output <- callModule(mod_transform_server, "transform_ui_1", bridge)
-  # })
-  # 
-  # # add transformed data to reactive values
-  # observe({
-  #   req(input$submit_transform, input$transform_method)
-  #   
-  #   # add to bridge
-  #   bridge$asv_transform <- transform_output$output$asv_transform
-  #   
-  #   # add to report params
-  #   for_report$params$transform_method <- input$transform_method
-  #   for_report$params$asv_transform <- transform_output$output$asv_transform
-  # })
   
   # feature proportionality-----------------------------------------------------
   # show/hide ui component
@@ -470,7 +358,7 @@ mod_prop_server <- function(input, output, session, improxy){
   })
   
   output$hmap_tax_label_ui <- renderUI({
-    choices <- c('featureID','Taxon', input$aggregate_by)
+    choices <- c('featureID','Taxon', bridge$aggregate_by)
     selectInput(
       ns('hmap_tax_label'), 'Label taxa by:',
       choices = choices, selected = 'featureID')
@@ -487,18 +375,7 @@ mod_prop_server <- function(input, output, session, improxy){
     # features in columns
     # default setting for ivar is clr transform
     out <- propr::propr(t(count_mat), metric = 'rho')
-    # 
-    # count_mat <- bridge$filtered$asv %>%
-    #   tibble::column_to_rownames("featureID")
-    # 
-    # # apply clr transform with aldex2
-    # asv_clr <- ALDEx2::aldex.clr(count_mat, conds = bridge$filtered$met$sampleID,
-    #                              useMC = TRUE)
-    # 
-    # # features in columns
-    # # default setting for ivar is clr transform
-    # out <- propr::aldex2propr(asv_clr, how = 'rho')
-    
+
     # calculate fdr at different cutoffs
     out <- propr::updateCutoffs(out, cutoff = seq(0.05, 0.95, 0.15))
     out
@@ -641,7 +518,7 @@ mod_prop_server <- function(input, output, session, improxy){
     convert <- data.frame(featureID = rownames(out))
     convert <- convert %>%
       left_join(bridge$filtered$tax %>% 
-                  select(featureID, Taxon, .data[[input$aggregate_by]]),
+                  select(featureID, Taxon, .data[[bridge$aggregate_by]]),
                 'featureID')
     rownames(out) <- convert[, input$hmap_tax_label]
     colnames(out) <- convert[, input$hmap_tax_label]

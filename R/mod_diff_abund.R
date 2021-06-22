@@ -10,190 +10,160 @@
 mod_diff_abund_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      dashboardSidebar(
-        sidebarMenu(
-          id = 'menu', br(),
-          menuItem('Task Info', tabName = 'info_tab_diff', 
-                   icon = icon('info-circle'), selected = TRUE),
-          menuItem('Aggregate Features', tabName = 'agg_diff_tab'),
-          menuItem('Filter Features', tabName = 'filter_diff_tab'),
-          menuItem('DESeq2', tabName = 'deseq_tab'),
-          menuItem('Report', tabName = 'diffabund_report_tab'),
-          # aggregate menu controls---------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'agg_diff_tab'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')
-            ),
-            fixedPanel(
-              radioButtons(ns('aggregate_by'), "Aggregate counts by:",
-                           choices = c('featureID','Kingdom','Phylum','Class',
-                                       'Order','Family','Genus','Species'),
-                           selected = 'Genus'),
-              withBusyIndicatorUI(
-                actionButton(ns('agg_calculate'), "Aggregate")
-              )
+    fluidPage(
+      wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+      navlistPanel(
+        '',
+        id = 'menu', 
+        well=FALSE,
+        widths=c(3,9),
+        
+        # info tab body-----------------------------------------------------
+        tabPanel(
+          'Task Info',
+          value = 'info_tab_diff',
+          icon = icon('info-circle'),
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              h1("Differential Abundance"),
+              p("Compare groups to see what taxa are differentially abundant between the groups. This task uses DESeq2 and provides a couple different methods of visualising the results. ")    
             )
-          ),
-          # filter menu controls------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'filter_diff_tab'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')),
-            
-            fixedPanel(
-              radioButtons(ns('asv_select_prompt'), 
-                           "Features to exclude from analysis:",
-                           choices = c('Use all features' = 'all', 
-                                       'Filter features' = 'some'),
-                           selected = 'all'),
-              
-              hidden(
-                div(id = ns('asv_filter_options_ui'),
-                    radioButtons(
-                      ns('asv_filter_options'), 'Filter features by:',
-                      choices = c('read count' = 'asv_by_count',
-                                  'selection' = 'asv_by_select'),
-                      selected = "asv_by_count")
-                )),
-              withBusyIndicatorUI(
-                actionButton(ns('submit_asv'), "Filter features")))  
-          ),
-          # Deseq menu controls---------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'deseq_tab'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')
-            ),
-            fixedPanel(
-              width = 225,
-              uiOutput(ns('variable_ui')),
-              uiOutput(ns('group1_ui')),
-              uiOutput(ns('group2_ui')),
-              withBusyIndicatorUI(
-                actionButton(ns('deseq_submit'), "Compare Groups")
+          )
+        ), # end tabPanel
+        # aggregate tab body------------------------------------------------
+        tabPanel(
+          'Aggregate Features',
+          value = 'agg_diff_tab',
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_aggregate_ui(ns("aggregate_ui_1"))    
+            )
+          )
+        ), # end tabPanel
+        # filter tab body---------------------------------------------------
+        tabPanel(
+          'Filter Features',
+          value = "filter_diff_tab",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))    
+            )
+          )
+        ), # end tabPanel
+        tabPanel(
+          'DESeq2',
+          value = "deseq_tab",
+          fluidRow(
+            br(),br(),
+            column(
+              width=12,
+              fluidRow(
+                h1("Differential Abundance with DESeq2"),
+                column(
+                  width = 3,
+                  wellPanel(
+                    uiOutput(ns('variable_ui')),
+                    uiOutput(ns('group1_ui')),
+                    uiOutput(ns('group2_ui')),
+                    withBusyIndicatorUI(
+                      actionButton(ns('deseq_submit'), "Compare Groups")
+                    )
+                  )
+                ),
+                column(
+                  width = 9,
+                  p("Compare groups using DESeq2. DESeq2 normalises and transforms data by [...]. DESeq2 assess differential abundance based on the assumption of a negative bionmial distribution..."
+                  ) 
+                )
+              ),
+              fluidRow(
+                verbatimTextOutput(ns('dds_summary')),
+                br()
+              ),
+              fluidRow(
+                DT::dataTableOutput(ns('dds_result')) %>%
+                  shinycssloaders::withSpinner()
+              ),
+              fluidRow(
+                hidden(div(
+                  id=ns("deseq_sig_div"),
+                  column(
+                    width=3,
+                    br(),
+                    wellPanel(
+                      h4("Signficance cut-offs"),
+                      numericInput(ns('cutoff_pval'), "Adjusted p-value",
+                                   value=0.05, min=0, max=1, step=0.05),
+                      uiOutput(ns("cutoff_ui"))
+                    )                  
+                  ),
+                  column(
+                    width = 9,
+                    tabsetPanel(
+                      type = 'tabs',
+                      tabPanel(
+                        "Volcano",
+                        column(
+                          width=1, style = 'padding:0px;',
+                          mod_download_ui(ns("download_volcano"))
+                        ),
+                        column(
+                          width=8, style = 'padding:0px;',
+                          plotlyOutput(ns('volcano'), 
+                                       width = '100%', height = 'auto') %>%
+                            shinycssloaders::withSpinner()
+                        ) # end column w=8
+                      ), # end volcano plot tabPanel
+                      tabPanel(
+                        "LogFoldChange",
+                        column(
+                          width = 1,style = 'padding:0px;',
+                          mod_download_ui(ns("download_lfc"))
+                        ),
+                        column(
+                          width = 8,
+                          plotlyOutput(ns('lfc_plot'), 
+                                       width = '100%', height = 'auto') %>%
+                            shinycssloaders::withSpinner()
+                        )
+                      ) # end logfold change tabPanel
+                    ) # end tabsetPanel  
+                  ) # end column w=9
+                )) # end deseq_sig_div
+              ), # end fluidRow
+              fluidRow(
+                column(
+                  width = 1, style = "padding:0px;",
+                  mod_download_ui(ns("download_boxplot"))
+                ),
+                column(
+                  width = 11,
+                  plotlyOutput(ns('box_plot'))  %>%
+                    shinycssloaders::withSpinner()
+                )
               )
+            ) # end column 12
+          ) # end fluidRow
+        ), # end tabPanel
+        tabPanel(
+          'Report',
+          value = 'diffabund_report_tab',
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_report_ui(ns("diffabund_report_ui"))   
             )
           )
         )
-      ),
-      # dashboard body----------------------------------------------------------
-      dashboardBody(
-        box(
-          width = '100%', br(), br(), br(),
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
-          tabItems(
-            # info tab body-----------------------------------------------------
-            tabItem(
-              tabName = 'info_tab_diff',
-              h1("Differential Abundance"),
-              tags$div(
-                "Compare groups to see what taxa are differentially abundant between the groups. This task uses DESeq2 and provides a couple different methods of visualising the results. "
-              )
-            ), # end tabItem
-            # aggregate tab body------------------------------------------------
-            tabItem(
-              tabName = 'agg_diff_tab',
-              mod_aggregate_ui(ns("aggregate_ui_1"))
-            ), # end tabItem
-            # filter tab body---------------------------------------------------
-            tabItem(
-              tabName = "filter_diff_tab",
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
-            ), # end tabItem
-            tabItem(
-              tabName = "deseq_tab",
-              column(
-                width=12,
-                fluidRow(
-                  h1("Differential Abundance with DESeq2"),
-                  tags$div(
-                    "Compare groups using DESeq2. DESeq2 normalises and transforms data by [...]. DESeq2 assess differential abundance based on the assumption of a negative bionmial distribution..."
-                  ), br()  
-                ),
-                fluidRow(
-                  verbatimTextOutput(ns('dds_summary')),
-                  br()
-                ),
-                fluidRow(
-                  DT::dataTableOutput(ns('dds_result')) %>%
-                    shinycssloaders::withSpinner()
-                ),
-                fluidRow(
-                  hidden(div(
-                    id=ns("deseq_sig_div"),
-                    column(
-                      width=3,
-                      br(),
-                        wellPanel(
-                          h4("Signficance cut-offs"),
-                          numericInput(ns('cutoff_pval'), "Adjusted p-value",
-                                       value=0.05, min=0, max=1, step=0.05),
-                          uiOutput(ns("cutoff_ui"))
-                        )                  
-                    ),
-                    column(
-                      width = 9,
-                      tabsetPanel(
-                        type = 'tabs',
-                        tabPanel(
-                          "Volcano",
-                          column(
-                            width=1, style = 'padding:0px;',
-                            mod_download_ui(ns("download_volcano"))
-                          ),
-                          column(
-                            width=8, style = 'padding:0px;',
-                            plotlyOutput(ns('volcano'), 
-                                         width = '100%', height = 'auto') %>%
-                              shinycssloaders::withSpinner()
-                          ) # end column w=8
-                        ), # end volcano plot tabPanel
-                        tabPanel(
-                          "LogFoldChange",
-                          column(
-                            width = 1,style = 'padding:0px;',
-                            mod_download_ui(ns("download_lfc"))
-                          ),
-                          column(
-                            width = 8,
-                            plotlyOutput(ns('lfc_plot'), 
-                                         width = '100%', height = 'auto') %>%
-                              shinycssloaders::withSpinner()
-                          )
-                        ) # end logfold change tabPanel
-                      ) # end tabsetPanel  
-                    ) # end column w=9
-                  )) # end deseq_sig_div
-                ), # end fluidRow
-                fluidRow(
-                  column(
-                    width = 1, style = "padding:0px;",
-                    mod_download_ui(ns("download_boxplot"))
-                  ),
-                  column(
-                    width = 11,
-                    plotlyOutput(ns('box_plot'))
-                  )
-                )
-              ) # end column 12
-            ), # end tabItem
-            tabItem(
-              tabName = 'diffabund_report_tab',
-              mod_report_ui(ns("diffabund_report_ui"))
-            )
-          ) # end tabItems
-        ) # end box
-      ) # end dashboardBody
-    ) # end dashboard Page
+      ) # end navlistPanel
+    ) # end fluidPage
   ) # end taglist
 }
     
@@ -204,20 +174,15 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   ns <- session$ns
  
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues()
+  bridge <- reactiveValues(transform_method = NULL)
   observe({
     bridge$qualfilt_db <- improxy$work_db
-    bridge$agg_input <- list(
-      aggregate_by = input$aggregate_by,
-      agg_calculate = input$agg_calculate
-    )
   })
   # initiate list to pass onto report submodule
   for_report <- reactiveValues()
   
   # store values to pass to report
   observe({
-    req(input$agg_calculate)
     for_report$params <- list(
       # sample filter
       met1 = improxy$work_db$met,
@@ -226,14 +191,10 @@ mod_diff_abund_server <- function(input, output, session, improxy){
     )
   })
   # aggregate features----------------------------------------------------------
-  withBusyIndicatorServer('agg_calculate', 'diff_abund_ui_1', {
-    agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
-    
-  })
+  agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
   
   # store data in reactiveValues to pass onto submodules
   observe({
-    req(input$agg_calculate)
     if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
       
@@ -252,7 +213,6 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   })
   
   observe({
-    req(input$agg_calculate)
     # add aggregate features to report params
     for_report$params$aggregate_by <- agg_output$output$aggregate_by
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
@@ -260,36 +220,22 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   })
   
   # filter features-------------------------------------------------------------
-  # render sidebar controls - filter yes/no
-  observeEvent(input$asv_select_prompt, {
-    toggle("asv_filter_options_ui", condition = input$asv_select_prompt == 'some')
-  })
   
-  # pass in filter menu controls
-  bridge$filter_input <- reactiveValues()
-  observe({
-    bridge$filter_input$asv_select_prompt <- input$asv_select_prompt
-    bridge$filter_input$asv_filter_options <- input$asv_filter_options
-    bridge$filter_input$submit_asv <- input$submit_asv
-  })
+  # submodule returns list of filtered met, asv and tax tables
   
-  withBusyIndicatorServer('submit_asv', 'diff_abund_ui_1', {
-    # submodule returns list of filtered met, asv and tax tables
-    filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
-  })
+  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
   
   # add filtered data to bridge
-  bridge$filtered <- reactiveValues()
   observe({
     bridge$filtered <- filter_output$filtered
   })
   
   # update report params
   observe({
-    req(input$submit_asv)
     #feature filter
-    for_report$params$asv_select_prompt <- input$asv_select_prompt
-    for_report$params$asv_filter_options <- input$asv_filter_options
+    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_filter_options <-
+      filter_output$params$asv_filter_options
     for_report$params$cutoff_method <- filter_output$params$cutoff_method
     for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
     for_report$params$prevalence <- filter_output$params$prevalence
@@ -304,6 +250,11 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   })
   
   # render ui for deseq tab-----------------------------------------------------
+  observe({
+    req(input$variable)
+    toggleState('deseq_submit', 
+                condition = length(choices()) >= 2 & min(n_sample()$n_sample) > 1)
+  })
   observeEvent(input$deseq_submit, {
     show("deseq_sig_div")
   })
@@ -312,46 +263,44 @@ mod_diff_abund_server <- function(input, output, session, improxy){
                 choices = colnames(bridge$filtered$met))
   })
   
-  output$group1_ui <- renderUI({
+  choices <- reactive({
     req(input$variable)
-    choices <- as.character(unique(as.data.frame(bridge$filtered$met)[,input$variable]))
-    
-    # check number of samples in each choice
-    n_sample <- bridge$filtered$met %>%
+    as.character(unique(as.data.frame(bridge$filtered$met)[,input$variable]))
+  })
+  
+  # check number of samples in each choice
+  n_sample <- reactive({
+    req(input$variable)
+    bridge$filtered$met %>%
       distinct(sampleID, .data[[input$variable]]) %>%
       group_by(.data[[input$variable]]) %>%
-      summarise(n_sample = n())
-    
+      summarise(n_sample = n()) 
+  })
+  
+  output$group1_ui <- renderUI({
     validate(
-      need(length(choices) >= 2, 
+      need(length(choices()) >= 2, 
            "Need at least two groups in selected variable"),
-      need(min(n_sample$n_sample) > 1,
+      need(min(n_sample()$n_sample) > 1,
            "Not all groups have at least 2 samples")
     )
     
-    selectInput(ns('group1'), "Group 1", choices = choices)
+    selectInput(ns('group1'), "Group 1", choices = choices())
   })
   
   output$group2_ui <- renderUI({
     req(input$variable)
-    choices <- as.character(unique(as.data.frame(bridge$filtered$met)[,input$variable]))
-    
-    # check number of samples in each choice
-    n_sample <- bridge$filtered$met %>%
-      distinct(sampleID, .data[[input$variable]]) %>%
-      group_by(.data[[input$variable]]) %>%
-      summarise(n_sample = n())
     
     validate(
-      need(length(choices) >= 2, 
+      need(length(choices()) >= 2, 
            "Need at least two groups in selected variable"),
-      need(min(n_sample$n_sample) > 1,
+      need(min(n_sample()$n_sample) > 1,
            "Not all groups have at least 2 samples")
     )
     
-    choices <- choices[which(choices != input$group1)]
+    g2_choices <- choices()[which(choices() != input$group1)]
     
-    selectInput(ns('group2'), "Group 2", choices = choices)
+    selectInput(ns('group2'), "Group 2", choices = g2_choices)
   })
   
   # filter working data based on select variable and groups---------------------
@@ -491,7 +440,8 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   selected_feat <- reactiveVal()
   
   # store selected feature
-  observeEvent(event_data("plotly_selected", source='plotly_volcano'), {
+  observeEvent(event_data("plotly_selected", source="plotly_volcano"), {
+    req(input$deseq_submit)
      curr_selected<- event_data("plotly_selected", source='plotly_volcano')$customdata
     updated_feat <- unique(c(selected_feat(), curr_selected))
     selected_feat(updated_feat)
@@ -499,6 +449,7 @@ mod_diff_abund_server <- function(input, output, session, improxy){
     
   # clear selection
   observeEvent(event_data("plotly_deselect", source="plotly_volcano"), {
+    req(input$deseq_submit)
     selected_feat(NULL)
   })
   
@@ -521,15 +472,20 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   })
   
   output$box_plot <- renderPlotly({
-    
-    ggplotly(p_box())
+    out <- plotly_build(p_box())
+    out$x$data <- lapply(out$x$data, FUN = function(x) {
+      x$marker = list(color = "rgba(0,0,0,1)",
+                      outliercolor = "rgba(0,0,0,0)", 
+                      line = list(outliercolor='rgba(0,0,0,0)'))
+      return(x)
+    })
+    out
   })
   
   
   output$check <- renderPrint({
-
+    print(length(unique(as.data.frame(bridge$filtered$met)[,input$variable])))
   })
-  
   
   # download data---------------------------------------------------------------
   for_download <- reactiveValues()

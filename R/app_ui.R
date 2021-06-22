@@ -1,9 +1,5 @@
 #' @import shiny
-#' @import DT
-#' @import datasets
 #' @import htmltools
-#' @import shinydashboard
-#' @import shinyjs
 
 app_ui <- function() {
   tagList(
@@ -14,6 +10,7 @@ app_ui <- function() {
     # h3('Check'),
     # verbatimTextOutput('check'),
     navbarPage(
+      theme = shinythemes::shinytheme('flatly'),
       title = "OCMSlooksy", id = 'tabs', position = 'fixed-top',
 
       # Introduction---------------------------------------------------

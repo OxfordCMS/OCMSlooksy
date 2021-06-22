@@ -10,176 +10,151 @@
 mod_profile_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      dashboardSidebar(
-        sidebarMenu(
-          id = 'menu', br(),
-          menuItem('Task Info', tabName = 'info_tab_profile', 
-                   icon = icon('info-circle'), selected = TRUE),
-          menuItem('Aggregate Features', tabName = 'agg_prof_tab'),
-          menuItem('Filter Features', tabName = 'filter_prof_tab'),
-          menuItem('Microbiome Profile', tabName = "profile_tab"),
-          menuItem("Profile Sparsity", tabName = 'sparsity_tab'),
-          menuItem('Report', tabName='profile_report_tab'),
-          # aggregate menu controls---------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'agg_prof_tab'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')
+    fluidPage(
+      # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
+      navlistPanel(
+        '',
+        id = 'menu',
+        well=FALSE,
+        widths=c(3,9),
+        # info tab----------------------------------------------------------
+        tabPanel(
+          'Task Info',
+          id = "info_tab_profile",
+          icon = icon('info-circle'), selected = TRUE,
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              h1('Microbiome Profile'),
+              p('Examine the relative abundance microbiome profile at various taxonomic levels.')  
+            )
+          )
+        ), # end info tab
+        # aggregate tab body------------------------------------------------
+        tabPanel(
+          'Aggregate Features',
+          id = 'agg_prof_tab',
+          fluidRow(
+            column(
+              width = 12,
+              br(),br(),
+              mod_aggregate_ui(ns("aggregate_ui_1"))
+            )
+          )
+          
+        ), # end tabItem
+        # filter tab body---------------------------------------------------
+        tabPanel(
+          'Filter features',
+          id = "filter_prof_tab",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))  
+            )
+          )
+        ), # end tabItem
+        # profile tab-------------------------------------------------------
+        tabPanel(
+          'Microbiome Profile',
+          id = "profile_tab",
+          fluidRow(
+            br(),br(),
+            h1('Microbiome Profile'),
+            column(
+              width = 4,
+              # Bar plot controls---------------------------------------------------
+              wellPanel(
+                br(), 
+                tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
+                uiOutput(ns('bar_x_ui')),
+                uiOutput(ns('bar_panel_ui')),
+                radioButtons(ns('bar_y'), 'Response measure:',
+                             c('Relative abundance' = 'rel_abund',
+                               'Read count' = 'cnt_abund')),
+                withBusyIndicatorUI(
+                  actionButton(ns('submit_bar'), "Apply changes"))
+              ),
             ),
-            fixedPanel(
-              radioButtons(ns('aggregate_by'), "Aggregate counts by:",
-                           choices = c('featureID','Kingdom','Phylum','Class',
-                                       'Order','Family','Genus','Species'),
-                           selected = 'Genus'),
-              withBusyIndicatorUI(
-                actionButton(ns('agg_calculate'), "Aggregate")
-              )
+            column(
+              width = 8,
+              h3(textOutput(ns('bar_title'))),
+              p("Observing relative abundance or sequence abundance based on metadata variables. Abundance values can be aggregated at different taxonomic levels. The mean relative abundance is shown when selected group variable contains multiple samples")
+            ),
+            hr()
+          ),
+          fluidRow(
+            DT::dataTableOutput(ns('bar_table'))  %>%
+              shinycssloaders::withSpinner()
+          ),
+          fluidRow(
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_bar"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('bar_plot'), width = '100%', height = '100%') %>%
+                shinycssloaders::withSpinner()
+            )
+          )
+        ), # end profile tab
+        # sparsity tab------------------------------------------------------
+        tabPanel(
+          "Profile Sparsity",
+          id = "sparsity_tab",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              h1("Profile Sparsity"),
+              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity).")    
             )
           ),
-          # filter menu controls------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'filter_prof_tab'",
-            hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')),
-            
-            fixedPanel(
-              radioButtons(ns('asv_select_prompt'), 
-                           "Features to exclude from analysis:",
-                           choices = c('Use all features' = 'all', 
-                                       'Filter features' = 'some'),
-                           selected = 'all'),
-              
-              hidden(
-                div(id = ns('asv_filter_options_ui'),
-                    radioButtons(
-                      ns('asv_filter_options'), 'Filter features by:',
-                      choices = c('read count' = 'asv_by_count',
-                                  'selection' = 'asv_by_select'),
-                      selected = "asv_by_count")
-                )),
-              withBusyIndicatorUI(
-                actionButton(ns('submit_asv'), "Filter features")))  
+          fluidRow(
+            h2('Histogram of the zero content of samples'),
+            column(
+              width=1, style='padding:0px;',
+              mod_download_ui(ns("download_sparse"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('zero_content')) %>%
+                shinycssloaders::withSpinner()
+            )  
           ),
-          # Bar plot controls---------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'profile_tab'",
-            br(), hr(),
-            fixedPanel(
-              width = 225,
-              tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
-              uiOutput(ns('bar_x_ui')),
-              uiOutput(ns('bar_panel_ui')),
-              radioButtons(ns('bar_y'), 'Response measure:',
-                           c('Relative abundance' = 'rel_abund',
-                             'Read count' = 'cnt_abund')),
-              withBusyIndicatorUI(
-                actionButton(ns('submit_bar'), "Apply changes"))  
+          fluidRow(
+            br(),
+            h2('Presence/Absence heatmap'),
+            tags$div(
+              "Count data converted into binary, where 0 = absent and 1 = present can be shown as a heatmap. Samples and features are clustered based on Jaccard distance, and complete linkage."
             ),
+            column(
+              width=1, style='padding:0px;',
+              mod_download_ui(ns("download_binary_hmap"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('binary_hmap'), height='auto') %>%
+                shinycssloaders::withSpinner()
+            )  
           )
-        ) # end sidebar menu
-      ), # end dashbaord sidebar
-      # dashboard body----------------------------------------------------------
-      dashboardBody(
-        box(
-          width = '100%', br(), br(), br(),
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
-          tabItems(
-            # info tab----------------------------------------------------------
-            tabItem(
-              tabName = "info_tab_profile",
-              column(
-                width=12,
-                h1('Microbiome Profile'),
-                p('Examine the relative abundance microbiome profile at various taxonomic levels.')
-              )
-            ), # end info tab
-            # aggregate tab body------------------------------------------------
-            tabItem(
-              tabName = 'agg_prof_tab',
-              mod_aggregate_ui(ns("aggregate_ui_1"))
-            ), # end tabItem
-            # filter tab body---------------------------------------------------
-            tabItem(
-              tabName = "filter_prof_tab",
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
-            ), # end tabItem
-            # profile tab-------------------------------------------------------
-            tabItem(
-              tabName = "profile_tab",
-              column(
-                width = 12,
-                h1('Microbiome Profile'),
-                h3(textOutput(ns('bar_title'))),
-                p("Observing relative abundance or sequence abundance based on metadata variables. Abundance values can be aggregated at different taxonomic levels. The mean relative abundance is shown when selected group variable contains multiple samples"),
-                DT::dataTableOutput(ns('bar_table'))  %>%
-                  shinycssloaders::withSpinner()
-              ),
-              column(
-                width = 12,
-                column(
-                  width = 1, style = 'padding:0px;',
-                  mod_download_ui(ns("download_bar"))
-                ),
-                column(width = 11, style = 'padding:0px;',
-                       shinyjqui::jqui_resizable(
-                         plotlyOutput(ns('bar_plot'), width = '100%', height = 'auto')%>%
-                           shinycssloaders::withSpinner())
-                )
-              )
-            ), # end profile tab
-            # sparsity tab------------------------------------------------------
-            tabItem(
-              tabName = "sparsity_tab",
-              column(
-                width = 12,
-                fluidRow(
-                  h1("Profile Sparsity"),
-                  tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity).")  
-                ),
-                fluidRow(
-                  h2('Histogram of the zero content of samples'),
-                  column(
-                    width=1, style='padding:0px;',
-                    mod_download_ui(ns("download_sparse"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0px;',
-                    plotlyOutput(ns('zero_content')) %>%
-                      shinycssloaders::withSpinner()
-                  )  
-                ),
-                fluidRow(
-                  br(),
-                  h2('Presence/Absence heatmap'),
-                  tags$div(
-                    "Count data converted into binary, where 0 = absent and 1 = present can be shown as a heatmap. Samples and features are clustered based on Jaccard distance, and complete linkage."
-                  ),
-                  column(
-                    width=1, style='padding:0px;',
-                    mod_download_ui(ns("download_binary_hmap"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0px;',
-                    shinyjqui::jqui_resizable(plotlyOutput(ns('binary_hmap'))) %>%
-                      shinycssloaders::withSpinner()
-                  )  
-                )
-              )
-            ),
-            tabItem(
-              tabName = "profile_report_tab",
-              mod_report_ui(ns("profile_report_ui"))
-            ) # end report tab
-          ) # end tabItems
-        ) # end box
-      ) # end dashbaoad body
-    ) # end dashboard Page
+        ),
+        tabPanel(
+          'Report',
+          id = "profile_report_tab",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_report_ui(ns("profile_report_ui"))    
+            )
+          )
+        ) # end report tab
+      ) # end navlistPanel
+    ) # end fluidPage Page
   ) # end taglist
 }
 
@@ -193,17 +168,12 @@ mod_profile_server <- function(input, output, session, improxy){
   bridge <- reactiveValues(dummy=NULL)
   observe({
     bridge$qualfilt_db <- improxy$work_db
-    bridge$agg_input <- list(
-      aggregate_by = input$aggregate_by,
-      agg_calculate = input$agg_calculate
-    )
   })
   # initiate list to pass onto report submodule
   for_report <- reactiveValues()
   
   # store values to pass to report
   observe({
-    req(input$agg_calculate)
     for_report$params <- list(
       # sample filter
       met1 = improxy$work_db$met,
@@ -212,14 +182,10 @@ mod_profile_server <- function(input, output, session, improxy){
     )
   })
   # aggregate features----------------------------------------------------------
-  withBusyIndicatorServer('agg_calculate', 'profile_ui_1', {
-    agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
-    
-  })
+  agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
   
   # store data in reactiveValues to pass onto submodules
   observe({
-    req(input$agg_calculate)
     if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
       
@@ -238,7 +204,6 @@ mod_profile_server <- function(input, output, session, improxy){
   })
   
   observe({
-    req(input$agg_calculate)
     # add aggregate features to report params
     for_report$params$aggregate_by <- agg_output$output$aggregate_by
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
@@ -246,35 +211,21 @@ mod_profile_server <- function(input, output, session, improxy){
   })
   
   # filter features-------------------------------------------------------------
-  # render sidebar controls - filter yes/no
-  observeEvent(input$asv_select_prompt, {
-    toggle("asv_filter_options_ui", condition = input$asv_select_prompt == 'some')
-  })
   
-  # pass in filter menu controls
-  observe({
-    bridge$filter_input <- list(
-      asv_select_prompt = input$asv_select_prompt,
-      asv_filter_options = input$asv_filter_options,
-      submit_asv = input$submit_asv)
-  })
-  
-  withBusyIndicatorServer('submit_asv', 'profile_ui_1', {
-    # submodule returns list of filtered met, asv and tax tables
-    filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
-  })
+  # submodule returns list of filtered met, asv and tax tables
+
+  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
   
   # add filtered data to bridge
   observe({
     bridge$filtered <- filter_output$filtered
   })
-  
+
   # update report params
   observe({
-    req(input$submit_asv)
     #feature filter
-    for_report$params$asv_select_prompt <- input$asv_select_prompt
-    for_report$params$asv_filter_options <- input$asv_filter_options
+    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_filter_options <- filter_output$params$asv_filter_options
     for_report$params$cutoff_method <- filter_output$params$cutoff_method
     for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
     for_report$params$prevalence <- filter_output$params$prevalence
@@ -287,7 +238,7 @@ mod_profile_server <- function(input, output, session, improxy){
     for_report$params$met2 <- filter_output$filtered$met
     for_report$params$tax2 <- filter_output$filtered$tax
   })
-  
+
 
   # render controls bar plot----------------------------------------------------
   output$bar_x_ui <- renderUI({
@@ -304,15 +255,16 @@ mod_profile_server <- function(input, output, session, improxy){
 
 
   # calculate output bar plot---------------------------------------------------
-  output$check <- renderPrint({
-  })
-  bar_data <- eventReactive(input$submit_bar, {
-    
+
+  bar_data <- reactiveVal()
+
+  observeEvent(input$submit_bar, {
+
     out <- bridge$filtered$asv %>%
       gather('sampleID','read_count', -featureID) %>%
       left_join(bridge$filtered$tax, 'featureID') %>%
       left_join(bridge$filtered$met, 'sampleID')
-    
+
     if(input$bar_panel == 'none') {
       out <- out %>%
         # sample total read count
@@ -346,7 +298,7 @@ mod_profile_server <- function(input, output, session, improxy){
                   rel_abund = mean(tax_rel)) %>%
         distinct()
     }
-    out 
+    bar_data(out)
   })
 
   output$bar_title  <- renderText({
@@ -373,7 +325,7 @@ mod_profile_server <- function(input, output, session, improxy){
     }
     out
   })
-  
+
   output$bar_table <- DT::renderDataTable({
     req(input$aggregate_by, input$submit_bar)
     out <- bar_table()
@@ -512,36 +464,40 @@ mod_profile_server <- function(input, output, session, improxy){
       show_grid = TRUE
     )
   })
-  
+
   binary_hmap <- reactive({
     heatmaply::heatmaply(hmap(), node_type = 'heatmap',
                          key.title = NULL)
   })
   # plot heat map
   output$binary_hmap <- renderPlotly({
-    binary_hmap()
+    binary_hmap() 
   })
   
+  
+  output$check <- renderPrint({
+  })
+
   # download data
   for_download3 <- reactiveValues()
   observeEvent(bridge$filtered,{
     req(input$agg_calculate, input$submit_asv)
     for_download3$figure <- binary_hmap()
-    for_download3$fig_data <- as.data.frame(binary_mat()) %>% 
+    for_download3$fig_data <- as.data.frame(binary_mat()) %>%
       tibble::rownames_to_column('featureID')
   })
-  
+
   callModule(mod_download_server, "download_binary_hmap",
-             bridge = for_download3, 'sparsity_hmap', 
+             bridge = for_download3, 'sparsity_hmap',
              dl_options=c('html','csv','RDS','zip'))
-  
-  
+
+
   # send to report
   observeEvent(bridge$filtered, {
     for_report$params$p_zero <- p_zero()
     for_report$params$binary_hmap <- binary_hmap()
   })
-  
+
   # build report
   callModule(mod_report_server, "profile_report_ui", bridge = for_report,
              template = "profile_report",

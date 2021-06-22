@@ -10,67 +10,55 @@
 mod_qualityfilter_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      
-      #sidebar------------------------------------------------------------------
-      dashboardSidebar(
-        sidebarMenu(
+    fluidPage(
+      fluidRow(br(),br()),
+      sidebarLayout(
+        sidebarPanel(
           id = 'menu',
-          br(),
-          tags$div(
-            style = 'text-align: center',
-            tags$b('Input controls')),
-          
-          fixedPanel(
-            radioButtons(ns('sample_select_prompt'), 
-                         "Samples to include in analysis:",
-                         choices = c('Use all samples' = 'all', 
-                                     'Include select samples' = 'include',
-                                     'Exclude select samples' = 'exclude'), 
-                         selected = 'all'),
-            div(
-              style="display:inline-block",
-              withBusyIndicatorUI(
-                actionButton(ns('submit_sample'), "Filter samples")  
-              )
-            ),
-            div(
-              style="display:inline-block;",
-              withBusyIndicatorUI(
-                actionButton(ns('clear_sample'), 
-                             tags$div(title = "Clear selected samples", icon("undo-alt"))
-                )
+          width=3,
+          radioButtons(ns('sample_select_prompt'), 
+                       "Samples to include in analysis:",
+                       choices = c('Use all samples' = 'all', 
+                                   'Include select samples' = 'include',
+                                   'Exclude select samples' = 'exclude'), 
+                       selected = 'all'),
+          div(
+            style="display:inline-block",
+            withBusyIndicatorUI(
+              actionButton(ns('submit_sample'), "Filter samples")  
+            )
+          ),
+          div(
+            style="display:inline-block;",
+            withBusyIndicatorUI(
+              actionButton(ns('clear_sample'), 
+                           tags$div(title = "Clear selected samples", icon("undo-alt"))
               )
             )
           )
-        ) # end sidebar menu
-      ), # end dashboard sidebar
-      dashboardBody(
-        box(width = '100%', height = 'auto', br(),br(), br(),
-            # fluidRow(
-            #   box(width = 12, h3('Check'),
-            #       verbatimTextOutput(ns('check')))),
+        ), # end sidebarPanel
+        mainPanel(
+          width=9,
+          # fluidRow(
+          # box(width = 12, h3('Check'),
+          # verbatimTextOutput(ns('check')))),
             fluidRow(
-              column(
-                width = 12,
-                h1('Filter Samples'), br(),
-                tags$div("It may be desirable to perform analysis on a subset of samples if they are of poor quality or are no longer relevant to the current research question."),
-              
-                br(), br(),
-                hidden(div(
-                  id = ns('sample_filter_div'),
-                  p("Select samples to include/exclude from the table and click 'Filter samples' to apply changes"), br(),
-                  DT::dataTableOutput(ns('sample_options_ui')) 
-                )),
-                h3(textOutput(ns('preview_sample_title'))),
-                DT::dataTableOutput(ns('preview_sample')) %>% 
-                  shinycssloaders::withSpinner()
-              ) # end column 12
+              h1('Filter Samples'), br(),
+              tags$div("It may be desirable to perform analysis on a subset of samples if they are of poor quality or are no longer relevant to the current research question."),
+            
+              br(), br(),
+              hidden(div(
+                id = ns('sample_filter_div'),
+                p("Select samples to include/exclude from the table and click 'Filter samples' to apply changes"), br(),
+                DT::dataTableOutput(ns('sample_options_ui')) 
+              )),
+              h3(textOutput(ns('preview_sample_title'))),
+              DT::dataTableOutput(ns('preview_sample')) %>% 
+                shinycssloaders::withSpinner()
             ) # end fluidRow
-        ) # end box
-      ) # end dashboardBody
-    ) # end dashboardPage
+        ) # end mainPanel
+      ) # end sidebarLayout
+    ) # end fluidPage
   ) # end taglist
 }
     

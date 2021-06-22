@@ -19,9 +19,24 @@
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(
-    wellPanel(width = 12, h3('Subcheck'), br(), verbatimTextOutput(ns('check'))),
-    h1("Principal Coordinate Analysis"),
-    tags$div("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br()),
+    # wellPanel(width = 12, h3('Subcheck'), br(), verbatimTextOutput(ns('check'))),
+    fluidRow(
+      h1("Principal Coordinate Analysis"),
+      column(
+        width = 3,
+        # PCoA menu controls--------------------------------------------------
+        wellPanel(
+          hr(),
+          uiOutput(ns('pcoa_dist_ui')),
+          actionButton(ns('pcoa_calculate'), 'Calculate')  
+        )
+      ),
+      column(
+        width = 9,
+        p("PCoA is a supervised multivariate analysis (a priori knowledge of clusters) that can be used for assessing statistical significance of cluster patterns under a multivariate model.", br())  
+      ),
+      hr()
+    ),
     hidden(div(
       id = ns('pcoa_body_div'),
       h2("Distance Matrix"),
@@ -32,7 +47,7 @@ mod_ov_pcoa_ui <- function(id){
         shinycssloaders::withSpinner(),
       h2('PCoA plot'),
       wellPanel(
-        tags$div(style = 'text_align: center', h3("Plot Parameters")),
+        tags$div(style = 'text_align: center', h4("Plot Parameters")),
         fluidRow(
           # Plot controls
           column(
@@ -46,7 +61,7 @@ mod_ov_pcoa_ui <- function(id){
           column(
             width = 3,
             # score point aesthetics
-            h4("Score points aesthetics"),
+            h4("Points aesthetics"),
             uiOutput(ns('pcoa_pt_colour_ui')),
             hidden(div(id = ns('pcoa_nclust_div'), 
                        uiOutput(ns('pcoa_nclust_ui')))),
@@ -60,7 +75,7 @@ mod_ov_pcoa_ui <- function(id){
           # score label aesthetics
           column(
             width = 3,
-            h4("Score labels aesthetics"),
+            h4("Label aesthetics"),
             uiOutput(ns('pcoa_label_ui')),
             uiOutput(ns('pcoa_lab_colour_ui')),
             sliderInput(ns('pcoa_lab_size'), 'Label size:',
@@ -123,7 +138,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
 
   
   # toggle div for input controls-----------------------------------------------
-  observeEvent(bridge$pcoa_input$pcoa_calculate, {
+  observeEvent(input$pcoa_calculate, {
     show('pcoa_body_div')
   })
   
@@ -135,14 +150,26 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   })
   
   ## render controls - PCoA-----------------------------------------------------
+  # render pcoa distance ui
+  output$pcoa_dist_ui <- renderUI({
+    if(bridge$transform_method == 'percent') choices <- 'bray'
+    else choices <- c("manhattan", "euclidean", "canberra")
+    
+    selectInput(ns('pcoa_dist'), "Distance method",
+                choices = choices,
+                selected = choices[1])
+  })
+  
   output$pcoa_nclust_ui <- renderUI({
     numericInput(ns('pcoa_nclust'), "Number of clusters, k", 
                  value = 2, min = 2, max = nrow(bridge$filtered$met)-1, step = 1)
   })
+  
   output$xPCo_ui <- renderUI({
     numericInput(ns('xPCo'), "Principal Coordinate, x-axis", min = 1, max = length(bridge$filtered$met$sampleID), step = 1,
                  value = 1)
   })
+  
   output$yPCo_ui <- renderUI({
     numericInput(ns('yPCo'), "Principal Coordinate, y-axis", min = 1, max = length(bridge$filtered$met$sampleID), step = 1,
                  value = 2)
@@ -183,9 +210,9 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # sample clustering
   
   ## samples as rows
-  dist_data <- eventReactive(bridge$pcoa_input$pcoa_calculate, {
-    req(bridge$pcoa_input$pcoa_dist)
-    vegan::vegdist(t(bridge$asv_transform), method = bridge$pcoa_input$pcoa_dist)
+  dist_data <- eventReactive(input$pcoa_calculate, {
+    req(input$pcoa_dist)
+    vegan::vegdist(t(bridge$asv_transform), method = input$pcoa_dist)
   })
   
   output$dist_table <- DT::renderDataTable({
@@ -249,7 +276,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # })
   # 
   # calculate principal coordinates
-  pcoa_data <- eventReactive(bridge$pcoa_input$pcoa_calculate, {
+  pcoa_data <- eventReactive(input$pcoa_calculate, {
     out <- tryCatch({
       ape::pcoa(dist_data(), correction = 'cailliez')
     }, error = function(e) {
@@ -260,7 +287,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   })
   
   # extract correction note
-  pcoa_note <- eventReactive(bridge$pcoa_input$pcoa_calculate, {
+  pcoa_note <- eventReactive(input$pcoa_calculate, {
     pcoa_data()$note
   })
 
@@ -399,7 +426,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # download data
   for_download <- reactiveValues()
   observe({
-    req(bridge$pcoa_input$pcoa_dist, bridge$pcoa_input$pcoa_calculate, 
+    req(input$pcoa_dist, input$pcoa_calculate, 
         input$xPCo, input$yPCo)
     for_download$figure <- p_pcoa()
     for_download$fig_data <- pdata_pcoa()
@@ -411,6 +438,7 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
+      pcoa_dist = input$pcoa_dist,
       pcoa_summary = pcoa_summary(),
       p_pcoa = p_pcoa()
     )

@@ -47,14 +47,14 @@ app_server <- function(input, output, session) {
       
       # alpha diversity
       callModule(mod_alpha_server, "alpha_ui_1", cross_module2)
-      
+
       # beta diversity
       callModule(mod_beta_server, "beta_ui_1", cross_module2)
-      
-      # feature proportionality
+
+      # # feature proportionality
       callModule(mod_prop_server, "prop_ui_1", cross_module2)
-      
-      # differential abundance
+      # 
+      # # differential abundance
       callModule(mod_diff_abund_server, "diff_abund_ui_1", cross_module2)
     }
   })

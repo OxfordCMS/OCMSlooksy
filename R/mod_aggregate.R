@@ -12,10 +12,37 @@ mod_aggregate_ui <- function(id){
   tagList(
     h1("Aggregate Features"),
     # wellPanel(width = 12, h3('sub check'), br(), verbatimTextOutput(ns('check'))),
-    h4(textOutput(ns("agg_message"))),
-    tags$div("The number of features collapsed is listed in the 'n_collapse' column"),
-    DT::dataTableOutput(ns('agg_preview_tax')),
-    DT::dataTableOutput(ns('agg_preview_count'))
+    fluidRow(
+      column(
+        width=4,
+        # aggregate menu controls---------------------------------------------
+        wellPanel(
+          selectInput(ns('aggregate_by'), "Aggregate counts by:",
+                      choices = c('featureID','Kingdom','Phylum','Class',
+                                  'Order','Family','Genus','Species'),
+                      selected = 'Genus'),
+          withBusyIndicatorUI(
+            actionButton(ns('agg_calculate'), "Aggregate")
+          )
+        )  
+      ),
+      column(
+        width=8,
+        h4(textOutput(ns("agg_message"))),
+        p("The number of features collapsed is listed in the 'n_collapse' column")
+      ),
+      
+    ),
+    hidden(div(
+      id=ns('agg_result_div'),
+      hr(),
+      h4("Aggregated taxonomy table"),
+      DT::dataTableOutput(ns('agg_preview_tax')) %>%
+        shinycssloaders::withSpinner(),
+      h4("Aggregated count table"),
+      DT::dataTableOutput(ns('agg_preview_count')) %>%
+        shinycssloaders::withSpinner()  
+    ))
   )
 }
     
@@ -29,14 +56,17 @@ mod_aggregate_server <- function(input, output, session, bridge){
 
   })
   
+  observeEvent(input$agg_calculate, {
+    show('agg_result_div')
+  })
   
   output$agg_message <- renderText({
     sprintf("Aggregating feature counts at the %s level",
-            bridge$agg_input$aggregate_by)
+            input$aggregate_by)
   })
   
   # perform aggregation with base aggregate
-  aggregated_count <- eventReactive(bridge$agg_input$agg_calculate, {
+  aggregated_count <- eventReactive(input$agg_calculate, {
     
     # set featureID in count_df to aggregation level
     count_df <- bridge$qualfilt_db$asv %>% arrange(featureID)
@@ -44,9 +74,9 @@ mod_aggregate_server <- function(input, output, session, bridge){
     # copy taxonomy table
     new_featID <- bridge$qualfilt_db$tax %>%
       arrange(featureID) %>%
-      select(featureID, .data[[bridge$agg_input$aggregate_by]]) %>%
-      mutate(newID = .data[[bridge$agg_input$aggregate_by]],
-             newID = ifelse(is.na(newID), paste(bridge$agg_input$aggregate_by, 
+      select(featureID, .data[[input$aggregate_by]]) %>%
+      mutate(newID = .data[[input$aggregate_by]],
+             newID = ifelse(is.na(newID), paste(input$aggregate_by, 
                                                 'NA', sep="."), newID))
     
     # updating count featureID
@@ -64,17 +94,17 @@ mod_aggregate_server <- function(input, output, session, bridge){
   })
   
   # update taxonomy table-------------------------------------------------------
-  aggregated_tax <- eventReactive(bridge$agg_input$agg_calculate, {
+  aggregated_tax <- eventReactive(input$agg_calculate, {
     tax_level <- c('Kingdom','Phylum','Class','Order', 'Family','Genus',
                    'Species','featureID')
     
-    if(bridge$agg_input$aggregate_by != 'featureID') {
+    if(input$aggregate_by != 'featureID') {
       
       # copy tax data over taxa up to aggregated level
       out <- as.data.frame(bridge$qualfilt_db$tax)
       
       # set all tax levels lower than aggregated level to NA
-      ind <- which(tax_level == bridge$agg_input$aggregate_by) + 1
+      ind <- which(tax_level == input$aggregate_by) + 1
       to_na <- tax_level[ind:length(tax_level)]
       
       
@@ -84,7 +114,7 @@ mod_aggregate_server <- function(input, output, session, bridge){
       out$sequence <- NA
       
       # update Taxon column
-      ind <- which(tax_level == bridge$agg_input$aggregate_by)
+      ind <- which(tax_level == input$aggregate_by)
       
       Taxon <- stringr::str_split(out$Taxon, ";", simplify = TRUE)
       
@@ -101,13 +131,13 @@ mod_aggregate_server <- function(input, output, session, bridge){
       
       # record how many ASVs aggregated
       n_collapse <- bridge$qualfilt_db$tax %>%
-        group_by(.data[[bridge$agg_input$aggregate_by]]) %>%
+        group_by(.data[[input$aggregate_by]]) %>%
         summarise(n_collapse = n())
       
-      out <- merge(out, n_collapse, bridge$agg_input$aggregate_by)
+      out <- merge(out, n_collapse, input$aggregate_by)
       
       # set new featureID
-      out$featureID <- out[, bridge$agg_input$aggregate_by]
+      out$featureID <- out[, input$aggregate_by]
       
     } else {
       out <- as.data.frame(bridge$qualfilt_db$tax)
@@ -142,7 +172,7 @@ mod_aggregate_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
-      aggregate_by = bridge$agg_input$aggregate_by,
+      aggregate_by = input$aggregate_by,
       aggregated_count = aggregated_count(),
       aggregated_tax = aggregated_tax()
     )

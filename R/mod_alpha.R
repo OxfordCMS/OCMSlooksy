@@ -12,113 +12,104 @@
 mod_alpha_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      dashboardSidebar(
-        sidebarMenu(
-          id = 'menu', br(),
-          menuItem('Task Info', tabName = 'info_tab_alpha', 
-                   icon = icon('info-circle'), selected = TRUE),
-          menuItem('Filter Features', tabName = 'filter_asv_alpha'),
-          menuItem('\u03B1-Diversity Analysis', tabName = 'alpha_tab'),
-          menuItem('Report', tabName = 'alpha_report_tab'),
-          # filter menu controls--------------------------------------------------
-          conditionalPanel(
-            condition = "input.menu === 'filter_asv_alpha'",
-            br(), hr(),
-            tags$div(
-              style = 'text-align: center',
-              tags$b('Input controls')),
-            
-            fixedPanel(
-              radioButtons(ns('asv_select_prompt'), 
-                           "Features to exclude from analysis:",
-                           choices = c('Use all features' = 'all', 
-                                       'Filter features' = 'some'),
-                           selected = 'all'),
-              
-              hidden(
-                div(id = ns('asv_filter_options_ui'),
-                    radioButtons(
-                      ns('asv_filter_options'), 'Filter features by:',
-                      choices = c('read count' = 'asv_by_count',
-                                  'selection' = 'asv_by_select'),
-                      selected = 'asv_by_count')
-                )),
-              actionButton(ns('submit_asv'), "Filter features"))
-              # withBusyIndicatorUI(
-              #  )  
-          )
-        ) # end sidebar menu
-      ), # end sidebar
-      # dashboard body----------------------------------------------------------
-      dashboardBody(
-        box(
-          width = '100%', br(), br(), br(),
+    fluidPage(
+      navlistPanel(
+        'sidebartitle',
+        id = 'menu',
+        well=FALSE,
+        widths=c(3,9),
           # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
-          tabItems(
-            # info tab body-----------------------------------------------------
-            tabItem(
-              tabName = 'info_tab_overview',
-              column(
-                width = 12,
-                h1("\u03B1-Diversity"),
-                tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation.")  
-              ),
-            ), # end tabItem
-            # filter tab body---------------------------------------------------
-            tabItem(
-              tabName = "filter_asv_alpha",
-              mod_filterfeat_ui(ns("filterfeat_ui_alpha"))
-            ), # end tabItem
-            # alpha tab body----------------------------------------------------
-            tabItem(
-              tabName = 'alpha_tab',
-              column(
-                width = 12,
-                h1("\u03B1-Diversity"),
-                fluidRow(
-                  DT::dataTableOutput(ns('alpha_table'))  %>%
-                    shinycssloaders::withSpinner()
-                ), br(),
-                fluidRow(
-                  width = 12,
-                  DT::dataTableOutput(ns('alpha_test'))  %>%
-                    shinycssloaders::withSpinner()
-                ), br(),
-                fluidRow(
-                  column(
-                    width = 3, br(), br(),
-                    wellPanel(uiOutput(ns('alpha_grp_ui')))
-                  ),
-                  column(
-                    width = 9,
-                    column(
-                      width = 1, style = 'padding:0px;',
-                      mod_download_ui(ns('download_alpha')),
-                    ),
-                    column(
-                      width = 11, style = 'padding:0px;',
-                      shinyjqui::jqui_resizable(
-                        plotlyOutput(ns('alpha_plot'), width = '100%', 
-                                     height= 'auto') %>% 
-                          shinycssloaders::withSpinner()
-                      )
-                    )  
-                  )
-                )
-              )
-            ),
-            # report------------------------------------------------------------
-            tabItem(
-              tabName = "alpha_report_tab",
-              mod_report_ui(ns("alpha_report_ui"))
-            ) # end tabitem
-          ) # end tabItems
+        # info tab body-----------------------------------------------------
+        tabPanel(
+          'Task Info',
+          id = 'info_tab_alpha',
+          icon = icon('info-circle'),
+          fluidRow(
+            br(), br(),
+            column(
+              width = 12,
+              h1("\u03B1-Diversity"),
+              tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation.")    
+            )
+          )
+        ), # end tabPanel
+        # aggregate tab body------------------------------------------------
+        tabPanel(
+          'Aggregate Features',
+          id = 'agg_alpha_tab',
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              br(),br(),
+              mod_aggregate_ui(ns("aggregate_ui_1"))
+            )
+          )
           
-        ) # end box
-      ) # end dashbaoad body
-    ) # end dashboard Page
+        ), # end tabItem
+        # filter tab body---------------------------------------------------
+        tabPanel(
+          'Filter Features',
+          id = "filter_asv_alpha",
+          fluidRow(
+            br(),br(),
+            column(
+              width = 12,
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))  
+            )
+          )
+        ), # end tabPanel
+        # alpha tab body----------------------------------------------------
+        tabPanel(
+          '\u03B1-Diversity Analysis',
+          id = 'alpha_tab',
+          fluidRow(
+            br(),br(),
+            h1("\u03B1-Diversity"),
+              DT::dataTableOutput(ns('alpha_table'))  %>%
+                shinycssloaders::withSpinner()
+          ), br(),
+          fluidRow(
+            DT::dataTableOutput(ns('alpha_test'))  %>%
+              shinycssloaders::withSpinner()
+          ), br(),
+          fluidRow(
+            column(
+              width = 3, br(), br(),
+              wellPanel(uiOutput(ns('alpha_grp_ui')))
+            ),
+            column(
+              width = 9,
+              column(
+                width = 1, style = 'padding:0px;',
+                mod_download_ui(ns('download_alpha')),
+              ),
+              column(
+                width = 11, style = 'padding:0px;',
+                shinyjqui::jqui_resizable(
+                  plotlyOutput(ns('alpha_plot'), width = '100%', 
+                               height= 'auto') %>% 
+                    shinycssloaders::withSpinner()
+                )
+              )  
+            )
+          ) # end fluidRow
+        ), # end tabPanel
+        # report------------------------------------------------------------
+        tabPanel(
+          'Report',
+          id = "alpha_report_tab",
+          fluidRow(
+            br(), br(),
+            column(
+              width = 12,
+              mod_report_ui(ns("alpha_report_ui"))  
+            )
+          )
+          
+        ) # end tabPanel
+      ) # end navlistPanel
+    ) # end fluidPage
   ) # end taglist
 }
     
@@ -128,43 +119,92 @@ mod_alpha_ui <- function(id){
 mod_alpha_server <- function(input, output, session, improxy){
   ns <- session$ns
  
-  # store data in reactiveValues to pass onto submodule-------------------------
-  bridge <- reactiveValues()
+  # initiate value to pass into submodules--------------------------------------
+  bridge <- reactiveValues(dummy=NULL)
   observe({
-    bridge$work_db <- improxy$work_db
+    bridge$qualfilt_db <- improxy$work_db
   })
+  # initiate list to pass onto report submodule
+  for_report <- reactiveValues()
   
-  # fitler features-------------------------------------------------------------
-  # render sidebar controls - filter yes/no
-  observeEvent(input$asv_select_prompt, {
-    toggle("asv_filter_options_ui", condition = input$asv_select_prompt == 'some')
-  })
-  
-  # pass in filter menu controls
-  bridge$filter_input <- reactiveValues()
+  # store values to pass to report
   observe({
-    bridge$filter_input$asv_select_prompt <- input$asv_select_prompt
-    bridge$filter_input$asv_filter_options <- input$asv_filter_options
-    bridge$filter_input$submit_asv <- input$submit_asv
+    for_report$params <- list(
+      # sample filter
+      met1 = improxy$work_db$met,
+      sample_select_prompt = improxy$work_db$sample_select_prompt,
+      sample_select = improxy$work_db$sample_select
+    )
   })
   
-  withBusyIndicatorServer('submit_asv', 'alpha_ui_1', {
-    cross_mod <- callModule(mod_filterfeat_server, "filterfeat_ui_alpha", bridge=bridge)
+  # aggregate features----------------------------------------------------------
+  agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
+  
+  # store data in reactiveValues to pass onto submodules
+  observe({
+    if(!is.null(agg_output$output)) {
+      tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
+      
+      # add aggregate features to bridge to be passed to submodules
+      bridge$work_db <- list(
+        met = improxy$work_db$met,
+        asv = agg_output$output$aggregated_count,
+        tax = tax_entry
+      )
+      
+    } else { 
+      # agg_output starts out as NULL initially. else statement stops that from causing app to crash
+      bridge$work_db <- 'tempstring'
+    }
+    
   })
   
-
+  observe({
+    # add aggregate features to report params
+    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregated_count <- agg_output$output$aggregated_count
+    for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
+  })
+  # filter features-------------------------------------------------------------
+  
+  # submodule returns list of filtered met, asv and tax tables
+  
+  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
+  
+  # add filtered data to bridge
+  observe({
+    bridge$filtered <- filter_output$filtered
+  })
+  
+  # update report params
+  observe({
+    #feature filter
+    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_filter_options <- filter_output$params$asv_filter_options
+    for_report$params$cutoff_method <- filter_output$params$cutoff_method
+    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
+    for_report$params$prevalence <- filter_output$params$prevalence
+    for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
+    for_report$params$asv_remove <- filter_output$params$asv_remove
+    for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot
+    for_report$params$prev_read_plot <- filter_output$params$prev_read_plot
+    for_report$params$empty_sample <- filter_output$params$empty_sample
+    for_report$params$empty_asv <- filter_output$params$empty_asv
+    for_report$params$met2 <- filter_output$filtered$met
+    for_report$params$tax2 <- filter_output$filtered$tax
+  })
   
   # render controls - alpha diversity-------------------------------------------
   output$alpha_grp_ui <- renderUI({
     radioButtons(ns('alpha_grp'), "Compare Sample Groups",
-                 choices = colnames(cross_mod$filtered$met), selected = 'sampleID')
+                 choices = colnames(bridge$filtered$met), selected = 'sampleID')
   })
   
   # calculate alpha diversity---------------------------------------------------
   
   alpha_result <- reactive({
     req(input$alpha_grp)
-    alpha_data <- cross_mod$filtered$asv %>% 
+    alpha_data <- bridge$filtered$asv %>% 
       column_to_rownames('featureID')
     
     shannon <- vegan::diversity(alpha_data,index = 'shannon',
@@ -190,14 +230,14 @@ mod_alpha_server <- function(input, output, session, improxy){
   # determine valid stat test
   grp_tally <- reactive({
     req(input$alpha_grp)
-    out <- table(cross_mod$filtered$met[,input$alpha_grp])
+    out <- table(bridge$filtered$met[,input$alpha_grp])
     if(length(out) == 0) out <- 0
     out
   })
   
   stat_test <- reactive({
     print(grp_tally())
-    print(unique(cross_mod$filtered$met[,input$alpha_grp]))
+    print(unique(bridge$filtered$met[,input$alpha_grp]))
     if(length(grp_tally()) == 2) 'wilcox.test'
     else 'kruskal.test'
   })
@@ -211,7 +251,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(cross_mod$filtered$met %>% 
+      inner_join(bridge$filtered$met %>% 
                    gather('meta_variable','grouping', -sampleID),
                  'sampleID') %>%
       filter(meta_variable == input$alpha_grp)
@@ -224,7 +264,7 @@ mod_alpha_server <- function(input, output, session, improxy){
   
   # show tables
   output$alpha_table <- DT::renderDataTable({
-    out <- cross_mod$filtered$met %>%
+    out <- bridge$filtered$met %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID')
     DT::datatable(out, extensions = 'Buttons', 
@@ -260,7 +300,7 @@ mod_alpha_server <- function(input, output, session, improxy){
   pdata_alpha <- eventReactive(input$alpha_grp, {
     
     # set xorder based on shannon_d
-    xorder <- cross_mod$filtered$met %>%
+    xorder <- bridge$filtered$met %>%
       mutate_all(as.character) %>%
       arrange(sampleID) %>%
       inner_join(alpha_result(), 'sampleID') %>%
@@ -273,7 +313,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
-      inner_join(cross_mod$filtered$met %>% mutate_all(as.character), 'sampleID') %>%
+      inner_join(bridge$filtered$met %>% mutate_all(as.character), 'sampleID') %>%
       group_by(alpha_metric, .data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value)) %>%
       distinct(.data[[input$alpha_grp]], alpha_metric, alpha_value, alpha_avg) %>%
@@ -283,7 +323,7 @@ mod_alpha_server <- function(input, output, session, improxy){
       # re-calculate comparison statistic
       compare_stat <- alpha_result() %>%
         gather('alpha_metric', 'alpha_value', -sampleID) %>%
-        inner_join(cross_mod$filtered$met %>% 
+        inner_join(bridge$filtered$met %>% 
                      gather('meta_variable','grouping', -sampleID),
                    'sampleID') %>%
         filter(meta_variable == input$alpha_grp)
@@ -334,7 +374,14 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   output$alpha_plot <- renderPlotly({
-    ggplotly(p_alpha())
+    out <- plotly_build(p_alpha())
+    out$x$data <- lapply(out$x$data, FUN = function(x) {
+      x$marker = list(color = "rgba(0,0,0,1)",
+                      outliercolor = "rgba(0,0,0,0)", 
+                      line = list(outliercolor='rgba(0,0,0,0)'))
+      return(x)
+    })
+    out
   })
   
   
@@ -363,17 +410,17 @@ mod_alpha_server <- function(input, output, session, improxy){
                               sample_select = improxy$work_db$sample_select,
                               asv_select_prompt = input$asv_select_prompt,
                               asv_filter_options = input$asv_filter_options,
-                              cutoff_method = cross_mod$params$cutoff_method,
-                              asv_cutoff = cross_mod$params$asv_cutoff,
-                              prevalence = cross_mod$params$prevalence,
-                              asv_cutoff_msg = cross_mod$params$asv_cutoff_msg,
-                              asv_remove = cross_mod$params$asv_remove,
-                              prev_agg_plot = cross_mod$params$prev_agg_plot,
-                              prev_read_plot = cross_mod$params$prev_read_plot,
-                              empty_sample = cross_mod$params$empty_sample,
-                              empty_asv = cross_mod$params$empty_asv,
-                              met2 = cross_mod$filtered$met,
-                              tax2 = cross_mod$filtered$tax,
+                              cutoff_method = bridge$params$cutoff_method,
+                              asv_cutoff = bridge$params$asv_cutoff,
+                              prevalence = bridge$params$prevalence,
+                              asv_cutoff_msg = bridge$params$asv_cutoff_msg,
+                              asv_remove = bridge$params$asv_remove,
+                              prev_agg_plot = bridge$params$prev_agg_plot,
+                              prev_read_plot = bridge$params$prev_read_plot,
+                              empty_sample = bridge$params$empty_sample,
+                              empty_asv = bridge$params$empty_asv,
+                              met2 = bridge$filtered$met,
+                              tax2 = bridge$filtered$tax,
                               alpha_result = alpha_result(),
                               validation_msg = validation_msg(),
                               p_alpha = p_alpha()

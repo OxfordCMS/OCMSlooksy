@@ -116,7 +116,6 @@ mod_transform_server <- function(input, output, session, bridge){
     
     DT::datatable(asv_transform(),
                   extensions = list('Buttons'),
-                  rownames = FALSE,
                   options = list(
                     scroller = TRUE,
                     scrollX = TRUE,

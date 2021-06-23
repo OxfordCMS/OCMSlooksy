@@ -335,8 +335,7 @@ mod_ov_diss_server <- function(input, output, session, bridge){
                     select(-.y., -p.format, ), extensions = 'Buttons',
                   rownames = FALSE,
                   options = list(scrollX = TRUE, dom = 'Blfrtip',
-                                 buttons = c('copy','csv'))) %>%
-      DT::formatRound(column = 'p', digits = 3)
+                                 buttons = c('copy','csv')))
   })
 
 
@@ -368,8 +367,8 @@ mod_ov_diss_server <- function(input, output, session, bridge){
                                             p.adjust.method = 'BH')
 
       out <- out %>%
-        left_join(compare_stat %>% select(panel, p.adj), 'panel') %>%
-        mutate(panel_text = sprintf("%s\np.adj=%0.3f", panel, p.adj))
+        left_join(compare_stat %>% select(panel, p, p.adj), 'panel') %>%
+        mutate(panel_text = sprintf("%s\np=%0.3f, p.adj=%0.3f", panel, p, p.adj))
     } else {
       out <- mutate(out, panel_text = panel)
     }

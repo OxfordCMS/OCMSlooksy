@@ -19,16 +19,16 @@ app_server <- function(input, output, session) {
   # 
   # hide qc tab if parameter table not detected
   observe({
-    if('parameter_table' %in% names(cross_module1$data_db)) {
+    req(cross_module1$import_status)
+    if(cross_module1$import_status == "Data validation successful" && 
+      'parameter_table' %in% names(cross_module1$data_db)) {
       showTab(inputId = 'tabs', target = 'qc')
       callModule(mod_qc_server, "qc_ui_1", cross_module1)    
-    }
-    else {
-      hideTab(inputId = 'tabs', target = "qc")
     }
   })
   
   observe({
+    hideTab(inputId = 'tabs', target = "qc")
     hideTab(inputId = 'tabs', target = 'qualityfilter')
     hideTab(inputId = 'tabs', target = "Analysis tasks")
   })

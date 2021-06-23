@@ -1,6 +1,6 @@
 ---
 title: "Differential Abundance Report"
-date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: output_format
 always_allow_html: true
 params:

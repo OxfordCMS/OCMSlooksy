@@ -425,14 +425,16 @@ mod_diff_abund_server <- function(input, output, session, improxy){
       mutate(featureID = fct_reorder(featureID, desc(log2FoldChange)))
   })
   
-  p_lfc <- reactive(
+  p_lfc <- reactive({
+    validate(need(nrow(lfc_pdata()) > 0, 
+                  "No significant features at current cutoff thresholds"))
     ggplot(lfc_pdata(), 
            aes(x = log2FoldChange, y=featureID, colour = padj)) +
       geom_vline(xintercept = 0, linetype = 'dashed', colour='grey75') +
       geom_point() +
       theme_classic(12) +
       theme(axis.title.y = element_blank())
-  )
+  })
   
   output$lfc_plot <- renderPlotly(
     ggplotly(p_lfc())

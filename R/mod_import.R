@@ -25,8 +25,8 @@ mod_import_ui <- function(id){
   tagList(
     fluidPage(
       navlistPanel(
-        'sidebartitle',
-        id = 'menu',
+        '',
+        id = 'import_menu',
         well=FALSE,
         widths=c(3,9),
         # fluidRow(
@@ -34,7 +34,7 @@ mod_import_ui <- function(id){
         
         tabPanel(
           'Upload Data Set',
-          id = 'upload_data_tab',
+          value = 'upload_data_tab',
           fluidRow(
             br(), br(),
             h1('Upload Data Set'),
@@ -82,7 +82,7 @@ mod_import_ui <- function(id){
         # Preview of metadata-------------------------------------------------
         tabPanel(
           'Preview metadata',
-          id = 'metadata_menu_tab',
+          value = 'metadata_menu_tab',
           fluidRow(
             br(), br(),
             h1('Preview Metadata'),
@@ -93,7 +93,7 @@ mod_import_ui <- function(id){
         # Preview of read count-----------------------------------------------
         tabPanel(
           'Preview counts',
-          id = 'asv_menu_tab',
+          value = 'asv_menu_tab',
           fluidRow(
             br(), br(),
             h1('Preview Sequence Counts'),
@@ -103,7 +103,7 @@ mod_import_ui <- function(id){
         ),
         tabPanel(
           'Preview Taxonomy',
-          id = 'tax_menu_tab',
+          value = 'tax_menu_tab',
           fluidRow(
             br(), br(),
             h1('Preview of taxonomy'),
@@ -131,18 +131,12 @@ mod_import_server <- function(input, output, session, parent_session) {
        (!is.null(input$metadata_file) | !is.null(input$db_file$datapath))))
   })
   observe({
-    toggleState('metadata_menu_tab', 
-                condition = import_status() == 'Data validation successful')
-    # # show menu items
-    # if(import_status() == "Data validation successful") {
-    #   showTab(inputId = 'menu', target = 'metadata_menu_tab')
-    #   showTab(inputId = 'menu', target = "asv_menu_tab")
-    #   showTab(inputId = 'menu', target = "tax_menu_tab")
-    # } else {
-    #   hideTab(inputId = 'menu', target = 'metadata_menu_tab')
-    #   hideTab(inputId = 'menu', target = "asv_menu_tab")
-    #   hideTab(inputId = 'menu', target = "tax_menu_tab")
-    # }
+    toggle(condition = import_status() == 'Data validation successful',
+           selector="#import_menu li a[data-value=metadata_menu_tab]")
+    toggle(condition = import_status() == 'Data validation successful',
+           selector="#import_menu li a[data-value=asv_menu_tab]")
+    toggle(condition = import_status() == 'Data validation successful',
+           selector="#import_menu li a[data-value=tax_menu_tab]")
   })
   
   data_set <- eventReactive(input$launch, {
@@ -281,8 +275,10 @@ mod_import_server <- function(input, output, session, parent_session) {
     } else if(!identical(metaID(), dbID())) {
       # sampleID matches merge_abundance_id samples exactly
       import_status(sprintf("Uh oh! sampleID in metadata do not match samples in uploaded database.\n%s", msg()))
+    } else if(any(grepl("^[0-9]", colnames(data_set()$metadata)))) {
+      import_status("Column names in metadata cannot begin with a number")
     }
-    if(class(data_set()) == 'list') {
+    else if(class(data_set()) == 'list') {
       import_status("Data validation successful")
     }
   })
@@ -335,6 +331,7 @@ mod_import_server <- function(input, output, session, parent_session) {
   # Summary of metadata-------------------------------------------------------
   output$metadata_preview <- DT::renderDT({
     DT::datatable(met(), extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
@@ -344,7 +341,8 @@ mod_import_server <- function(input, output, session, parent_session) {
     out <- asv_tax() %>%
       spread(sampleID, read_count)
     
-    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')), 
+    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')),
+                  rownames = FALSE,
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE, 
@@ -357,7 +355,8 @@ mod_import_server <- function(input, output, session, parent_session) {
   output$tax_preview <- DT::renderDT({
     
     DT::datatable(tax() %>% relocate(sequence, .after=last_col()), 
-                  extensions = 'Buttons', 
+                  extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(
                     pageLength = 30,
                     scrollX = TRUE, 

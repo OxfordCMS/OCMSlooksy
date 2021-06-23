@@ -85,6 +85,7 @@ mod_beta_ui <- function(id){
         'PCoA',
         value = "pcoa_tab",
         fluidRow(
+          br(),br(),
           column(
             width=12,
             mod_ov_pcoa_ui(ns("ov_pcoa_ui_1"))    

@@ -14,7 +14,7 @@ mod_alpha_ui <- function(id){
   tagList(
     fluidPage(
       navlistPanel(
-        'sidebartitle',
+        '',
         id = 'menu',
         well=FALSE,
         widths=c(3,9),
@@ -294,8 +294,7 @@ mod_alpha_server <- function(input, output, session, improxy){
                     select(-.y., -p.format, ), extensions = 'Buttons', 
                   rownames = FALSE,
                   options = list(scrollX = TRUE, dom = 'Blfrtip', 
-                                 buttons = c('copy','csv'))) %>%
-      DT::formatRound(column = 'p', digits = 3)
+                                 buttons = c('copy','csv')))
   })
   
   # plot alpha diversity
@@ -333,11 +332,14 @@ mod_alpha_server <- function(input, output, session, improxy){
       compare_stat <- ggpubr::compare_means(formula = alpha_value~grouping, 
                                             data = compare_stat,
                                             group.by = c('alpha_metric'),
-                                            method = stat_test(), p.adjust.method = 'BH')
+                                            method = stat_test(), 
+                                            p.adjust.method = 'BH')
       
       out <- out %>%
-        left_join(compare_stat %>% select(alpha_metric, p.adj), 'alpha_metric') %>%
-        mutate(panel = sprintf("%s\np.adj=%0.3f", alpha_metric, p.adj))
+        left_join(compare_stat %>% select(alpha_metric, p, p.adj), 
+                  'alpha_metric') %>%
+        mutate(panel = sprintf("%s\npj=%0.3f, p.adj=%0.3f", 
+                               alpha_metric, p, p.adj))
     }
       
     out
@@ -404,32 +406,14 @@ mod_alpha_server <- function(input, output, session, improxy){
   #   print(summary(for_report$params))
   # })
   # initiate list to pass onto report submodule
-  for_report <- reactiveValues()
   observe({
-    for_report$params <- list(met1 = improxy$work_db$met,
-                              tax1 = improxy$work_db$tax,
-                              sample_select_prompt = improxy$work_db$sample_select_prompt,
-                              sample_select = improxy$work_db$sample_select,
-                              asv_select_prompt = input$asv_select_prompt,
-                              asv_filter_options = input$asv_filter_options,
-                              cutoff_method = bridge$params$cutoff_method,
-                              asv_cutoff = bridge$params$asv_cutoff,
-                              prevalence = bridge$params$prevalence,
-                              asv_cutoff_msg = bridge$params$asv_cutoff_msg,
-                              asv_remove = bridge$params$asv_remove,
-                              prev_agg_plot = bridge$params$prev_agg_plot,
-                              prev_read_plot = bridge$params$prev_read_plot,
-                              empty_sample = bridge$params$empty_sample,
-                              empty_asv = bridge$params$empty_asv,
-                              met2 = bridge$filtered$met,
-                              tax2 = bridge$filtered$tax,
-                              alpha_result = alpha_result(),
-                              validation_msg = validation_msg(),
-                              p_alpha = p_alpha()
-    )
+    for_report$params$alpha_result <- alpha_result()
+    for_report$params$validation_msg <- validation_msg()
+    for_report$params$p_alpha <- p_alpha()
   })
   
   observe({
+    req(validation_msg())
     if(validation_msg() == 'valid') {
       for_report$params[['alpha_stat']] <- alpha_stat()
     }

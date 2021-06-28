@@ -699,21 +699,25 @@ withBusyIndicatorServer('submit_asv', 'filterfeat_ui_1', {
                                  spread(sampleID, read_count),
                                tax = tax() %>%
                                  filter(featureID %in% asv_filtered()$featureID))
-
+  })
+  observe({
     cross_mod$params <- list(
-      asv_select_prompt = input$asv_select_prompt,
-      asv_filter_options = input$asv_filter_options,
-      cutoff_method = input$cutoff_method,
-      asv_cutoff = input$asv_cutoff,
-      prevalence = input$prevalence,
-      asv_cutoff_msg = asv_cutoff_msg(),
-      to_keep = filter_result$to_keep,
-      asv_remove = filter_result$asv_remove,
-      prev_agg_plot = prev_agg_plot(),
-      prev_read_plot = prev_read_plot(),
-      empty_sample = empty_sample(),
-      empty_asv = empty_asv()
+      filter_submit = input$submit_asv,
+      asv_select_prompt = input$asv_select_prompt
     )
+  })
+  observe({  
+    cross_mod$params$asv_filter_options <- input$asv_filter_options
+    cross_mod$params$cutoff_method <- input$cutoff_method
+    cross_mod$params$asv_cutoff <- input$asv_cutoff
+    cross_mod$params$prevalence <- input$prevalence
+    cross_mod$params$asv_cutoff_msg <- asv_cutoff_msg()
+    cross_mod$params$to_keep <- filter_result$to_keep
+    cross_mod$params$asv_remove <- filter_result$asv_remove
+    cross_mod$params$prev_agg_plot <- prev_agg_plot()
+    cross_mod$params$prev_read_plot <- prev_read_plot()
+    cross_mod$params$empty_sample <- empty_sample()
+    cross_mod$params$empty_asv <- empty_asv()
   })
   return(cross_mod)
 }

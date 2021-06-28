@@ -11,9 +11,16 @@ mod_prop_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
+      inlineCSS("
+.nav li a.disabled {
+  background-color: #aaa !important;
+  color: #333 !important;
+  cursor: not-allowed !important;
+  border-color: #aaa !important;
+}"),
       navlistPanel(
         '',
-        id = 'menu',
+        id = 'prop_menu',
         well=FALSE,
         widths=c(3,9),
         # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
@@ -34,7 +41,7 @@ mod_prop_ui <- function(id){
         # aggregate tab body------------------------------------------------
         tabPanel(
           'Aggregate Features',
-          value = 'tab_agg_prop',
+          value = 'agg_prop_tab',
           fluidRow(
             br(),br(),
             column(
@@ -46,7 +53,7 @@ mod_prop_ui <- function(id){
         # filter tab body---------------------------------------------------
         tabPanel(
           'Filter Features',
-          value = "tab_filter_prop",
+          value = "filter_prop_tab",
           fluidRow(
             br(),br(),
             column(
@@ -253,6 +260,22 @@ mod_prop_ui <- function(id){
 mod_prop_server <- function(input, output, session, improxy){
   ns <- session$ns
   
+  # enable tabs sequentially----------------------------------------------------
+  observe({
+    toggleState(selector = "#prop_menu li a[data-value=filter_prop_tab]",
+                condition = !is.null(agg_output$output) &&
+                  agg_output$output$agg_calculate > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#prop_menu li a[data-value=prop_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#prop_menu li a[data-value=prop_report_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
   # initiate value to pass into submodules--------------------------------------
   bridge <- reactiveValues(transform_method = NULL, aggregate_by = NULL)
   observe({
@@ -414,10 +437,8 @@ mod_prop_server <- function(input, output, session, improxy){
   rho_range <- reactive({
     req(input$rho_filter)
     rho_val <- propr:::proprPairs(propr_obj()@matrix)
-    print(head(rho_val))
-    print(dim(rho_val))
+
     if(input$rho_filter != 'all') {
-      print('filter by rho')
       req(input$rho_cutoff, input$rho_operator)
       p_initial <- ggplot(rho_val, aes(x = prop)) +
         geom_histogram(alpha=0.6, fill=NA, colour='black')
@@ -451,7 +472,6 @@ mod_prop_server <- function(input, output, session, improxy){
     }
     
     if(input$rho_filter == 'all') {
-      print('show all')
       p <- ggplot(rho_val, aes(x = prop)) +
         geom_histogram(alpha=0.6, fill='cornflowerblue', colour='black') +
         labs(subtitle=sprintf('%s feature pairs meet threshold', length(pairs_keep())))

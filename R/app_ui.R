@@ -5,7 +5,6 @@ app_ui <- function() {
   tagList(
     # Leave this function for adding external resources
     golem_add_external_resources(),
-    shinyjs::useShinyjs(),
     # List the first level UI elements here 
     # h3('Check'),
     # verbatimTextOutput('check'),
@@ -46,20 +45,26 @@ app_ui <- function() {
         tabPanel(title = "\u03B2-Diversity", value = 'beta',
                 icon = icon("project-diagram"), mod_beta_ui("beta_ui_1")),
         
-        # Feature Proportionality----------------------------------------
-        tabPanel(title = "Feature Comparsion", value = 'prop',
-                icon = icon("chart-line"), mod_prop_ui("prop_ui_1")),
-        
         # Diffential abundance-------------------------------------------
         tabPanel(title = "Differential Abundance", value = 'diff',
-                icon = icon("balance-scale-left"), 
-                mod_diff_abund_ui("diff_abund_ui_1"))
+                 icon = icon("balance-scale-left"), 
+                 mod_diff_abund_ui("diff_abund_ui_1")),
+        
+        # Feature Proportionality----------------------------------------
+        tabPanel(title = "Feature Comparsion", value = 'prop',
+                icon = icon("chart-line"), mod_prop_ui("prop_ui_1"))
+        
       ) # end navbarMenu
     ) # end navbarpage
   )
 }
 
+
+
 #' @import shiny
+#' @importFrom golem add_resource_path activate_js 
+#' @importFrom golem favicon bundle_resources
+#' @noRd
 golem_add_external_resources <- function(){
   
   tags$link(rel="stylesheet", type="text/css", href="www/custom.css")
@@ -69,7 +74,8 @@ golem_add_external_resources <- function(){
  
   tags$head(
     golem::activate_js(),
-    golem::favicon()
+    golem::favicon(),
+    shinyjs::useShinyjs()
     # Add here all the external resources
     # If you have a custom.css in the inst/app/www
     # Or for example, you can add shinyalert::useShinyalert() here

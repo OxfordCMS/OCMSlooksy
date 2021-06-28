@@ -11,16 +11,23 @@ mod_profile_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
+      inlineCSS("
+.nav li a.disabled {
+  background-color: #aaa !important;
+  color: #333 !important;
+  cursor: not-allowed !important;
+  border-color: #aaa !important;
+}"),
       # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
       navlistPanel(
         '',
-        id = 'menu',
+        id = 'profile_menu',
         well=FALSE,
         widths=c(3,9),
         # info tab----------------------------------------------------------
         tabPanel(
           'Task Info',
-          id = "info_tab_profile",
+          value = "info_tab_profile",
           icon = icon('info-circle'), selected = TRUE,
           fluidRow(
             br(),br(),
@@ -34,7 +41,7 @@ mod_profile_ui <- function(id){
         # aggregate tab body------------------------------------------------
         tabPanel(
           'Aggregate Features',
-          id = 'agg_prof_tab',
+          value = 'agg_prof_tab',
           fluidRow(
             column(
               width = 12,
@@ -47,7 +54,7 @@ mod_profile_ui <- function(id){
         # filter tab body---------------------------------------------------
         tabPanel(
           'Filter features',
-          id = "filter_prof_tab",
+          value = "filter_prof_tab",
           fluidRow(
             br(),br(),
             column(
@@ -59,7 +66,7 @@ mod_profile_ui <- function(id){
         # profile tab-------------------------------------------------------
         tabPanel(
           'Microbiome Profile',
-          id = "profile_tab",
+          value = "profile_tab",
           fluidRow(
             br(),br(),
             h1('Microbiome Profile'),
@@ -104,7 +111,7 @@ mod_profile_ui <- function(id){
         # sparsity tab------------------------------------------------------
         tabPanel(
           "Profile Sparsity",
-          id = "sparsity_tab",
+          value = "sparsity_tab",
           fluidRow(
             br(),br(),
             column(
@@ -144,7 +151,7 @@ mod_profile_ui <- function(id){
         ),
         tabPanel(
           'Report',
-          id = "profile_report_tab",
+          value = "profile_report_tab",
           fluidRow(
             br(),br(),
             column(
@@ -164,6 +171,27 @@ mod_profile_ui <- function(id){
 mod_profile_server <- function(input, output, session, improxy){
   ns <- session$ns
   
+  # enable tabs sequentially----------------------------------------------------
+  observe({
+    toggleState(selector = "#profile_menu li a[data-value=filter_prof_tab]",
+                condition = !is.null(agg_output$output) &&
+                  agg_output$output$agg_calculate > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#profile_menu li a[data-value=profile_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#profile_menu li a[data-value=sparsity_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#profile_menu li a[data-value=profile_report_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
   # initiate value to pass into submodules--------------------------------------
   bridge <- reactiveValues(dummy=NULL)
   observe({

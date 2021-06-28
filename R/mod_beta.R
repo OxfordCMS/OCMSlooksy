@@ -13,6 +13,13 @@ mod_beta_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
+      inlineCSS("
+.nav li a.disabled {
+  background-color: #aaa !important;
+  color: #333 !important;
+  cursor: not-allowed !important;
+  border-color: #aaa !important;
+}"),
       # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
       navlistPanel(
         '',
@@ -35,7 +42,7 @@ mod_beta_ui <- function(id){
       # aggregate tab body------------------------------------------------
       tabPanel(
         'Aggregate Features',
-        value = 'agg_prof_tab',
+        value = 'agg_beta_tab',
         fluidRow(
           br(),br(),
           column(
@@ -47,7 +54,7 @@ mod_beta_ui <- function(id){
       # filter tab body---------------------------------------------------
       tabPanel(
         'Filter Features',
-        value = "filter_prof_tab",
+        value = "filter_beta_tab",
         fluidRow(
           br(),br(),
           column(
@@ -59,7 +66,7 @@ mod_beta_ui <- function(id){
       # transform tab body------------------------------------------------
       tabPanel(
         'Read Count Transformation',
-        value = 'transform_asv',
+        value = 'transform_tab',
         fluidRow(
           br(),br(),
           column(
@@ -70,16 +77,16 @@ mod_beta_ui <- function(id){
       ), # end tabPanel
       # Dissimilarity body------------------------------------------------
       tabPanel(
-              'Sample Dissimilarity',
-              value = "diss_tab",
-              fluidRow(
-                br(),br(),
-                column(
-                  width = 12,
-                  mod_ov_diss_ui(ns("ov_diss_ui_1"))
-                )
-              )
-            ), # end tabPanel
+        'Sample Dissimilarity',
+        value = "diss_tab",
+        fluidRow(
+          br(),br(),
+          column(
+            width = 12,
+            mod_ov_diss_ui(ns("ov_diss_ui_1"))
+          )
+        )
+      ), # end tabPanel
       # PCoA body----------------------------------------------------------
       tabPanel(
         'PCoA',
@@ -137,6 +144,42 @@ mod_beta_ui <- function(id){
 mod_beta_server <- function(input, output, session, improxy){
   ns <- session$ns
   
+  # enable tabs sequentially----------------------------------------------------
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=filter_beta_tab]",
+                condition = !is.null(agg_output$output) &&
+                  agg_output$output$agg_calculate > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=transform_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=diss_tab]",
+                condition = transform_output$output$transform_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=pcoa_tab]",
+                condition = transform_output$output$transform_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=pca_tab]",
+                condition = transform_output$output$transform_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=permanova_tab]",
+                condition = transform_output$output$transform_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#beta_menu li a[data-value=beta_report_tab]",
+                condition = transform_output$output$transform_submit > 0)
+  })
   # initiate value to pass into submodules--------------------------------------
   bridge <- reactiveValues(transform_method = NULL)
   observe({
@@ -227,10 +270,8 @@ mod_beta_server <- function(input, output, session, improxy){
     for_report$params$asv_transform <- transform_output$output$asv_transform
   })
 
-  output$check <- renderPrint({
-    print(bridge$transform_method)
-    print(transform_output$output$transform_method)
-  })
+  # output$check <- renderPrint({
+  # })
   # render dissimilarity and pca tabsitem--------------------------------------
   observe({
     req(bridge$transform_method)

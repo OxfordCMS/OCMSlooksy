@@ -52,9 +52,8 @@ mod_aggregate_ui <- function(id){
 mod_aggregate_server <- function(input, output, session, bridge){
   ns <- session$ns
   
-  output$check <- renderPrint({
-
-  })
+  # output$check <- renderPrint({
+  # })
   
   observeEvent(input$agg_calculate, {
     show('agg_result_div')
@@ -174,6 +173,7 @@ mod_aggregate_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
+      agg_calculate = input$agg_calculate,
       aggregate_by = input$aggregate_by,
       aggregated_count = aggregated_count(),
       aggregated_tax = aggregated_tax()

@@ -13,30 +13,36 @@ mod_alpha_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
+      inlineCSS("
+.nav li a.disabled {
+  background-color: #aaa !important;
+  color: #333 !important;
+  cursor: not-allowed !important;
+  border-color: #aaa !important;
+}"),
+      # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
       navlistPanel(
         '',
-        id = 'menu',
+        id = 'alpha_menu',
         well=FALSE,
         widths=c(3,9),
-          # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
         # info tab body-----------------------------------------------------
         tabPanel(
           'Task Info',
-          id = 'info_tab_alpha',
+          value = 'info_tab_alpha',
           icon = icon('info-circle'),
           fluidRow(
             br(), br(),
             column(
               width = 12,
               h1("\u03B1-Diversity"),
-              tags$div("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon entropy and Simpson index are measures of uncertainty in the species identity of a sample [Jost 2006]. Diversity measures, such as Shannon's Diveristy and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation.")    
             )
           )
         ), # end tabPanel
         # aggregate tab body------------------------------------------------
         tabPanel(
           'Aggregate Features',
-          id = 'agg_alpha_tab',
+          value = 'agg_alpha_tab',
           fluidRow(
             br(),br(),
             column(
@@ -50,7 +56,7 @@ mod_alpha_ui <- function(id){
         # filter tab body---------------------------------------------------
         tabPanel(
           'Filter Features',
-          id = "filter_asv_alpha",
+          value = "filter_asv_alpha",
           fluidRow(
             br(),br(),
             column(
@@ -62,10 +68,15 @@ mod_alpha_ui <- function(id){
         # alpha tab body----------------------------------------------------
         tabPanel(
           '\u03B1-Diversity Analysis',
-          id = 'alpha_tab',
+          value = 'alpha_tab',
           fluidRow(
             br(),br(),
             h1("\u03B1-Diversity"),
+            p("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon's index (H) and Simpson index are measures of uncertainty in the species identity of a sample (", a("Jost 2006", href="https://doi.org/10.1111/j.2006.0030-1299.14714.x"), ")."), 
+            p("Diversity measures, such as Shannon's Diversity and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
+            p("Diversity indecies are calculated with", a(code("vegan::diversity"), href="https://cran.r-project.org/web/packages/vegan/vignettes/diversity-vegan.pdf"), "Shannon's D index is calculated as ", code("exp(Shannon's Index)"), "Richness is calculated with", a(code("vegan::specnum", href="https://cran.r-project.org/web/packages/vegan/vignettes/diversity-vegan.pdf"), ", and evenness is caluculated as ", code("Shannon's index/log(Richness)", ".")))
+          ),
+          fluidRow(
               DT::dataTableOutput(ns('alpha_table'))  %>%
                 shinycssloaders::withSpinner()
           ), br(),
@@ -76,7 +87,10 @@ mod_alpha_ui <- function(id){
           fluidRow(
             column(
               width = 3, br(), br(),
-              wellPanel(uiOutput(ns('alpha_grp_ui')))
+              wellPanel(
+                uiOutput(ns('alpha_metric_ui')),
+                uiOutput(ns('alpha_grp_ui'))
+              )
             ),
             column(
               width = 9,
@@ -98,7 +112,7 @@ mod_alpha_ui <- function(id){
         # report------------------------------------------------------------
         tabPanel(
           'Report',
-          id = "alpha_report_tab",
+          value = "alpha_report_tab",
           fluidRow(
             br(), br(),
             column(
@@ -118,7 +132,26 @@ mod_alpha_ui <- function(id){
 #' @noRd 
 mod_alpha_server <- function(input, output, session, improxy){
   ns <- session$ns
- 
+
+  output$check <- renderPrint({
+  })
+
+  # enable tabs sequentially----------------------------------------------------
+  observe({
+    toggleState(selector = "#alpha_menu li a[data-value=filter_asv_alpha]",
+           condition = !is.null(agg_output$output) &&
+             agg_output$output$agg_calculate > 0)
+  })
+
+  observe({
+    toggleState(selector = "#alpha_menu li a[data-value=alpha_tab]",
+           condition = filter_output$params$filter_submit > 0)
+  })
+
+  observe({
+    toggleState(selector = "#alpha_menu li a[data-value=alpha_report_tab]",
+           condition = filter_output$params$filter_submit > 0)
+  })
   # initiate value to pass into submodules--------------------------------------
   bridge <- reactiveValues(dummy=NULL)
   observe({
@@ -195,8 +228,17 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   # render controls - alpha diversity-------------------------------------------
+  output$alpha_metric_ui <- renderUI({
+    checkboxGroupInput(ns('alpha_metric'), 'Diversity Index', 
+                          choices=c("Shannon's Index (H)" = 'shannon',
+                                    "Shannon's D Index (D'H)" = 'shannon_d',
+                                    "Simpson Index" = 'simpson',
+                                    "Inverse Simpson Index" = 'invsimpson'),
+                       selected = 'shannon_d')
+  })
+  
   output$alpha_grp_ui <- renderUI({
-    radioButtons(ns('alpha_grp'), "Compare Sample Groups",
+    selectInput(ns('alpha_grp'), "Compare Sample Groups",
                  choices = colnames(bridge$filtered$met), selected = 'sampleID')
   })
   
@@ -236,8 +278,6 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   stat_test <- reactive({
-    print(grp_tally())
-    print(unique(bridge$filtered$met[,input$alpha_grp]))
     if(length(grp_tally()) == 2) 'wilcox.test'
     else 'kruskal.test'
   })
@@ -298,8 +338,8 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
   
   # plot alpha diversity
-  pdata_alpha <- eventReactive(input$alpha_grp, {
-    
+  pdata_alpha <- reactive({
+    req(input$alpha_grp, input$alpha_metric)
     # set xorder based on shannon_d
     xorder <- bridge$filtered$met %>%
       mutate_all(as.character) %>%
@@ -314,6 +354,7 @@ mod_alpha_server <- function(input, output, session, improxy){
     
     out <- alpha_result() %>%
       gather('alpha_metric', 'alpha_value', -sampleID) %>%
+      filter(alpha_metric %in% c('evenness','richness',input$alpha_metric)) %>%
       inner_join(bridge$filtered$met %>% mutate_all(as.character), 'sampleID') %>%
       group_by(alpha_metric, .data[[input$alpha_grp]]) %>%
       mutate(alpha_avg = mean(alpha_value)) %>%
@@ -338,7 +379,7 @@ mod_alpha_server <- function(input, output, session, improxy){
       out <- out %>%
         left_join(compare_stat %>% select(alpha_metric, p, p.adj), 
                   'alpha_metric') %>%
-        mutate(panel = sprintf("%s\npj=%0.3f, p.adj=%0.3f", 
+        mutate(panel = sprintf("%s\np=%0.3f, p.adj=%0.3f", 
                                alpha_metric, p, p.adj))
     }
       
@@ -399,12 +440,7 @@ mod_alpha_server <- function(input, output, session, improxy){
   
   callModule(mod_download_server, "download_alpha", bridge = for_download, 'alpha')
   
-  # output$check <- renderPrint({
-  #   
-  #   print(grp_tally())
-  #   print(validation_msg())
-  #   print(summary(for_report$params))
-  # })
+
   # initiate list to pass onto report submodule
   observe({
     for_report$params$alpha_result <- alpha_result()

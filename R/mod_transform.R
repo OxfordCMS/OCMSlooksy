@@ -30,7 +30,7 @@ mod_transform_ui <- function(id){
                                    'percent abundance' = 'percent'),
                        selected = 'clr'),
           withBusyIndicatorUI(
-            actionButton(ns('submit_transform'), "Apply change")    
+            actionButton(ns('transform_submit'), "Apply change")    
           )
         )
       ),
@@ -58,8 +58,8 @@ mod_transform_ui <- function(id){
 mod_transform_server <- function(input, output, session, bridge){
   ns <- session$ns
  
-  withBusyIndicatorServer('submit_transform', 'mod_transform_ui_1', {
-    asv_transform <- eventReactive(input$submit_transform, {
+  withBusyIndicatorServer('transform_submit', 'mod_transform_ui_1', {
+    asv_transform <- eventReactive(input$transform_submit, {
       req(input$transform_method)
       
       asv_df <- as.data.frame(bridge$filtered$asv)
@@ -111,7 +111,7 @@ mod_transform_server <- function(input, output, session, bridge){
   
   
   output$preview_transform <- DT::renderDataTable(server = FALSE, {
-    req(input$submit_transform, 
+    req(input$transform_submit, 
         input$transform_method)
     
     DT::datatable(asv_transform(),
@@ -129,11 +129,11 @@ mod_transform_server <- function(input, output, session, bridge){
   })
   cross_module <- reactiveValues()
   observe({
-    cross_module$output <- list(
-      asv_transform = asv_transform(),
-      transform_method = input$transform_method,
-      submit_transform = input$submit_transform
-    )
+    cross_module$output <- list(transform_submit= input$transform_submit)
+  })
+  observe({
+    cross_module$output$asv_transform <- asv_transform()
+    cross_module$output$transform_method <- input$transform_method
   })
   
   return(cross_module)

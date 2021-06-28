@@ -11,10 +11,17 @@ mod_diff_abund_ui <- function(id){
   ns <- NS(id)
   tagList(
     fluidPage(
+      inlineCSS("
+.nav li a.disabled {
+  background-color: #aaa !important;
+  color: #333 !important;
+  cursor: not-allowed !important;
+  border-color: #aaa !important;
+}"),
       # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
       navlistPanel(
         '',
-        id = 'menu', 
+        id = 'diffabund_menu', 
         well=FALSE,
         widths=c(3,9),
         
@@ -173,6 +180,22 @@ mod_diff_abund_ui <- function(id){
 mod_diff_abund_server <- function(input, output, session, improxy){
   ns <- session$ns
  
+  # enable tabs sequentially----------------------------------------------------
+  observe({
+    toggleState(selector = "#diffabund_menu li a[data-value=filter_diff_tab]",
+                condition = !is.null(agg_output$output) &&
+                  agg_output$output$agg_calculate > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#diffabund_menu li a[data-value=deseq_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
+  
+  observe({
+    toggleState(selector = "#diffabund_menu li a[data-value=diffabund_report_tab]",
+                condition = filter_output$params$filter_submit > 0)
+  })
   # initiate value to pass into submodules--------------------------------------
   bridge <- reactiveValues(transform_method = NULL)
   observe({
@@ -377,7 +400,6 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   output$cutoff_ui <- renderUI({
     max_val <- max(dds_result()$log2FoldChange)
     max_val <- floor(max_val)
-    print(max_val)
     numericInput(ns('cutoff_fc'), "Log2 fold-change",
                  value=1, min=0, max=max_val, step=1)
   })
@@ -444,7 +466,6 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   
   # store selected feature
   observeEvent(event_data("plotly_selected", source="plotly_volcano"), {
-    req(input$deseq_submit)
      curr_selected<- event_data("plotly_selected", source='plotly_volcano')$customdata
     updated_feat <- unique(c(selected_feat(), curr_selected))
     selected_feat(updated_feat)
@@ -452,7 +473,6 @@ mod_diff_abund_server <- function(input, output, session, improxy){
     
   # clear selection
   observeEvent(event_data("plotly_deselect", source="plotly_volcano"), {
-    req(input$deseq_submit)
     selected_feat(NULL)
   })
   
@@ -486,9 +506,8 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   })
   
   
-  output$check <- renderPrint({
-    print(length(unique(as.data.frame(bridge$filtered$met)[,input$variable])))
-  })
+  # output$check <- renderPrint({
+  # })
   
   # download data---------------------------------------------------------------
   for_download <- reactiveValues()

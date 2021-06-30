@@ -109,8 +109,7 @@ mod_ov_pcoa_ui <- function(id){
       ), # end wellPanel,
           # column(width = 6, plotlyOutput(ns('CH_plot'))),
           # column(width = 6, verbatimTextOutput(ns('CH_index'))),
-      column(
-        width = 12,
+      fluidRow(
         column(
           width = 1, style = 'padding:0px;',
           mod_download_ui(ns("download_pcoa"))
@@ -122,7 +121,10 @@ mod_ov_pcoa_ui <- function(id){
               shinycssloaders::withSpinner()
           )
         )
-      )  
+      ),
+      fluidRow(
+        DT::dataTableOutput(ns('table_selected'))
+      )
     ))
   )
 }
@@ -379,7 +381,8 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
     xPCo <- paste('Axis', input$xPCo, sep = ".")
     yPCo <- paste('Axis', input$yPCo, sep = ".")
     
-    p <- ggplot(pdata_pcoa(), aes_string(x = xPCo, y = yPCo))
+    p <- ggplot(pdata_pcoa(), aes_string(x = xPCo, y = yPCo,
+                                         customdata = 'sampleID'))
     
     p <- p +
       ggfortify:::geom_factory(ggplot2::geom_point, pdata_pcoa(), 
@@ -420,7 +423,8 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   })
   
   output$pcoa_plot <- renderPlotly({
-    ggplotly(p_pcoa())
+    ggplotly(p_pcoa(), source='plotly_pcoa') %>%
+      layout(dragmode = 'select') 
   })
   
   # download data
@@ -434,7 +438,33 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   
   callModule(mod_download_server, "download_pcoa", bridge = for_download, 'pcoa')
   
-  # initiate return list
+  # metadata of selected samples------------------------------------------------
+  selected_samp <- reactiveVal()
+  
+  # store selected feature
+  observeEvent(event_data("plotly_selected", source="plotly_pcoa"), {
+    curr_selected<- event_data("plotly_selected", source='plotly_pcoa')$customdata
+    updated_samp <- unique(c(selected_samp(), curr_selected))
+    selected_samp(updated_samp)
+  })
+  
+  # clear selection
+  observeEvent(event_data("plotly_deselect", source="plotly_pcoa"), {
+    selected_samp(NULL)
+  })
+  
+  output$table_selected <- DT::renderDataTable(server=FALSE, {
+    req(input$pcoa_calculate, selected_samp)
+    validate(need(!is.null(selected_samp()), "Click and drag (with rectangle or lasso tool) to select points on pcoa plot to show sample metadata (double-click to clear)"))
+    
+    out <- bridge$filtered$met %>% filter(sampleID %in% selected_samp())
+    DT::datatable(out, 
+                  extensions = 'Buttons', filter='top', rownames = FALSE,
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+  
+  # initiate return list--------------------------------------------------------
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(

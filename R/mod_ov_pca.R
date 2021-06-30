@@ -153,7 +153,10 @@ mod_ov_pca_ui <- function(id){
           plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')
         )
       )
-    ) # end fluidRow
+    ), # end fluidRow
+    fluidRow(
+      DT::dataTableOutput(ns('table_selected'))
+    )
   ) # end taglist
 }
     
@@ -446,7 +449,8 @@ mod_ov_pca_server <- function(input, output, session, bridge){
   })
 
   output$plot_pca <- renderPlotly({
-    ggplotly(p_biplot())
+    ggplotly(p_biplot(), source='plotly_pca') %>%
+      layout(dragmode = 'select') 
   })
   
   # download data
@@ -459,8 +463,32 @@ mod_ov_pca_server <- function(input, output, session, bridge){
   
   callModule(mod_download_server, "download_pca", bridge = for_download, 'pca')
 
+  # metadata of selected samples------------------------------------------------
+  selected_samp <- reactiveVal()
   
-  # initiate return list
+  # store selected feature
+  observeEvent(event_data("plotly_selected", source="plotly_pca"), {
+    curr_selected<- event_data("plotly_selected", source='plotly_pca')$customdata
+    updated_samp <- unique(c(selected_samp(), curr_selected))
+    selected_samp(updated_samp)
+  })
+  
+  # clear selection
+  observeEvent(event_data("plotly_deselect", source="plotly_pca"), {
+    selected_samp(NULL)
+  })
+  
+  output$table_selected <- DT::renderDataTable(server=FALSE, {
+    req(input$pca_calculate, selected_samp)
+    validate(need(!is.null(selected_samp()), "Click and drag (with rectangle or lasso tool) to select points on pca plot to show sample metadata (double-click to clear)"))
+    
+    out <- bridge$filtered$met %>% filter(sampleID %in% selected_samp())
+    DT::datatable(out, 
+                  extensions = 'Buttons', filter='top', rownames = FALSE,
+                  options = list(scrollX = TRUE, 
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+  # initiate return list--------------------------------------------------------
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(

@@ -7,6 +7,6 @@
 dendro_data_k(hc, k)
 }
 \description{
-Extract dendrogram data for plot customized dendrogram. 
+Extract dendrogram data for plot customized dendrogram.
 following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 }

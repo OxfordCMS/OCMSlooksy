@@ -4,9 +4,9 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 mod_prop_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -36,7 +36,7 @@ mod_prop_ui <- function(id){
               h1("Feature Comparison")
             )
           )
-          
+
         ), # end tabPanel
         # aggregate tab body------------------------------------------------
         tabPanel(
@@ -58,7 +58,7 @@ mod_prop_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))    
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))
             )
           )
         ),
@@ -69,7 +69,7 @@ mod_prop_ui <- function(id){
           fluidRow(
             br(),br(),
             column(
-              width = 12, 
+              width = 12,
               h1('Pairwise Feature Comparison'),
               tags$div(
                 'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', code('propr'), 'is used to calculate proportionality. [link to propr vignettes]', br(),
@@ -104,7 +104,7 @@ mod_prop_ui <- function(id){
                 tags$style(HTML(".irs-bar {background: none; border: none}")),
                 tags$style(HTML("irs-grid-pol.small {height: 0px;}")),
                 tags$style(HTML(".irs-grid-text { font-size: 11pt; }")),
-                sliderInput(ns('rho_cutoff'), "Rho cutoff", 
+                sliderInput(ns('rho_cutoff'), "Rho cutoff",
                             min = -1, max = 1,
                             value = c(-0.6, 0.6), step = 0.01),
                 radioButtons(
@@ -125,7 +125,7 @@ mod_prop_ui <- function(id){
             column(
               width = 4, tags$div(
                 br(),
-                "Pairwise feature comparision results in a matrix of rho values, to show the proportionaity of a given feature with all other features. The rho values are summarised in the histogram in the centre. You can the relationship between all feature pairs, but in cases where there are many features, this may result in an unreasonable number of feature pairs to visualise. You can choose to filter rho values based a set of rho cutoffs. You can choose 'outside range' to examine stronger associations (more extreme values of rho), or the 'inside range' to examine the weaker associations. Click `show feature pairs` to update the plots."  
+                "Pairwise feature comparision results in a matrix of rho values, to show the proportionaity of a given feature with all other features. The rho values are summarised in the histogram in the centre. You can the relationship between all feature pairs, but in cases where there are many features, this may result in an unreasonable number of feature pairs to visualise. You can choose to filter rho values based a set of rho cutoffs. You can choose 'outside range' to examine stronger associations (more extreme values of rho), or the 'inside range' to examine the weaker associations. Click `show feature pairs` to update the plots."
               )
             )
           ), # end fluidRow 12
@@ -184,13 +184,13 @@ mod_prop_ui <- function(id){
                 column(
                   width = 11, style = 'padding:0px;',
                   shinyjqui::jqui_resizable(
-                    plotlyOutput(ns('hmap_prop'), 
+                    plotlyOutput(ns('hmap_prop'),
                                  width = '100%', height = 'auto'))
                 )
               )) # end hidden div - prop_hmap_div
             ) # end column 12
           ), # end fluid row
-          
+
           fluidRow(
             width = 12,
             hidden(div(
@@ -253,25 +253,25 @@ mod_prop_ui <- function(id){
     ) # end fluidPage
   ) # end taglist
 }
-    
+
 #' prop Server Function
 #'
-#' @noRd 
+#' @noRd
 mod_prop_server <- function(input, output, session, improxy){
   ns <- session$ns
-  
+
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#prop_menu li a[data-value=filter_prop_tab]",
                 condition = !is.null(agg_output$output) &&
                   agg_output$output$agg_calculate > 0)
   })
-  
+
   observe({
     toggleState(selector = "#prop_menu li a[data-value=prop_tab]",
                 condition = filter_output$params$filter_submit > 0)
   })
-  
+
   observe({
     toggleState(selector = "#prop_menu li a[data-value=prop_report_tab]",
                 condition = filter_output$params$filter_submit > 0)
@@ -283,7 +283,7 @@ mod_prop_server <- function(input, output, session, improxy){
   })
   # initiate list to pass onto report submodule
   for_report <- reactiveValues()
-  
+
   # store values to pass to report
   observe({
     for_report$params <- list(
@@ -295,12 +295,12 @@ mod_prop_server <- function(input, output, session, improxy){
   })
   # aggregate features----------------------------------------------------------
   agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
-  
+
   # store data in reactiveValues to pass onto submodules
   observe({
     if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
-      
+
       # add aggregate features to bridge to be passed to submodules
       bridge$work_db <- list(
         met = improxy$work_db$met,
@@ -309,31 +309,31 @@ mod_prop_server <- function(input, output, session, improxy){
       )
       # record aggregate by
       bridge$aggregate_by <- agg_output$output$aggregate_by
-    } else { 
+    } else {
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
     }
-    
+
   })
-  
+
   observe({
     # add aggregate features to report params
     for_report$params$aggregate_by <- agg_output$output$aggregate_by
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
-  
+
   # filter features-------------------------------------------------------------
-  
+
   # submodule returns list of filtered met, asv and tax tables
-  
-  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
-  
+
+  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
+
   # add filtered data to bridge
   observe({
     bridge$filtered <- filter_output$filtered
   })
-  
+
   # update report params
   observe({
     #feature filter
@@ -352,10 +352,10 @@ mod_prop_server <- function(input, output, session, improxy){
     for_report$params$met2 <- filter_output$filtered$met
     for_report$params$tax2 <- filter_output$filtered$tax
   })
-  
+
   # feature proportionality-----------------------------------------------------
   # show/hide ui component
-  
+
   observeEvent(input$rho_filter, {
     if(input$rho_filter == 'filter') {
       show('rho_slider_div')
@@ -364,37 +364,37 @@ mod_prop_server <- function(input, output, session, improxy){
       hide('rho_slider_div')
     }
   })
-  
+
   # show/hide fdr summary-------------------------------------------------------
   observeEvent(input$show_rho, {
     show('prop_hmap_div')
   })
-  
+
   observeEvent(input$show_rho, {
     show('prop_vispair_div')
   })
-  
+
   #generate UI------------------------------------------------------------------
   output$meta_x_ui <- renderUI({
     selectInput(ns('meta_x'), 'x-axis', choices = colnames(bridge$filtered$met),
                 selected = 'sampleID')
   })
-  
+
   output$hmap_tax_label_ui <- renderUI({
     choices <- c('featureID','Taxon', bridge$aggregate_by)
     selectInput(
       ns('hmap_tax_label'), 'Label taxa by:',
       choices = choices, selected = 'featureID')
   })
-  
+
 
   # calculate rho---------------------------------------------------------------
   propr_obj <- reactive({
     # propr package uses propr S4 class to store info -- see propr manual
-    
+
     count_mat <- bridge$filtered$asv %>%
       tibble::column_to_rownames("featureID")
-    
+
     # features in columns
     # default setting for ivar is clr transform
     out <- propr::propr(t(count_mat), metric = 'rho')
@@ -403,12 +403,12 @@ mod_prop_server <- function(input, output, session, improxy){
     out <- propr::updateCutoffs(out, cutoff = seq(0.05, 0.95, 0.15))
     out
   })
-  
+
   # showing fdr calculations----------------------------------------------------
   output$prop_fdr_summary <- renderPrint({
     propr_obj()@fdr
   })
-  
+
   # identify pairs that satisfy filter------------------------------------------
   pairs_keep <- reactive({
     req(input$rho_filter)
@@ -433,7 +433,7 @@ mod_prop_server <- function(input, output, session, improxy){
     }
     out
   })
-  
+
   rho_range <- reactive({
     req(input$rho_filter)
     rho_val <- propr:::proprPairs(propr_obj()@matrix)
@@ -442,35 +442,35 @@ mod_prop_server <- function(input, output, session, improxy){
       req(input$rho_cutoff, input$rho_operator)
       p_initial <- ggplot(rho_val, aes(x = prop)) +
         geom_histogram(alpha=0.6, fill=NA, colour='black')
-      
+
       hist_val <- ggplot_build(p_initial)
-      
+
       if(input$rho_operator == 'inside') {
         pdata <- hist_val$data[[1]] %>%
-          mutate(fill = ifelse(x <= max(input$rho_cutoff) & 
+          mutate(fill = ifelse(x <= max(input$rho_cutoff) &
                                  x >= min(input$rho_cutoff), TRUE, FALSE))
-        
+
         p <- ggplot(pdata) +
           geom_rect(aes(xmin=xmin, xmax=xmax, ymin=0, ymax=y, fill=fill),
-                       colour='black', alpha = 0.6) 
+                       colour='black', alpha = 0.6)
       }
       if(input$rho_operator == 'outside') {
         pdata <- hist_val$data[[1]] %>%
-          mutate(fill = ifelse(x >= max(input$rho_cutoff) | 
+          mutate(fill = ifelse(x >= max(input$rho_cutoff) |
                                  x <= min(input$rho_cutoff), TRUE, FALSE))
-        
+
         p <- ggplot(pdata) +
           geom_rect(aes(xmin=xmin, xmax=xmax, ymin=0, ymax=y, fill = fill),
                        colour = 'black', alpha = 0.6)
       }
-    
+
       p <- p +
-        scale_fill_manual(values=c('white','cornflowerblue'), 
-                            guide=FALSE) +
-        labs(subtitle=sprintf('%s feature pairs meet threshold', 
+        scale_fill_manual(values=c('white','cornflowerblue'),
+                            guide='none') +
+        labs(subtitle=sprintf('%s feature pairs meet threshold',
                               length(pairs_keep())))
     }
-    
+
     if(input$rho_filter == 'all') {
       p <- ggplot(rho_val, aes(x = prop)) +
         geom_histogram(alpha=0.6, fill='cornflowerblue', colour='black') +
@@ -479,13 +479,13 @@ mod_prop_server <- function(input, output, session, improxy){
     p +
       theme_classic(12) +
       xlab('rho') +
-      ylab('Number of Feature Pairs') 
+      ylab('Number of Feature Pairs')
   })
-  
+
   output$rho_range <- renderPlot({
     rho_range()
   })
-  
+
   # apply filters to propr object
   work_obj <- eventReactive(input$show_rho, {
     validate(
@@ -496,17 +496,17 @@ mod_prop_server <- function(input, output, session, improxy){
     out <- propr::simplify(out)
     out
   })
-  
+
   # extract rho values
   rho_df <- eventReactive(input$show_rho, {
     propr:::proprPairs(work_obj()@matrix)
   })
-  
-  
+
+
   rho_histogram <- eventReactive(input$show_rho, {
     p <- ggplot(rho_df(), aes(x = prop)) +
       geom_histogram(alpha = 0.6, fill = 'cornflowerblue', colour = 'black') +
-      theme_classic(14) + 
+      theme_classic(14) +
       xlab('rho') +
       ylab('Number of Feature Pairs') +
       labs(subtitle=sprintf('%s feature pairs meet threshold\n%s feature pairs in filtered proportionality matrix', length(work_obj()@pairs), nrow(rho_df())))
@@ -515,15 +515,15 @@ mod_prop_server <- function(input, output, session, improxy){
   output$rho_summary <- renderPlot({
     rho_histogram()
   })
-  
+
   prop_summary <- reactive({
     req(input$show_rho)
-    tibble::enframe(summary(rho_df()$prop), 
+    tibble::enframe(summary(rho_df()$prop),
                     name = 'quartile',
                     value='rho') %>%
       mutate(rho = round(rho, digits=3))
   })
-  
+
   output$prop_summary <- DT::renderDataTable(server = FALSE, {
     DT::datatable(prop_summary(), filter='none', rownames=FALSE,
                   extensions = 'Buttons',
@@ -531,13 +531,13 @@ mod_prop_server <- function(input, output, session, improxy){
                                  paging=FALSE, searching=FALSE),
                   caption="Rho distribution in filtered pair-wise proportionality matrix")
   })
-  
+
   # heatmap of subset-----------------------------------------------------------
   hmap_data <- reactive({
     out <- work_obj()@matrix
     convert <- data.frame(featureID = rownames(out))
     convert <- convert %>%
-      left_join(bridge$filtered$tax %>% 
+      left_join(bridge$filtered$tax %>%
                   select(featureID, Taxon, .data[[bridge$aggregate_by]]),
                 'featureID')
     rownames(out) <- convert[, input$hmap_tax_label]
@@ -565,7 +565,7 @@ mod_prop_server <- function(input, output, session, improxy){
       show_grid = TRUE
     )
   })
-  
+
   hmaply_prop <- reactive({
     heatmaply::heatmaply(hmap(), node_type = 'heatmap',
               scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
@@ -579,7 +579,7 @@ mod_prop_server <- function(input, output, session, improxy){
   output$hmap_prop <- renderPlotly({
     hmaply_prop()
   })
-  
+
   # download data
   for_download1 <- reactiveValues()
   observe({
@@ -589,10 +589,10 @@ mod_prop_server <- function(input, output, session, improxy){
       as.data.frame() %>%
       mutate(featureID = rownames(hmap_data()))
   })
-  
+
   callModule(mod_download_server, "download_prop_hmap", bridge = for_download1,
              'heatmap', dl_options = c('html','csv','RDS','zip'))
-  
+
   # select ASV pairs from table
   output$prop_table <- DT::renderDataTable(server = FALSE, {
     DT::datatable(rho_df() %>%
@@ -604,7 +604,7 @@ mod_prop_server <- function(input, output, session, improxy){
                   filter = 'top', extensions = 'Buttons',
                   selection = list(mode = "multiple", selected = 1))
   })
-  
+
   # visualize selected ASV pairs------------------------------------------------
   selected <- reactive({
     req(input$prop_table_rows_selected)
@@ -612,7 +612,7 @@ mod_prop_server <- function(input, output, session, improxy){
     out <- split(out, seq(nrow(out)))
     out
   })
-  
+
   pair_pdata <- reactive({
     curr <- work_obj()@logratio
     out <- c()
@@ -629,7 +629,7 @@ mod_prop_server <- function(input, output, session, improxy){
     }
     out
   })
-  
+
   p_pair <- reactive({
     ggplot(pair_pdata(), aes(x = x, y = y)) +
       geom_point(aes(text=sprintf("x: %s\ny: %s", feature1, feature2))) +
@@ -639,12 +639,12 @@ mod_prop_server <- function(input, output, session, improxy){
       xlab('Feature 1') +
       ylab('Feature 2')
   })
-  
+
   output$plot_pair <- renderPlotly({
     ggplotly(p_pair())
   })
-  
-  
+
+
   # download data
   for_download2 <- reactiveValues()
   observe({
@@ -653,24 +653,24 @@ mod_prop_server <- function(input, output, session, improxy){
     for_download2$figure <- p_pair()
     for_download2$fig_data <- pair_pdata()
   })
-  
+
   callModule(mod_download_server, "download_pairs", bridge = for_download2, 'prop')
-  
+
   # put metadata with selected features
   meta_pdata <- reactive({
-    
+
     logratio <- work_obj()@logratio
     logratio$sampleID <- rownames(logratio)
     logratio <- logratio %>%
       gather('featureID', 'logratio', -sampleID) %>%
       inner_join(bridge$filtered$met, 'sampleID')
-    
+
     pair_pdata() %>%
       distinct(pairID, panel, prop, feature1, feature2) %>%
       gather('variable','featureID', -pairID, -panel, -prop) %>%
       left_join(logratio, 'featureID')
   })
-  
+
   add_line <- reactive({
     req(input$meta_x)
     meta_pdata() %>%
@@ -683,20 +683,20 @@ mod_prop_server <- function(input, output, session, improxy){
   p_meta <- reactive({
     req(input$meta_x)
     p <- ggplot(meta_pdata(), aes(x = .data[[input$meta_x]], y = logratio))
-    
+
     if(any(add_line()$npoint > 2)) {
-      dodge_val <- apply(expand.grid(unique(meta_pdata()$featureID), 
-                                     unique(meta_pdata()[, input$meta_x])), 
+      dodge_val <- apply(expand.grid(unique(meta_pdata()$featureID),
+                                     unique(meta_pdata()[, input$meta_x])),
                          1, paste0, collapse='')
       dodge_val <- 1-(1/length(dodge_val))
-      
+
       p <- p +
-        geom_point(aes(colour = featureID, 
+        geom_point(aes(colour = featureID,
                        group = interaction(featureID, .data[[input$meta_x]])),
-                   position = position_jitterdodge(jitter.width = 0.1, 
+                   position = position_jitterdodge(jitter.width = 0.1,
                                                    dodge.width=0.75,
-                                                   seed = 1), 
-                   alpha = 0.8) 
+                                                   seed = 1),
+                   alpha = 0.8)
         # geom_boxplot(aes(colour = featureID,
         #                  group = interaction(featureID, .data[[input$meta_x]])),
         #              outlier.fill = NA, fill=NA, outlier.colour = NA)
@@ -705,7 +705,7 @@ mod_prop_server <- function(input, output, session, improxy){
       p <- p +
         geom_point(aes(colour = featureID)) +
         geom_line(aes(colour = featureID, group = featureID))
-      
+
     }
     p <- p +
       facet_wrap(~panel, scales = 'free', ncol = 3) +
@@ -713,10 +713,10 @@ mod_prop_server <- function(input, output, session, improxy){
       theme(legend.position='none',
             axis.text.x = element_text(hjust=1, vjust=0, angle=-90)) +
       ylab('CLR(counts)')
-    
+
     p
   })
-  
+
   output$plot_meta <- renderPlotly({
     # if(any(add_line()$npoint > 2)) {
       ggplotly(p_meta())
@@ -725,9 +725,9 @@ mod_prop_server <- function(input, output, session, improxy){
     # else {
     #   ggplotly(p_meta())
     # }
-    # 
+    #
   })
-  
+
   # download data
   for_download3 <- reactiveValues()
   observe({
@@ -736,12 +736,12 @@ mod_prop_server <- function(input, output, session, improxy){
     for_download3$figure <- p_meta()
     for_download3$fig_data <- meta_pdata()
   })
-  
+
   callModule(mod_download_server, "download_pairs_meta", bridge = for_download3, 'prop')
-  
+
   observe({
     req(input$show_rho)
-    
+
     for_report$params$prop_fdr_summary <- propr_obj()@fdr
     for_report$params$rho_cutoff <- input$rho_cutoff
     for_report$params$rho_filter <- input$rho_filter
@@ -759,16 +759,16 @@ mod_prop_server <- function(input, output, session, improxy){
     for_report$params$p_pair <- p_pair()
     for_report$params$prop_plot_meta <- p_meta()
   })
-  
+
   # build report
   callModule(mod_report_server, "prop_report_ui", bridge = for_report,
              template = "feat_report",
              file_name = "feat_report")
 }
-    
+
 ## To be copied in the UI
 # mod_prop_ui("prop_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_prop_server, "prop_ui_1")
- 
+

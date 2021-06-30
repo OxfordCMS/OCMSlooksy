@@ -30,11 +30,11 @@ mod_qc_ui <- function(id){
         id = 'menu',
         well=FALSE,
         widths=c(3,9),
-        
+
         # fluidRow(
         #   box(width = 12, h3('Check'),
         #       verbatimTextOutput(ns('check')))),
-       
+
         # task info---------------------------------------------------------
         tabPanel(
           'Task Info',
@@ -162,7 +162,7 @@ mod_qc_ui <- function(id){
               width = 11, stype = 'padding:0px;',
               plotlyOutput(ns('plot_rarefaction'),
                            width = '100%', height = 'auto') %>%
-                shinycssloaders::withSpinner()  
+                shinycssloaders::withSpinner()
             )
           ) # end fluidRow
         ), # end tabPanel
@@ -245,7 +245,7 @@ mod_qc_ui <- function(id){
             wellPanel(
               div(style="text-align: center",
                   tags$b('Input controls')),
-              
+
               # choose sample group
               uiOutput(ns('sample_select_ui'))
             ), hr()
@@ -594,7 +594,7 @@ mod_qc_server <- function(input, output, session, improxy){
   p_rare <- reactive({
     p <- ggplot(pdata_rare(), aes(x=Depth, y=Richness, color=sampleID)) +
       geom_line() +
-      guides(color = FALSE)
+      guides(color = 'none')
     # geom_label not compatible with plotly
     # geom_label(aes(label=sampleID, colour = sampleID),
     #            fill = alpha(c("white"), 0.2),
@@ -830,7 +830,7 @@ mod_qc_server <- function(input, output, session, improxy){
 
   # # Check
   # output$check <- renderPrint({
-  # 
+  #
   # })
 
   callModule(mod_report_server, "report_ui_1", bridge = for_report,

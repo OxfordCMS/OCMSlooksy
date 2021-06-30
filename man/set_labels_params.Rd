@@ -7,6 +7,6 @@
 set_labels_params(nbLabels, direction = c("tb", "bt", "lr", "rl"), fan = FALSE)
 }
 \description{
-set parameters of labels for plotting customized dendrogram. 
+set parameters of labels for plotting customized dendrogram.
 following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 }

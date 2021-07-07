@@ -1,7 +1,6 @@
 ---
-title: "Profile Report"
-author: "Your Name"
-date: "The Date"
+title: "Microbiome Profile Report"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: output_format
 always_allow_html: true
 params:

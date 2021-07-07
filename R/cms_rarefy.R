@@ -21,7 +21,7 @@ cms_rarefy <- function(df) {
   # calculate rarefaction
   forres = foreach::foreach(i = 1:length(raredepths)) %dopar% {
     depth = raredepths[i]
-    res = vegan::rarefy(round(t(df)), depth)
+    res = suppressWarnings(vegan::rarefy(round(t(df)), depth))
     res[sampmax < depth] = NA
     return(res)
   }

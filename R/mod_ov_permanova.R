@@ -12,6 +12,7 @@ mod_ov_permanova_ui <- function(id){
   ns <- NS(id)
   tagList(
     h1('PERMANOVA'),
+    p('Uses ', code("vegan::adonis2"), "to partition sums of squares using dissimilarities. Terms are assessed sequentially from first to last. Blocks in the experiment design can be accounted for by stratifying the PERMANOVA on the block term. Stratifying by a term means the PERMANOVA will be performed independently within each group of that term"),
     # wellPanel(width = 12, h3('sub check'), br(), verbatimTextOutput(ns('check'))),
     fluidRow(
       column(
@@ -22,9 +23,7 @@ mod_ov_permanova_ui <- function(id){
         uiOutput(ns('stratify_ui')),
         uiOutput(ns('permanova_dist_ui')),
         br(), br(),
-        withBusyIndicatorUI(
-          actionButton(ns('permanova_calculate'), 'Calculate PERMANOVA')
-        ),
+        actionButton(ns('permanova_calculate'), 'Calculate PERMANOVA')
       )
     ),
     fluidRow(
@@ -72,16 +71,20 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   })
   
   formula_preview <- reactive({
+    req(input$formula_terms)
     sprintf("~ %s", paste(input$formula_terms, collapse = " + "))
   })
   
   output$formula_preview <- renderPrint({
-    req(input$formula_terms)
-    formula_preview()
+    req(input$stratify)
+    print(formula_preview())
+    if(input$stratify != 'none') {
+      cat(sprintf("Block: %s", input$stratify))
+    }
   })
   
   output$permanova_dist_ui <- renderUI({
-    if(bridge$transform_input$transform_method == 'percent') choices <- 'bray'
+    if(bridge$transform_method == 'percent') choices <- 'bray'
     else choices <- c("manhattan", "euclidean", "canberra")
     
     selectInput(ns('permanova_dist'), "Distance method",
@@ -108,30 +111,30 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
     adonis_data <- as.data.frame(bridge$asv_transform)
     adonis_data <- t(adonis_data)
     f_terms <- paste(rev(input$formula_terms), collapse = '+')
-    
+    f <- as.formula(sprintf("adonis_data~%s", f_terms))
     if(input$stratify == 'none') {
-      out <- vegan::adonis(formula = as.formula(sprintf("adonis_data~%s", f_terms)),
+      out <- vegan::adonis2(formula = f,
                     data = bridge$filtered$met,
                     method = input$permanova_dist,
                     perm = 999)  
     } else {
       perm <- permute::how(nperm=999)
-      permute::setBlocks(perm) <- with(bridge$filtered$met, .data[[input$stratify]])
+      permute::setBlocks(perm) <- with(bridge$filtered$met,
+                                       .data[[input$stratify]])
       
-      out <- vegan::adonis2(formula = as.formula(sprintf("adonis_data~%s", 
-                                                         f_terms)),
+      out <- vegan::adonis2(formula = f,
                     data = bridge$filtered$met,
                     method = input$permanova_dist,
                     permutations = perm)
-      out$aov.tab <- suppressWarnings(broom::tidy(out))
     }
+    out$aov.tab <- suppressWarnings(broom::tidy(out))
     out
   })
   
   # permanova result summary
-  output$permanova_summary <- DT::renderDataTable({
+  output$permanova_summary <- DT::renderDataTable(server = FALSE, {
     out <- as.data.frame(fit()$aov.tab)
-    DT::datatable(out)
+    DT::datatable(out, rownames = FALSE)
   })
   
   cross_module <- reactiveValues()

@@ -18,316 +18,294 @@
 #' @import tidyr
 #' @import plotly
 #' @import shinyFiles
-#' @import shinyjqui
 #' @import htmlwidgets
 
 #' @import shinyWidgets
 mod_qc_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      #sidebar------------------------------------------------------------------
-      dashboardSidebar(
-        sidebarMenu(
-          id = 'menu',
-          br(),
-          menuItem('Task Info', tabName = 'info_tab_qc',
-                   icon = icon('info-circle'), selected = TRUE),
-          menuItem('dada2 Filtering', tabName = 'dada2_filter'),
-          menuItem('dada2 Denoising', tabName = 'dada2_denoise'),
-          menuItem('Sequence Prevalence', tabName = 'asv_prevalence'),
-          menuItem('Sequence Rarefaction', tabName = 'rarefaction_tab'),
-          menuItem('Taxonomic Distribution', tabName = 'tax_distribution_tab'),
-          menuItem('Sample Distribution', tabName = 'group_distribution_tab'),
-          menuItem('Report', tabName = "qc_report"),
+    fluidPage(
+      navlistPanel(
+        'sidebartitle',
+        id = 'menu',
+        well=FALSE,
+        widths=c(3,9),
 
-          conditionalPanel(
-            condition = "input.menu === 'group_distribution_tab'",
-            br(), hr(),
-            fixedPanel(
-              width = 225,
-              div(style="text-align: center",
-                  tags$b('Input controls')),
-  
-              # choose sample group
-              uiOutput(ns('sample_select_ui'))
+        # fluidRow(
+        #   box(width = 12, h3('Check'),
+        #       verbatimTextOutput(ns('check')))),
+
+        # task info---------------------------------------------------------
+        tabPanel(
+          'Task Info',
+          id = 'info_tab_qc',
+          icon = icon('info-circle'), selected = TRUE,
+          fluidRow(
+            br(), br(),
+            h1("QC Report"),
+            div(
+              p("Raw sequences were processed through the", a("OCMS 16S rRNA gene pipeline", href="https://ocms-16s.readthedocs.io/en/latest/"),"to assure all sequences used during analysis have been quality controlled. This report outlines the sequence processing steps that occured, and depicts the changes applied to the dataset throughout."),
+              p("Sequence processing in the OCMS 16S pipeline follows the",
+                a("dada2 tutorial", href="https://benjjneb.github.io/dada2/tutorial.html"), ". Briefly, the sequence processing steps and quality control analysis performed in the pipeline are:"),
+              tags$ul(
+                tags$li(tags$b("Trim and Filter:"), "Trim off primers, truncate reads, remove reads with 'N' bases, and remove reads based on maximum number of expected errors allowed."),
+                tags$li(tags$b("Denoise Sequences:"), "Learn sequencing error rate, infer sample sequences, dereplicate and cluster sequences into ASVs, remove chimeric sequences, merge paired-end reads if applicable"),
+                tags$li(tags$b("Sequence Prevalence:"), "Summarises number of ASVs observed in each sample, the prevalence of ASVs across samples, and relating ASV prevalence to mean relative abundance."),
+                tags$li(tags$b("Sequence Rarefaction:"), "Assesses effect of read depth on number of features detected in a given sample."),
+                tags$li(tags$b("Taxonomic Distribution:"), "Taxonomic classification of ASVs using reference databases. Summarises classification as total relative abundance (summed across all samples) at a given taxonomic level. Summarises proportion of ASVs classified at each taxonomic level"),
+                tags$li(tags$b("Sample Distribution:"), "Summarises total read count within a group of samples.")
+              ),
+
             )
           )
-      )),
-      # dashboard---------------------------------------------------------------
-      dashboardBody(
-        box(width = '100%', height = 'auto', br(),br(), br(),
-          # fluidRow(
-          #   box(width = 12, h3('Check'),
-          #       verbatimTextOutput(ns('check')))),
-          tabItems(
-            # main page---------------------------------------------------------
-            tabItem(
-              tabName = 'info_tab_qc',
-              column(width = 12, h1("QC Report"),
-              tags$div("Raw sequences were processed through the OCMS 16S rRNA gene pipeline to assure all sequences used during analysis have been quality controlled. This report outlines the processing steps that occured, and depicts the changes applied to the dataset through this process."))
+        ),
+        # filtering-----------------------------------------------------------
+        tabPanel(
+          'Trim and Filter',
+          id = 'dada2_filter',
+          fluidRow(
+            br(), br(),
+            h1("Trim and Filter Reads"),
+            tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence. Lastly reads are filtered based on the maximum number of expected errors.'),
+            br(),
+            h3("Filtering parameters applied:"),
+            DT::dataTableOutput(ns('filter_yml')),
+            h3("Filtering Effects"),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_filter"))
             ),
-            # filtering-----------------------------------------------------------
-            tabItem(
-              tabName = 'dada2_filter',
-              fluidRow(
-                column(
-                  width = 12,
-                  h1("Filtering Reads"),
-                  tags$div('The first stage of the dada2 pipeline is filtering and trimming of reads. The number of reads that remain for downstream analysis is dependent on the parameters that were set for filtering and trimming. In most cases it would be expected that the vast majority of reads will remain after this step. It is noteworthy that dada2 does not accept any "N" bases and so will remove reads if there is an N in the sequence.'),
-                  br(),
-                  h3("Filtering parameters applied:"),
-                  DT::dataTableOutput(ns('filter_yml')),
-                  h3("Filtering Effects"),
-                  column(
-                    width = 1, style = 'padding:0px;',
-                    mod_download_ui(ns("download_filter"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0px;',
-                    jqui_resizable(
-                      plotlyOutput(ns('plot_filt'), width = '100%',
-                                 height = 'auto') %>%
-                        shinycssloaders::withSpinner()
-                    )
-                  )
-                ) # end column 12
-              ) # end fluidRow
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('plot_filt'), width = '100%',
+                         height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ) # end fluidRow
+        ),
+        # denoising-----------------------------------------------------------
+        tabPanel(
+          'Denoise Sequences',
+          id = 'dada2_denoise',
+          fluidRow(
+            br(), br(),
+            h1("Denoise Sequences"),
+            tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
+            br(),
+            h3("Denoising parameters applied:"),
+            DT::dataTableOutput(ns('denoise_yml')),
+            br(),
+            h3('Denoising Effects'),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_nochim"))
             ),
-            # denoising-----------------------------------------------------------
-            tabItem(
-              tabName = 'dada2_denoise',
-              fluidRow(
-                column(
-                  width = 12,
-                  h1("Denoising Sequences"),
-                  tags$div("The next stage of the dada2 pipeline involves dereplication, sample inference, merging (if paired-end) and chimera removal. Again from the tutorial, dereplication combines all identical sequencing reads into into “unique sequences” with a corresponding “abundance” equal to the number of reads with that unique sequence. These are then taken forward into the sample inference stage and chimera removal. It is useful to see after this has been done how many sequences we are left with. The majority of reads should contribute to the final overall counts.)"),
-                  br(),
-                  h3("Denoising parameters applied:"),
-                  DT::dataTableOutput(ns('denoise_yml')),
-                  br(),
-                  h3('Denoising Effects'),
-                  column(
-                    width = 1, style = 'padding:0px;',
-                    mod_download_ui(ns("download_nochim"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0px;',
-                    jqui_resizable(
-                      plotlyOutput(ns('plot_nochim'),
-                                   width = '100%', height = 'auto') %>%
-                        shinycssloaders::withSpinner()
-                    )
-                  )
-                ) # end column 12
-              ) # end fluidRow
-            ), # end tabitem
-
-            # featureID Prevalence------------------------------------------------------
-            tabItem(
-              tabName = 'asv_prevalence',
-              fluidRow(
-                column(
-                  width = 12,
-                  h1("Number of features called per sample and their prevalence"),
-                  tags$div("A useful metric is the number of features that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of features per sample we also plot the prevalence of these features i.e. the proportion of samples that each feature is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of spurious features i.e. low prevalence and low abundance."),
-                  column(
-                    width = 1, style = 'padding:0px;',
-                    mod_download_ui(ns("download_nasv"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0px;',
-                    jqui_resizable(
-                      plotlyOutput(ns('plot_nasv'),
-                                   width = '100%', height = 'auto') %>%
-                        shinycssloaders::withSpinner()
-                    )
-                  ),
-                  br(),
-                  column(
-                    width = 6, style = 'padding:0px;',
-                    h4('Distribution of Feature Prevalence'),
-                    column(
-                      width = 1, style = 'padding:0px;',
-                      mod_download_ui(ns("download_prevalence"))
-                    ),
-                    column(
-                      width = 10, style = 'padding:0px;',
-                      jqui_resizable(
-                        plotlyOutput(
-                          ns('plot_prevalence'),
-                          width = '100%', height = 'auto') %>%
-                          shinycssloaders::withSpinner()
-                      )
-                    )
-                  ), # end column 6
-                  column(
-                    width = 6,
-                    h4('Prevalence of features with respects to Relative Abundance'),
-                    column(
-                      width = 1, style = 'padding:0px;',
-                      mod_download_ui(ns("download_spur"))
-                    ),
-                    column(
-                      width=10, style = 'padding:0px;',
-                      jqui_resizable(
-                        plotlyOutput(ns('plot_spurious'),
-                                     width = '100%', height = 'auto') %>%
-                          shinycssloaders::withSpinner()
-                      )
-                    )
-                  ) # end column 6
-                ) # end column 12
-              ) # end fluidRow
-            ), # end tabitem
-            # rarefaction curve of number seq vs number of asv------------------
-            tabItem(
-              tabName = 'rarefaction_tab',
-              column(width = 12,
-                h1("featureID Rarefaction"),
-                tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
-                column(
-                  width = 1, style = 'padding:0px;',
-                  mod_download_ui(ns("download_rare"))
-                ),
-                column(
-                  width = 11, stype = 'padding:0px;',
-                  jqui_resizable(
-                    plotlyOutput(ns('plot_rarefaction'),
-                                 width = '100%', height = 'auto') %>%
-                      shinycssloaders::withSpinner()
-                  )
-                )
-
-              )
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('plot_nochim'),
+                           width = '100%', height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ) # end fluidRow
+        ), # end tabPanel
+        # featureID Prevalence----------------------------------------------
+        tabPanel(
+          'Sequence Prevalence',
+          id = 'asv_prevalence',
+          fluidRow(
+            br(), br(),
+            h1("Number of features called per sample and their prevalence"),
+            tags$div("A useful metric is the number of features that were called per sample even though we may not no beforehand the expected diversity in the samples we are analysing. In addition to simply counting the number of features per sample we also plot the prevalence of these features i.e. the proportion of samples that each feature is observed in. By plotting the prevalence against the average relative abundance we get an idea of the presence of spurious features i.e. low prevalence and low abundance."),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_nasv"))
             ),
-            # taxonomy overview-------------------------------------------------
-            tabItem(
-              tabName = 'tax_distribution_tab',
-              fluidRow(
-                column(
-                  width = 12,
-                  h1("Taxonomy Distribution"),
-                  tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs woild be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
-                  br(),
-                  h3("Taxonomy assigment parameters applied:"),
-                  DT::dataTableOutput(ns('taxonomy_yml')) %>%
-                    shinycssloaders::withSpinner(),
-                  br(),
-                ),
-                column(
-                  width = 4,
-                  br(), br(),
-                  wellPanel(
-                   # taxonomy level
-                   radioButtons(ns('tax_level'), 'Taxonomic level',
-                                c('Kingdom','Phylum',
-                                  'Class', 'Order', 'Family',
-                                  'Genus','Species'),
-                                selected = 'Phylum')),
-                  br(),
-                  tags$b('Number of samples:'),
-                  textOutput(ns('n_sample'), inline = TRUE),
-                  br(),
-                  tags$b('Number of Features:'),
-                  textOutput(ns('n_asv'), inline = TRUE),
-                  br()
-                ),
-                column(
-                  width = 8,
-                  h2('Table of Distribution of Taxa'),
-                  DT::dataTableOutput(ns('tax_distrib_table')) %>%
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('plot_nasv'),
+                           width = '100%', height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ),
+          fluidRow(
+            column(
+              width = 6, style = 'padding:0px;',
+              h4('Distribution of Feature Prevalence'),
+              column(
+                width = 1, style = 'padding:0px;',
+                mod_download_ui(ns("download_prevalence"))
+              ),
+              column(
+                width = 11, style = 'padding:0px;',
+                plotlyOutput(
+                    ns('plot_prevalence'),
+                    width = '100%', height = 'auto') %>%
                     shinycssloaders::withSpinner()
-                ),
-                column(
-                  width = 12,
-                  h2('Distribution of Taxa'),
-                  column(
-                    width = 1, style = 'padding:0px;',
-                    mod_download_ui(ns("download_taxdistr"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0px;',
-                    jqui_resizable(
-                      plotlyOutput(ns('tax_distribution'),
-                                   width = '100%', height = 'auto') %>%
-                        shinycssloaders::withSpinner()
-                    )
-                  )
-                ),
-                column(
-                  width = 12,
-                  h2('Percent assigned:'),
-                  column(
-                    width = 1, style = 'padding:0px;',
-                    mod_download_ui(ns("download_assigned"))
-                  ),
-                  column(
-                    width = 11, style = 'padding:0x;',
-                    jqui_resizable(
-                      plotlyOutput(ns('perc_assigned'), width = '100%',
-                                   height = 'auto') %>%
-                        shinycssloaders::withSpinner()
-                    )
-                  )
-                )
-              ) # end fluidRow
-            ), # end tabitem
+              )
+            ), # end column 6
+            column(
+              width = 6,
+              h4('Prevalence of features with respects to Relative Abundance'),
+              column(
+                width = 1, style = 'padding:0px;',
+                mod_download_ui(ns("download_spur"))
+              ),
+              column(
+                width=11, style = 'padding:0px;',
+                plotlyOutput(ns('plot_spurious'),
+                             width = '100%', height = 'auto') %>%
+                  shinycssloaders::withSpinner()
+              )
+            ) # end column 6
+          ) # end fluidRow
+        ), # end tabPanel
+        # rarefaction curve of number seq vs number of asv------------------
+        tabPanel(
+          'Sequence Rarefaction',
+          id = 'rarefaction_tab',
+          fluidRow(
+            br(), br(),
+            h1("featureID Rarefaction"),
+            tags$div("The number of features identified is influenced by the sequencing depth. As such, variation in sequencing depth across samples has the potential to bias the diversity observed. One means of evaluating if sequencing depth is introducing bias in the dataset is by examining a rarefaction curve."),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_rare"))
+            ),
+            column(
+              width = 11, stype = 'padding:0px;',
+              plotlyOutput(ns('plot_rarefaction'),
+                           width = '100%', height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ) # end fluidRow
+        ), # end tabPanel
+        # taxonomy overview-------------------------------------------------
+        tabPanel(
+          'Taxonomic Distribution',
+          id = 'tax_distribution_tab',
+          fluidRow(
+            br(), br(),
+              h1("Taxonomy Distribution"),
+              tags$div("The next stage is to assign each of the sequence cluster (such as OTU or ASV), referred to as 'featureID', to a taxonomic group. Below are plots of the taxonomic assignments for each sample (relative abundance at the phylum level) as well as the proportion of all ASVs that could be assigned at each taxonomic rank (phylum-species). We would expect (in most cases) that the majority of ASVs would be assigned at high taxonomic ranks (e.g. phylum) and fewer at lower taxonomic ranks (e.g. species)."),
+              br(),
+              h3("Taxonomy assigment parameters applied:"),
+              DT::dataTableOutput(ns('taxonomy_yml')) %>%
+                shinycssloaders::withSpinner(),
+              br(),
+          ),
+          fluidRow(
+            column(
+              width = 4,
+              br(), br(),
+              wellPanel(
+               # taxonomy level
+               radioButtons(ns('tax_level'), 'Taxonomic level',
+                            c('Kingdom','Phylum',
+                              'Class', 'Order', 'Family',
+                              'Genus','Species'),
+                            selected = 'Phylum')),
+              br(),
+              tags$b('Number of samples:'),
+              textOutput(ns('n_sample'), inline = TRUE),
+              br(),
+              tags$b('Number of Features:'),
+              textOutput(ns('n_asv'), inline = TRUE),
+              br()
+            ),
+            column(
+              width = 8,
+              h2('Table of Distribution of Taxa'),
+              DT::dataTableOutput(ns('tax_distrib_table')) %>%
+                shinycssloaders::withSpinner()
+            )
+          ),
+          fluidRow(
+            h2('Distribution of Taxa'),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_taxdistr"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('tax_distribution'),
+                           width = '100%', height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ),
+          fluidRow(
+            h2('Percent assigned:'),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_assigned"))
+            ),
+            column(
+              width = 11, style = 'padding:0x;',
+              plotlyOutput(ns('perc_assigned'), width = '100%',
+                           height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ) # end fluidRow
+        ), # end tabPanel
+        # Read count distribution---------------------------------------------
+        tabPanel(
+          'Sample Distribution',
+          id = 'group_distribution_tab',
+          fluidRow(
+            br(), br(),
+            h1('Read Count Distribution'),
+            tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
+            br(),
+            wellPanel(
+              div(style="text-align: center",
+                  tags$b('Input controls')),
 
-            # Read count distribution---------------------------------------------
-            tabItem(
-              tabName = 'group_distribution_tab',
-              fluidRow(
-                column(
-                  width = 12,
-                  h1('Read Count Distribution'),
-                  tags$div("Examining how reads are distributed across samples can provide insight as to whether or not sequencing depth is even in all samples. If total read count of sample groupings is skewed, it may warrent further investigation. The reason can be biological (not as much DNA in some sample groups) or technical (sequencing was not successful, and should be omitted)"),
-                  br(),
-                  tags$b('Total read counts across sample or sample groups')
-                ),
-                column(
-                  width = 1, style = 'padding:0px;',
-                  mod_download_ui(ns("download_grpdistr"))
-                ),
-                column(
-                  width = 11, style = 'padding:0px;',
-                  jqui_resizable(
-                    plotlyOutput(ns('group_distribution'),
-                                 width = '100%', height = 'auto') %>%
-                      shinycssloaders::withSpinner()
-                    )
-                ),
-                column(
-                  width = 12,
-                  br(),
-                  tags$div("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
-                  br(),
-                  tags$b("Distribution of average read counts across sample groups")
-                ),
-                column(
-                  width = 1, style = 'padding:0px;',
-                  mod_download_ui(ns("download_samdistr"))
-                ),
-                column(
-                  width = 11, style = 'padding:0px;',
-                  jqui_resizable(
-                    plotlyOutput(ns('sample_distribution'),
-                                 width = '100%', height = 'auto') %>%
-                      shinycssloaders::withSpinner()
-                  )
-                )
-              ) # end fluidrow
-            ), # end tabitem
-            # report------------------------------------------------------------
-            tabItem(
-              tabName = "qc_report",
-                mod_report_ui(ns("report_ui_1"))
-            ) # end tabitem
-          ) # end tabitems
-        ) # end box
-      ) # end dashboard body
-    ) # end dashboard Page
+              # choose sample group
+              uiOutput(ns('sample_select_ui'))
+            ), hr()
+          ),
+          fluidRow(
+            tags$b('Total read counts across sample or sample groups'),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_grpdistr"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+                plotlyOutput(ns('group_distribution'),
+                             width = '100%', height = 'auto') %>%
+                  shinycssloaders::withSpinner()
+            ),
+          ),
+          fluidRow(
+            p("Similarly, examining the average read count of samples or sample groupings can impart information about any potential biases in the dataset"),
+            strong("Distribution of average read counts across sample groups"),
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_samdistr"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('sample_distribution'),
+                           width = '100%', height = 'auto') %>%
+                shinycssloaders::withSpinner()
+            )
+          ) # end fluidrow
+        ), # end tabPanel
+        # report------------------------------------------------------------
+        tabPanel(
+          'Report',
+          id = "qc_report",
+          fluidRow(
+            br(), br(),
+            column(
+              width = 12,
+              mod_report_ui(ns("report_ui_1"))
+            )
+
+          )
+        ) # end tabPanel
+      ) # end navlistPanel
+    ) # end fluidPage
   ) # end taglist
 }
 
@@ -340,7 +318,8 @@ mod_qc_ui <- function(id){
 mod_qc_server <- function(input, output, session, improxy){
   ns <- session$ns
 
-
+  # initiating report-------------------------------------------------------------
+  for_report <- reactiveValues()
   # reading in tables ----------------------------------------------------------
   qc_filtered <- reactive({
     df <- improxy$data_db$merged_filter_summary
@@ -354,58 +333,46 @@ mod_qc_server <- function(input, output, session, improxy){
   tax <- reactive({improxy$data_db$merged_taxonomy})
 
   yml <- reactive({
-    improxy$data_db$parameter_table %>%
-      mutate(dada2_fxn = ifelse(task == 'trim','filterAndTrim', 'task')) %>%
-      mutate(dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'nbases', 'learnErrors', NA),
+    out <- improxy$data_db$parameter_table %>%
+      # remove parameter for task paired since not really a function applied
+      mutate(parameter = ifelse(task == 'paired', NA, parameter)) %>%
+      # ådd dada2_fxn to help understand what's happening at each pipeline step
+      mutate(dada2_fxn = NA) %>%
+      mutate(dada2_fxn = ifelse(task == 'trim','filterAndTrim', NA),
              dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'filtF', 'learnErrors', dada2_fxn),
+                                  parameter =='nbases',
+                                'learnErrors', dada2_fxn),
+             # including all dada2 parameters incase they are included in the yml
              dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'filtR', 'learnErrors', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'omega-a', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'use-quals', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'use-kmers', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'kdist-cutoff', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'band-size', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'gap-penalty', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'homopolymer-ga-penalty',
-                                'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'min-fold', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'min-hamming', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'min-abundance', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'max-clust', 'dada', dada2_fxn),
-             dada2_fxn = ifelse(task == 'sample_inference' &
-                                  parameter == 'max-consist', 'dada',
-                                dada2_fxn)) %>%
-      mutate(dada2_fxn = ifelse(task == "taxonomy" &
+                                  parameter != 'nbases', 'dada', dada2_fxn),
+             # remove options as a parameter in dada function
+             parameter = ifelse(task == 'sample_inference' & dada2_fxn == 'dada'
+                                & parameter == 'options', NA, parameter),
+             dada2_fxn = ifelse(task == "taxonomy" &
                                   parameter == 'taxonomy_file',
                                 'assignTaxonomy', dada2_fxn),
              dada2_fxn = ifelse(task == "taxonomy" &
                                   parameter == 'species_file', 'addSpecies',
                                 dada2_fxn)) %>%
-      ## filtF and filtR values for drepFastq should be same as those used in
-      ## learnErrors (and not NA) -- need to fix this
-      add_row(task = "sample_inference", parameter = "filtF",
-              dada2_fxn = "dreqFastq", value = NA) %>%
-      add_row(task = "sample_inference", parameter = "filtR",
-              dada2_fxn = "drepFastq", value = NA) %>%
-      add_row(task = "sample_inference", parameter = "method",
-              dada2_fxn = "removeBimeraDenovo", value = "consensus") %>%
-      add_row(task = "sample_inference", parameter = NA,
-              dada2_fxn = "mergePairs", value = NA) %>%
+      # adding drepFastq to yml to show dada2 function was used
+      # but no parameters and value bc it's only argument is filtered fastq files
+      add_row(task = "sample_inference", dada2_fxn = "drepFastq",
+              parameter = NA, value = NA) %>%
+      add_row(task = "sample_inference", dada2_fxn = "drepFastq",
+              parameter = NA, value = NA) %>%
+      # adding other dada2 function used in pipeline
+      add_row(task = "sample_inference", dada2_fxn = "removeBimeraDenovo",
+              parameter = "method", value = "consensus")
+    # add mergePairs if paired end reads used
+    check_pair <- out %>% filter(task == 'paired')
+    if(check_pair$value %in% c('True', 1)) {
+      out <- out %>%
+        add_row(task = "sample_inference", dada2_fxn = "mergePairs",
+                parameter = NA, value = NA)
+    }
+    out %>%
       select(task, dada2_fxn, parameter, value) %>%
-      arrange(parameter)
+      arrange(task, parameter)
   })
 
 
@@ -417,14 +384,15 @@ mod_qc_server <- function(input, output, session, improxy){
   })
 
   # Filtering-------------------------------------------------------------------
-  output$filter_yml <- DT::renderDataTable({
+  output$filter_yml <- DT::renderDataTable(server = FALSE, {
 
     # add dada2 function that corresponds to yml parameters
     out <- yml() %>%
-      filter(task == 'trim')
+      filter(task %in% c('paired','trim'))
 
-    DT::datatable(out, colnames = c('pipeline task','dada2 function',
+    DT::datatable(out, colnames = c('OCMS pipeline task','dada2 function',
                                     'parameter','value'),
+                  rownames = FALSE,
                   options = list(scrollX = TRUE))
   })
 
@@ -438,7 +406,7 @@ mod_qc_server <- function(input, output, session, improxy){
   p_filt <- reactive({
     p <- ggplot(pdata_filt(), aes(x=sample, y=value)) +
       geom_point(aes(colour = variable), alpha = 0.6) +
-      scale_fill_manual(name = NULL, values=c("red4", "blue4")) +
+      scale_colour_manual(name = NULL, values=c("red4", "blue4")) +
       theme_bw(12) +
       theme(axis.text.x=element_text(angle=90)) +
       xlab("Sample") +
@@ -462,14 +430,22 @@ mod_qc_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_filter", bridge = for_download1,
              'qc-filtered')
 
+  # add to report
+  observe({
+    for_report$params <- list(tax_level = input$tax_level,
+                              yml = yml(),
+                              p_filt = p_filt()
+    )
+  })
   # Chimera removal-------------------------------------------------------------
-  output$denoise_yml <- DT::renderDataTable({
+  output$denoise_yml <- DT::renderDataTable(server = FALSE, {
 
     out <- yml() %>%
       filter(task == 'sample_inference')
 
-    DT::datatable(out, colnames = c('pipeline task','dada2 function',
+    DT::datatable(out, colnames = c('OCMS pipeline task','dada2 function',
                                     'parameter','value'),
+                  rownames = FALSE,
                   options = list(scrollX = TRUE))
 
   })
@@ -505,6 +481,10 @@ mod_qc_server <- function(input, output, session, improxy){
 
   callModule(mod_download_server, "download_nochim", bridge = for_download2, 'qc-nochim')
 
+  # add to report
+  observe({
+    for_report$params$p_nochim <- p_nochim()
+  })
   # prevalence of ASVs across samples-----------------------------------------
   pdata_nasv <- reactive({
     improxy$asv_gather %>%
@@ -537,6 +517,10 @@ mod_qc_server <- function(input, output, session, improxy){
 
   callModule(mod_download_server, "download_nasv", bridge = for_download3, 'qc-nfeature')
 
+  # add to report
+  observe({
+    for_report$params$p_nasv <- p_nasv()
+  })
   # summarise prevalence--------------------------------------------------------
   n_sample <- reactive(length(met()$sampleID))
   prevalence <- reactive({
@@ -578,6 +562,10 @@ mod_qc_server <- function(input, output, session, improxy){
 
   callModule(mod_download_server, "download_prevalence", bridge = for_download4,
              'qc-prevalence')
+  # add to report
+  observe({
+    for_report$params$p_preval <- p_preval()
+  })
 
   # prevalence vs mean relative abundance --------------------------------------
   pdata_spur <- reactive({
@@ -614,6 +602,10 @@ mod_qc_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_spur", bridge = for_download5,
              'qc-prevabund')
 
+  # add to report
+  observe({
+    for_report$params$p_spur <- p_spur()
+  })
   # rarefaction curve-----------------------------------------------------------
 
   rare_df <- reactive({
@@ -632,7 +624,7 @@ mod_qc_server <- function(input, output, session, improxy){
   p_rare <- reactive({
     p <- ggplot(pdata_rare(), aes(x=Depth, y=Richness, color=sampleID)) +
       geom_line() +
-      guides(color = FALSE)
+      guides(color = 'none')
     # geom_label not compatible with plotly
     # geom_label(aes(label=sampleID, colour = sampleID),
     #            fill = alpha(c("white"), 0.2),
@@ -659,15 +651,20 @@ mod_qc_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_rare", bridge = for_download6,
              'qc-rarefaction')
 
+  # add to report
+  observe({
+    for_report$params$p_rare <- p_rare()
+  })
   # read count distribution of taxa---------------------------------------------
 
   # add dada2 functions corresponding to yml parameters
-  output$taxonomy_yml <- DT::renderDataTable({
+  output$taxonomy_yml <- DT::renderDataTable(server = FALSE, {
     out <- yml() %>%
       filter(task == "taxonomy")
 
-    DT::datatable(out, colnames = c('pipeline task','dada2 function',
+    DT::datatable(out, colnames = c('OCMS pipeline task','dada2 function',
                                     'parameter','value'),
+                  rownames = FALSE,
                   options = list(scrollX = TRUE))
   })
   # customize count data based on selected taxonomic level
@@ -692,10 +689,11 @@ mod_qc_server <- function(input, output, session, improxy){
     })
   })
 
-  output$tax_distrib_table <- DT::renderDataTable({
+  output$tax_distrib_table <- DT::renderDataTable(server = FALSE, {
     out <- tax_distrb_df()
     colnames(out) <- c(input$tax_level, "Read Count", "Relative Abundance")
     DT::datatable(out,  extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
@@ -728,6 +726,11 @@ mod_qc_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_taxdistr", bridge = for_download7,
              'qc-taxdistrib')
 
+  # add to report
+  observe({
+    for_report$params$tax_distrb_df <- tax_distrb_df()
+    for_report$params$p_taxdistr <- p_taxdistr()
+  })
   # evaluate number ASVs assigned to taxonomy level-----------------------------
   n_assigned <- reactive({
 
@@ -772,6 +775,9 @@ mod_qc_server <- function(input, output, session, improxy){
 
   callModule(mod_download_server, "download_assigned", bridge = for_download8, 'qc-assigned')
 
+  observe({
+    for_report$params$p_assigned <- p_assigned()
+  })
   # read count distribution of samples------------------------------------------
 
   pdata_grpdistr <- reactive({
@@ -806,6 +812,9 @@ mod_qc_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_grpdistr", bridge = for_download9,
              'qc-grpdistrib')
 
+  observe({
+    for_report$params$p_grpdistr <- p_grpdistr()
+  })
   # sample distribution --------------------------------------------------------
   pdata_samdistr <- reactive({
     req(input$sample_select)
@@ -844,29 +853,15 @@ mod_qc_server <- function(input, output, session, improxy){
   callModule(mod_download_server, "download_samdistr", bridge = for_download10,
              'qc-samdistrib')
 
-  # generate report-------------------------------------------------------------
-  for_report <- reactiveValues()
+  # add to report
   observe({
-    for_report$params <- list(tax_level = input$tax_level,
-                              yml = yml(),
-                              p_filt = p_filt(),
-                              p_nochim = p_nochim(),
-                              p_nasv = p_nasv(),
-                              p_preval = p_preval(),
-                              p_spur = p_spur(),
-                              p_rare = p_rare(),
-                              tax_distrb_df = tax_distrb_df(),
-                              p_taxdistr = p_taxdistr(),
-                              p_assigned = p_assigned(),
-                              p_grpdistr = p_grpdistr(),
-                              p_samdistr = p_samdistr()
-    )
+    for_report$params$p_samdistr <- p_samdistr()
   })
 
 
   # # Check
   # output$check <- renderPrint({
-  # 
+  #
   # })
 
   callModule(mod_report_server, "report_ui_1", bridge = for_report,

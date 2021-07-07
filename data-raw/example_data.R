@@ -5,7 +5,7 @@ usethis::use_data("example_data")
 # save_dir <- "/gfs/devel/syen/OCMSlooksy/data-raw"
 save_dir <- "./data-raw"
 # create database
-con <- dbConnect(RSQLite::SQLite(), file.path(save_dir, "DSS_DB"))
+con <- RSQLite::dbConnect(RSQLite::SQLite(), file.path(save_dir, "DSS_DB"))
 
 # writing database table into list to save as RData file
 # extract data tables
@@ -19,9 +19,41 @@ for(i in 1:length(table_ls)) {
   example_data[[table_ls[i]]] <- entry
 }
 # close connection
-dbDisconnect(con)
+RSQLite::dbDisconnect(con)
 
 # add metadata to list
-example_data$metadata <- read.csv(file.path(save_dir, "dss_metadata.tsv"), sep="\t")
+metadata <- read.csv(file.path(save_dir, "dss_metadata.tsv"), sep="\t")
+
+# remove empty columns
+metadata <- metadata[colSums(!is.na(metadata)) > 0]
+
+# remove columns with one unique entry
+nval <- apply(metadata, 2, function(x) length(unique(x)))
+metadata <- metadata[which(nval > 1)]
+
+# rename phenotype to treatment
+colnames(metadata)[which(colnames(metadata) == 'Phenotype')] <- 'Treatment'
+
+# add column to easily filter out failed samples
+# that were idenitifed in post-hoc analyses
+omit <- c('stool-2DSS__12',
+          'stool-2DSS__25',
+          'stool-2DSS__28',
+          'stool-2DSS__30',
+          'stool-3DSS__2',
+          'stool-3DSS__7',
+          'stool-3DSS__11',
+          'stool-3DSS__16',
+          'stool-3DSS__21',
+          'stool-3DSS__22',
+          'stool-3DSS__23',
+          'stool-3DSS__24',
+          'stool-3DSS__26',
+          'stool-3DSS__29',
+          'stool-4DSS__1')
+
+metadata$seq_success <- ifelse(metadata$sampleID %in% omit, FALSE, TRUE)
+
+example_data$metadata <- metadata
 
 save(example_data, 'example_data', file = './data/example_data.RData')

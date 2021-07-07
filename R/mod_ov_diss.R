@@ -4,23 +4,31 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 mod_ov_diss_ui <- function(id){
   ns <- NS(id)
   tagList(
     # wellPanel(width = 12, h3('Sub check'), br(), verbatimTextOutput(ns('check'))),
-    h1('Sample Dissimilarity'),
-      tags$div("Using Bray-Curtis distance metric to measure the sample-wise dissimilarity. Dissimilarity is calculated for pair-wise samples within the groups of the selected metadata variable (phenotype). "),
     fluidRow(
-      width = 12,
-      column(
-        width = 12,
-        tags$div(tags$b(textOutput(ns('validation_msg')))),
-        br(),
-        htmlOutput(ns('diss_message_ui'))
+      h1('Sample Dissimilarity'),
+      tags$div("Using Bray-Curtis distance metric to measure the sample-wise dissimilarity. Dissimilarity is calculated for pair-wise samples within the groups of the selected metadata variable (phenotype). ")
+    ),
+    fluidRow(
+      # Dissimilarity menu controls-----------------------------------------
+      wellPanel(
+        uiOutput(ns('diss_grp_ui')),
+          uiOutput(ns('diss_panel_ui')),
+          withBusyIndicatorUI(
+            actionButton(ns('diss_calculate'), 'Calculate')
+        )
       )
+    ),
+    fluidRow(
+      tags$b(textOutput(ns('validation_msg'))),
+      br(),
+      htmlOutput(ns('diss_message_ui'))
     ),
     fluidRow(
       column(
@@ -29,71 +37,76 @@ mod_ov_diss_ui <- function(id){
       ),
       column(
         width = 11, style = 'padding:0px;',
-        shinyjqui::jqui_resizable(
-          plotlyOutput(ns('diss_plot'), width = '100%',
-                       height= 'auto') %>%
-            shinycssloaders::withSpinner()
-        )
+        plotlyOutput(ns('diss_plot'), width = '100%',
+                     height= 'auto') %>%
+          shinycssloaders::withSpinner()
       )
     ),
     fluidRow(
-      width = 12,
-      box(
-        width = 12,
-        DT::dataTableOutput(ns("diss_stat"))
-      )
-    ), 
+      DT::dataTableOutput(ns("diss_stat"))
+    ),
     fluidRow(
-      width = 12,
-      column (
-        width = 12,
-        DT::dataTableOutput(ns('diss_result'))  %>%
+      DT::dataTableOutput(ns('diss_result'))  %>%
           shinycssloaders::withSpinner()
-      )
     )
   )
 }
-    
+
 #' ov_diss Server Function
 #'
-#' @noRd 
+#' @noRd
 mod_ov_diss_server <- function(input, output, session, bridge){
   ns <- session$ns
- 
+
   # bridge$asv_transform # transformed count
   # bridge$filtered$met # metadata table
   # bridge$filtered$tax # taxonomy table
-  
+
+  # render controls - dissimilarity
+  output$diss_grp_ui <- renderUI({
+    selectInput(ns('diss_grp'), "Compare Sample Groups",
+                choices = colnames(bridge$work_db$met), selected = 'sampleID')
+  })
+
+  output$diss_panel_ui <- renderUI({
+    selectInput(ns('diss_panel'), "panel by",
+                choices = c('none', colnames(bridge$work_db$met)),
+                selected = 'none')
+  })
+
   # prepare data----------------------------------------------------------------
   # add panel column to met
-  met_diss <- eventReactive(bridge$diss_input$diss_calculate, {
-    if(bridge$diss_input$diss_panel != 'none') {
-      bridge$filtered$met %>% mutate(panel = .data[[bridge$diss_input$diss_panel]]) 
+  met_diss <- reactive({
+    if(input$diss_panel != 'none') {
+      bridge$filtered$met %>% mutate(panel = .data[[input$diss_panel]])
     } else {
       bridge$filtered$met %>% mutate(panel = 'none')
     }
-    
+
   })
-  
+
+  # output$check <- renderPrint({
+  #
+  # })
 
   # perform checks--------------------------------------------------------------
   # check for number of samples per group
-  grp_tally <- eventReactive(bridge$diss_input$diss_calculate, {
-    table(met_diss()[,c('panel', bridge$diss_input$diss_grp)], useNA='ifany')
+  grp_tally <- reactive({
+    table(met_diss()[,c('panel', input$diss_grp)], useNA='ifany')
   })
-  
+
   # send by group for distance calculation
-  iter <- eventReactive(bridge$diss_input$diss_calculate, {
+  iter <- reactive({
     list(panel = rownames(grp_tally()), grouping = colnames(grp_tally()))
   })
-  
+
   # check panels and groups
-  valid_diss <- eventReactive(bridge$diss_input$diss_calculate, {
-    apply(grp_tally(), 1:2, function(x) {x >= 2})
+  valid_diss <- reactive({
+    apply(grp_tally(), 1:2, function(x) {as.numeric(x) >= 2})
   })
-  
+
   # check number of groups to determine how dissimilarity is calculated
-  ngroup <- eventReactive(bridge$diss_input$diss_calculate, {
+  ngroup <- reactive({
     if((max(grp_tally()) == 1) | (length(grp_tally()) == 1) |
        (ncol(grp_tally()) == 1)) {
       "onegroup"
@@ -101,29 +114,28 @@ mod_ov_diss_server <- function(input, output, session, bridge){
       "bygroup"
     }
   })
-  
-  
-  validation_msg <- eventReactive(bridge$diss_input$diss_calculate, {
+
+
+  validation_msg <- eventReactive(input$diss_calculate, {
     switch(ngroup(), "onegroup" = "All observations are in the same group. Measuring sample dissimilarity on all sample pairs within the group.",
            "bygroup" = 'Measuring pairwise sample dissimilarity on sample pairs within each group')
   })
   output$validation_msg <- renderText({
     validation_msg()
   })
-  
+
   # initiate message about statistic calculation
   diss_check <- reactiveValues()
-  
+
   # pairwise dissimilarity------------------------------------------------------
-  diss_result <- eventReactive(bridge$diss_input$diss_calculate, {
-    
+  diss_result <- eventReactive(input$diss_calculate, {
+
     diss_check$empty_panel <- c()
     diss_check$empty_group <- c()
 
     out <- c()
-    
+
     for(i in 1:length(iter()$panel)) {
-      
       # get sampleID in current panel group
       panel_sample <-  met_diss() %>%
         filter(panel %in% c(iter()$panel[i])) # making this %in% statement even though only one value to help search for NAs. filtering for NA with %in% vector keeps NAs
@@ -132,38 +144,37 @@ mod_ov_diss_server <- function(input, output, session, bridge){
 
       validate(
         need(nrow(panel_sample) >= 2, "Cannot assess sample pairwise dissimilarity within the group. Must have at least 2 samples per panel"),
-        need(ifelse(bridge$diss_input$diss_panel != 'none', 
-                    sum(valid_diss()[i,]) > 0, 
+        need(ifelse(input$diss_panel != 'none',
+                    sum(valid_diss()[i,]) > 0,
                     TRUE),
              "Cannot assess sample pairwise dissimilarity within the group. Must have at least 2 samples per panel")
       )
-      
       # pairwise dissimilarity of all samples-----------------------------------
       if(ngroup() == 'onegroup') {
-        
+
         # get sampleID in current group
         curr_sample <-  panel_sample %>%
-          filter(.data[[bridge$diss_input$diss_grp]] %in% c(iter()$grouping))
-        
+          filter(.data[[input$diss_grp]] %in% c(iter()$grouping))
+
         # get count data in current group
         curr_data <- panel_data[,curr_sample$sampleID]
-        
+
         # handle empty subgroup
-        if(nrow(curr_sample > 0)) {
-        
+        if(nrow(curr_sample) > 0) {
+
           # calculate dissimilarity distances
           curr_dist <- vegan::vegdist(t(curr_data), method='bray')
           curr_dist <- as.matrix(curr_dist)
           sample_pair <- t(combn(colnames(curr_dist), 2))
-          
+
           # put distance matrix in long dataframe
           entry <- data.frame(sample_pair, bray=curr_dist[sample_pair])
           colnames(entry)[1:2] <- c('row','col')
           entry$panel <- iter()$panel[i]
-          entry$grouping <- bridge$diss_input$diss_grp
+          entry$grouping <- input$diss_grp
           entry$pairID <- paste(entry$row, entry$col, entry$panel, entry$grouping,
                                 sep="_")
-          
+
           out <- rbind(out, entry)
         } else {
          diss_check$empty_panel <- c(diss_check$empty_panel, iter()$panel[i])
@@ -177,11 +188,11 @@ mod_ov_diss_server <- function(input, output, session, bridge){
           if(valid_diss()[i, j]) {
             # get sampleID in current group
             curr_sample <-  panel_sample %>%
-              filter(.data[[bridge$diss_input$diss_grp]] %in% 
+              filter(.data[[input$diss_grp]] %in%
                        c(iter()$grouping[j])) # making this %in% statement even though only one value to help search for NAs. filtering for NA with %in% vector keeps NAs
-            
+
             # get count data in current group
-            curr_data <- panel_data[,curr_sample$sampleID]
+            curr_data <- panel_data[,as.character(curr_sample$sampleID)]
 
             # calculate pairwise dissimilarity
             ## samples as rows
@@ -194,10 +205,10 @@ mod_ov_diss_server <- function(input, output, session, bridge){
             entry$grouping <- iter()$grouping[j]
             entry$pairID <- paste(entry$row, entry$col, entry$panel, entry$grouping,
                                   sep='_')
-            
+
             inner_out <- rbind(inner_out, entry)
           } else {
-            diss_check$empty_group <- rbind(diss_check$empty_group, 
+            diss_check$empty_group <- rbind(diss_check$empty_group,
                                           c(panel=iter()$panel[i],
                                             grouping=iter()$grouping[j]))
           }
@@ -208,17 +219,18 @@ mod_ov_diss_server <- function(input, output, session, bridge){
     } # end outer loop
     out
   })
-  
-  output$diss_result <- DT::renderDataTable({
+
+  output$diss_result <- DT::renderDataTable(server = FALSE, {
     DT::datatable(diss_result(),
+                  rownames = FALSE,
                   extensions = 'Buttons',
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
       DT::formatRound(column = 'bray', digits = 3)
   })
 
-  
-  diss_msg <- eventReactive(bridge$diss_input$diss_calculate, {
+
+  diss_msg <- eventReactive(input$diss_calculate, {
     out <- c()
     if(!is.null(diss_check$empty_panel)) {
       entry <- sprintf("%s panel does not contain enough samples to measure pairwise sample dissimilarity", diss_check$empty_panel)
@@ -226,67 +238,67 @@ mod_ov_diss_server <- function(input, output, session, bridge){
     }
     if(!is.null(diss_check$empty_group)) {
       for(i in 1:nrow(diss_check$empty_group)) {
-        entry <- sprintf("%s panel, %s group does not contain enough samples to measure pairwise sample dissimilarity", 
-                         diss_check$empty_group[i,'panel'], 
+        entry <- sprintf("%s panel, %s group does not contain enough samples to measure pairwise sample dissimilarity",
+                         diss_check$empty_group[i,'panel'],
                          diss_check$empty_group[i,'grouping'])
         out <- c(out, entry)
       }
     }
-    
+
     if(!is.null(out)) {
       HTML(paste(out, collapse = '<br/>'))
     } else {
       " "
     }
   })
-  
+
   output$diss_message_ui <- renderUI({
     diss_msg()
   })
-  
-  valid_stat <- eventReactive(bridge$diss_input$diss_calculate, {
+
+  valid_stat <- eventReactive(input$diss_calculate, {
     # tally number of dissimilarity measurements per panel-grouping
     curr <- table(diss_result()[,c('panel','grouping')])
 
     # need at least 2 dissimilarities per panel-grouping
-    diss_obs <- apply(curr, 1:2, function(x) {x >= 2})
+    diss_obs <- apply(curr, 1:2, function(x) {as.numeric(x) >= 2})
 
     # need to have two groups have have enough dissimilarity observations
     grp_obs <- apply(diss_obs, 1, function(x) sum(x) >=2)
 
     tibble::enframe(grp_obs, name='panel', value='contains.group')
   })
-  
+
   # number of panels that are not valid for statistics calculations
-  n_failed <- eventReactive(bridge$diss_input$diss_calculate, {
+  n_failed <- eventReactive(input$diss_calculate, {
 
     # pass = TRUE, fail = FALSE
     nrow(valid_stat()) - sum(valid_stat()$contains.group)
   })
-  
+
   # panels that work for statistics calculations
-  keep_panel <- eventReactive(bridge$diss_input$diss_calculate, {
+  keep_panel <- eventReactive(input$diss_calculate, {
     valid_stat() %>%
       filter(contains.group == TRUE) %>%
       pull(panel)
   })
-  
-  # check number of groups to determine if should perform statistics 
-  validation_stat <- eventReactive(bridge$diss_input$diss_calculate, {
+
+  # check number of groups to determine if should perform statistics
+  validation_stat <- eventReactive(input$diss_calculate, {
 
     # perform statistic calculation unless
     out <- TRUE
-    if((length(keep_panel()) > 0) & 
+    if((length(keep_panel()) > 0) &
        (length(keep_panel()) < nrow(grp_tally()))) {
       out <- 'some'
     }
     if((n_failed() == length(iter()[['panel']])) | # all failed; only one panel
        (ngroup() == 'onegroup')) {
       out <- FALSE
-    } 
+    }
     out
   })
-  
+
   # perform statistical test
   stat_test <- reactive({
     if(length(grp_tally()) == 2) 'wilcox.test'
@@ -294,18 +306,18 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   })
 
   # statistical test on dissimilarity distances
-  diss_stat <- eventReactive(bridge$diss_input$diss_calculate, {
- 
+  diss_stat <- eventReactive(input$diss_calculate, {
+
     if(validation_stat() == 'some') {
       # only perform stat test on panels with groups
-      in_data <- diss_result() %>% 
+      in_data <- diss_result() %>%
         filter(panel %in% keep_panel())
     } else {
       in_data <- diss_result()
     }
-    
+
     validate(
-      need(validation_stat() != FALSE, 
+      need(validation_stat() != FALSE,
            "All observations are in the same group or not enough samples per group. Group-wise comparisons not performed."),
       need(nrow(in_data) > 0, "All Panels contain one group. Group-wise comparisons not performed.")
     )
@@ -318,24 +330,19 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   })
 
 
-  output$diss_stat <- DT::renderDataTable({
+  output$diss_stat <- DT::renderDataTable(server = FALSE, {
 
     DT::datatable(diss_stat() %>%
                     select(-.y., -p.format, ), extensions = 'Buttons',
+                  rownames = FALSE,
                   options = list(scrollX = TRUE, dom = 'Blfrtip',
-                                 buttons = c('copy','csv'))) %>%
-      DT::formatRound(column = 'p', digits = 3)
+                                 buttons = c('copy','csv')))
   })
 
-
-  # output$check <- renderPrint({
-  # 
-  # })
-
   # plot dissimilarity
-  pdata_diss <- eventReactive(bridge$diss_input$diss_calculate, {
+  pdata_diss <- eventReactive(input$diss_calculate, {
 
-    out <- diss_result() %>% 
+    out <- diss_result() %>%
       group_by(panel, grouping) %>%
       mutate(diss_avg = mean(bray)) %>%
       ungroup()
@@ -348,7 +355,7 @@ mod_ov_diss_server <- function(input, output, session, bridge){
       } else {
         in_data <- diss_result()
       }
-      
+
       compare_stat <- ggpubr::compare_means(formula = bray~grouping,
                                             data = in_data,
                                             group.by = 'panel',
@@ -356,15 +363,15 @@ mod_ov_diss_server <- function(input, output, session, bridge){
                                             p.adjust.method = 'BH')
 
       out <- out %>%
-        left_join(compare_stat %>% select(panel, p.adj), 'panel') %>%
-        mutate(panel_text = sprintf("%s\np.adj=%0.3f", panel, p.adj))
+        left_join(compare_stat %>% select(panel, p, p.adj), 'panel') %>%
+        mutate(panel_text = sprintf("%s\np=%0.3f, p.adj=%0.3f", panel, p, p.adj))
     } else {
       out <- mutate(out, panel_text = panel)
     }
     out
   })
-  
-  p_diss <- eventReactive(bridge$diss_input$diss_calculate, {
+
+  p_diss <- eventReactive(input$diss_calculate, {
 
     p <- ggplot(pdata_diss(), aes(x = grouping, y = bray)) +
       geom_boxplot(outlier.fill=NA) +
@@ -372,11 +379,11 @@ mod_ov_diss_server <- function(input, output, session, bridge){
                  position = position_jitter(width = 0.25, seed = 1),
                  alpha = 0.6) +
       theme_bw() +
-      xlab(bridge$diss_input$diss_grp) +
+      xlab(input$diss_grp) +
       theme(axis.text.x = element_text(angle = 90),
             axis.title.y = element_blank())
-    
-    if(bridge$diss_input$diss_panel != 'none') {
+
+    if(input$diss_panel != 'none') {
       p <- p +
         facet_wrap(~panel_text, scales='free')
     }
@@ -402,13 +409,15 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
+      diss_grp = input$diss_grp,
+      diss_panel = input$diss_panel,
       validation_msg = validation_msg(),
       diss_result = diss_result(),
       p_diss = p_diss(),
       diss_msg = diss_msg()
     )
   })
-  
+
   observe({
     if(validation_stat() != FALSE) {
       cross_module$output$diss_stat <- diss_stat()
@@ -418,10 +427,10 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   })
   return(cross_module)
 }
-    
+
 ## To be copied in the UI
 # mod_ov_diss_ui("ov_diss_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_ov_diss_server, "ov_diss_ui_1")
- 
+

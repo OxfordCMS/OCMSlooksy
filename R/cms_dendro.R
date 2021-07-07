@@ -1,17 +1,17 @@
 #' dendro_data_k
-#' 
-#' Extract dendrogram data for plot customized dendrogram. 
+#'
+#' Extract dendrogram data for plot customized dendrogram.
 #' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 dendro_data_k <- function(hc, k) {
-  
+
   hcdata    <-  ggdendro::dendro_data(hc, type = "rectangle")
   seg       <-  hcdata$segments
   labclust  <-  cutree(hc, k)[hc$order]
   segclust  <-  rep(0L, nrow(seg))
   heights   <-  sort(hc$height, decreasing = TRUE)
   height    <-  mean(c(heights[k], heights[k - 1L]), na.rm = TRUE)
-  
+
   for (i in 1:k) {
     xi      <-  hcdata$labels$x[labclust == i]
     idx1    <-  seg$x    >= min(xi) & seg$x    <= max(xi)
@@ -20,19 +20,19 @@ dendro_data_k <- function(hc, k) {
     idx     <-  idx1 & idx2 & idx3
     segclust[idx] <- i
   }
-  
+
   idx                    <-  which(segclust == 0L)
   segclust[idx]          <-  segclust[idx + 1L]
   hcdata$segments$clust  <-  segclust
   hcdata$segments$line   <-  as.integer(segclust < 1L)
   hcdata$labels$clust    <-  labclust
-  
+
   return(hcdata)
 }
 
 #' set_label_param
-#' 
-#' set parameters of labels for plotting customized dendrogram. 
+#'
+#' set parameters of labels for plotting customized dendrogram.
 #' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
 set_labels_params <- function(nbLabels,
@@ -54,7 +54,7 @@ set_labels_params <- function(nbLabels,
 }
 
 #' plot_ggdendro
-#' 
+#'
 #' use ggplot to make customized dendrogram.
 #' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
 
@@ -69,24 +69,24 @@ plot_ggdendro <- function(hcdata,
                           expand.y    = 0.5,
                           category = NULL,
                           id = 'sampleID') {
-  
+
   direction <- match.arg(direction) # if fan = FALSE
   ymax      <- round(max(segment(hcdata)$y))
   ymin <- round(min(segment(hcdata)$yend))
   ybreaks   <- seq(-1, ymax, ymax*0.1)
-  
+
   # set dendrogram labels
   if(!is.null(label.category) & label.category != id) {
     label_data <- hcdata$labels %>%
-      dplyr::inner_join(metadata[,c(id, label.category)] %>% 
-                          dplyr::rename(new_label = !!label.category), 
+      dplyr::inner_join(metadata[,c(id, label.category)] %>%
+                          dplyr::rename(new_label = !!label.category),
                         c('label' = id))
     hcdata$labels <- label_data
   }
   else {
     hcdata$labels$new_label <- hcdata$labels$label
   }
-  
+
   ## branches
   p <- ggplot() +
     geom_segment(data         =  segment(hcdata),
@@ -98,11 +98,11 @@ plot_ggdendro <- function(hcdata,
                      colour   =  factor(clust)),
                  lineend      =  "round",
                  size         =  branch.size)
-  
+
   # labels
   labelParams <- set_labels_params(nrow(hcdata$labels), direction, fan)
   hcdata$labels$angle <- labelParams$angle
-  
+
   if(is.null(category)) {
     hcdata$labels$y <- -0.1
   }
@@ -122,44 +122,44 @@ plot_ggdendro <- function(hcdata,
               nudge_y     =  ymax * nudge.label,
               size        =  label.size,
               show.legend =  FALSE)
-  
+
   # plot limits
   ylim <- -round(ymax * expand.y, 1)
   p    <- p + expand_limits(y = ylim)
-  
+
   # colours
   nclust <- unique(ggdendro::segment(hcdata)$clust)
   nclust[is.na(nclust)] <- 0
   nclust <- sort(as.numeric(nclust))
   if(length(nclust) == 1) {
-    p <- p + scale_colour_manual(values = 'black', guide = FALSE) +
-      scale_linetype_discrete(guide = FALSE)
+    p <- p + scale_colour_manual(values = 'black', guide = 'none') +
+      scale_linetype_discrete(guide = 'none')
   }
   else{
-    p <- p + 
-      scale_linetype_discrete(guide = FALSE) +
+    p <- p +
+      scale_linetype_discrete(guide = 'none') +
       scale_colour_manual(name = 'cluster', labels = nclust,
                          values = cms_palette(max(segment(hcdata)$clust) + 1))
   }
-  
+
   # categorical data
   if(!is.null(category)) {
-    cat_data <- metadata %>% 
+    cat_data <- metadata %>%
       dplyr::rename(rowID = !!id) %>%
       tidyr::gather('met_cat', 'value', -rowID) %>%
       dplyr::filter(met_cat == category)  %>%
       dplyr::mutate(shift_y = 0 - max(segment(hcdata)$y) * 0.03) %>%
       dplyr::inner_join(ggdendro::label(hcdata), c('rowID' = 'label'))
-    
+
     p <- p +
-      geom_tile(data = cat_data, 
-                aes_string(x = 'x', y = 'shift_y', fill = 'value'), 
+      geom_tile(data = cat_data,
+                aes_string(x = 'x', y = 'shift_y', fill = 'value'),
                 height = max(segment(hcdata)$y) * 0.03) +
       scale_fill_discrete(name = category)
   }
-  
+
   else {
-    p <- p + scale_fill_discrete(guide = FALSE)
+    p <- p + scale_fill_discrete(guide = 'none')
   }
 
   ## orientation

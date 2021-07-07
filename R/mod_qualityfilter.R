@@ -4,174 +4,155 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 mod_qualityfilter_ui <- function(id){
   ns <- NS(id)
   tagList(
-    dashboardPage(
-      dashboardHeader(disable = TRUE),
-      
-      #sidebar------------------------------------------------------------------
-      dashboardSidebar(
-        sidebarMenu(
+    fluidPage(
+      fluidRow(br(),br()),
+      sidebarLayout(
+        sidebarPanel(
           id = 'menu',
+          width=3,
           br(),
-          tags$div(
-            style = 'text-align: center',
-            tags$b('Input controls')),
-          
-          fixedPanel(
-            radioButtons(ns('sample_select_prompt'), 
-                         "Samples to include in analysis:",
-                         choices = c('Use all samples' = 'all', 
-                                     'Include select samples' = 'include',
-                                     'Exclude select samples' = 'exclude'), 
-                         selected = 'all'),
+          radioButtons(ns('sample_select_prompt'),
+                       "Samples to include in analysis:",
+                       choices = c('Use all samples' = 'all',
+                                   'Include select samples' = 'include',
+                                   'Exclude select samples' = 'exclude'),
+                       selected = 'all'),
+          div(
+            style="display:inline-block",
             withBusyIndicatorUI(
-              actionButton(ns('submit_sample'), "Filter samples")  
+              actionButton(ns('submit_sample'), "Filter samples")
+            )
+          ),
+          div(
+            style="display:inline-block;",
+            withBusyIndicatorUI(
+              actionButton(ns('clear_sample'),
+                           tags$div(title = "Clear selected samples", icon("undo-alt"))
+              )
             )
           )
-        ) # end sidebar menu
-      ), # end dashboard sidebar
-      dashboardBody(
-        box(width = '100%', height = 'auto', br(),br(), br(),
-            # fluidRow(
-            #   box(width = 12, h3('Check'),
-            #       verbatimTextOutput(ns('check')))),
-            column(
-              width = 12,
-              h1('Filter Samples'), br(),
-              tags$div("It may be desirable to perform analysis on a subset of samples if they are of poor quality or are no longer relevant to the current research question.")),
+        ), # end sidebarPanel
+        mainPanel(
+          width=9,
+          # fluidRow(
+          # box(width = 12, h3('Check'),
+          # verbatimTextOutput(ns('check')))),
             fluidRow(
-              br(), br(),
-              column(
-                width = 8,
-                hidden(div(
-                  id = ns('sample_filter_div'),
-                  column(
-                    width = 12,
-                    p("Select samples to include/exclude from the table and click 'Filter samples' to apply changes"), br(),
-                    DT::dataTableOutput(ns('sample_options_ui')) 
-                  )
-                )),
-                column(
-                  width = 12,
-                  h3(textOutput(ns('preview_sample_title'))),
-                  DT::dataTableOutput(ns('preview_sample')) %>% 
-                    shinycssloaders::withSpinner()
-                )
-              ),
+              h1('Filter Samples'), br(),
+              tags$div("It may be desirable to perform analysis on a subset of samples if they are of poor quality or are no longer relevant to the current research question. If you want to continue the analysis with all samples, select 'Use all samples' and click 'Filter samples'. You can reset filtering by using the 'clear selected samples' button (", icon('undo-alt'), ")."),
+              br(),
               hidden(div(
-                id = ns('sample_filter_selcted_div'),
-                column(
-                  width = 4,
-                  br(),
-                  wellPanel(tags$b('Selected samples:'),
-                            htmlOutput(ns('sample_select'))
-                  )
-                )
-              ))
-            )
-        ) # end box
-      ) # end dashboardBody
-    ) # end dashboardPage
+                id = ns('sample_filter_div'),
+                p("Select samples to include/exclude from the table and click 'Filter samples' to apply changes"), br(),
+                DT::dataTableOutput(ns('sample_options_ui'))
+              )),
+              h3(textOutput(ns('preview_sample_title'))),
+              DT::dataTableOutput(ns('preview_sample')) %>%
+                shinycssloaders::withSpinner()
+            ) # end fluidRow
+        ) # end mainPanel
+      ) # end sidebarLayout
+    ) # end fluidPage
   ) # end taglist
 }
-    
+
 #' qualityfilter Server Function
 #'
-#' @noRd 
+#' @noRd
 mod_qualityfilter_server <- function(input, output, session, improxy){
   ns <- session$ns
-  
+
   # # check
   # output$check <- renderPrint({
-  # 
+  #
   # })
-  
   # import data into module
   met <- reactive(improxy$data_db$metadata)
   asv <- reactive(improxy$data_db$merged_abundance_id)
   tax <- reactive(improxy$data_db$merged_taxonomy)
-  
+
+
   # subset samples--------------------------------------------------------------
   # show sample table
   observeEvent(input$sample_select_prompt, {
     toggle("sample_filter_div", condition = input$sample_select_prompt != 'all')
   })
-  observeEvent(input$sample_select_prompt, {
-    toggle("sample_filter_selcted_div", 
-           condition = input$sample_select_prompt != 'all')
-  })
-  
-  
-  output$sample_options_ui <- DT::renderDataTable({
+
+
+  output$sample_options_ui <- DT::renderDataTable(server = FALSE, {
     out <- met()
-    DT::datatable(out, filter = 'top', options = list(scrollX = TRUE))
+    DT::datatable(out, filter = 'top', rownames = FALSE,
+                  options = list(scrollX = TRUE))
   })
-  
+
   all_sample <- reactive(met()$sampleID)
-  
-  # Decide if sample filtering desired
-  rows_selected <- reactive({
-    
-    # select all samples
+
+  rows_selected <- reactiveVal()
+
+  # include all samples
+  observeEvent(input$submit_sample, {
     if(input$sample_select_prompt == 'all') {
-      1:length(all_sample())
-    }
-    else {
-      # use metadata to select samples to be included in analysis
-      input$sample_options_ui_rows_selected
+      rows_selected(1:length(all_sample()))
+    } else {
+      rows_selected(input$sample_options_ui_rows_selected)
     }
   })
-  
+
+  # clear samples
+  observeEvent(input$clear_sample, {
+    rows_selected(NULL)
+    selectRows(dataTableProxy('sample_options_ui'), NULL)
+  })
+
   # map row index to sample names
   sample_include <- reactive({
     if(input$sample_select_prompt == 'exclude') {
       all_sample()[-rows_selected()]
     }
-    else { 
+    else {
       all_sample()[rows_selected()]
-    }  
+    }
   })
-  
-  output$sample_select <- renderUI({
-    HTML(paste(all_sample()[rows_selected()], collapse = '<br/>'))
-  })
-  
+
   # filter samples in data set
-  met_filtered <- eventReactive(input$submit_sample, {
+  met_filtered <- eventReactive(rows_selected(), {
     withBusyIndicatorServer('submit_sample', "setup_ui_1", {
       Sys.sleep(1)
       met() %>%
         filter(sampleID %in% sample_include())
     })
-    
+
   })
-  
-  
+
+
   output$preview_sample_title <- renderText({
-    req(input$submit_sample)
+    req(rows_selected())
     'Samples included in analysis:'
   })
-  
-  output$preview_sample <- DT::renderDataTable({
-    req(input$submit_sample)
-    DT::datatable(met_filtered(), filter='top', extensions = 'Buttons', 
-                  options = list(scrollX = TRUE, 
+
+  output$preview_sample <- DT::renderDataTable(server = FALSE, {
+    req(rows_selected())
+
+    DT::datatable(met_filtered(), filter='top', extensions = 'Buttons',
+                  rownames = FALSE,
+                  options = list(scrollX = TRUE,
                                  pageLength = 30,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
   })
-  
-  
+
+
   # update ASV with filtered samples
-  samp_filtered <- eventReactive(input$submit_sample, {
+  samp_filtered <- eventReactive(rows_selected(), {
     improxy$asv_gather %>%
       filter(sampleID %in% unique(met_filtered()$sampleID))
   })
-  
+
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
     req(input$sample_select_prompt)
@@ -186,20 +167,20 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
          sample_select = all_sample()[rows_selected()]
     )
   })
-  
+
   # return dataset
   cross_module <- reactiveValues()
   observe({
-    req(input$submit_sample)
+    req(rows_selected())
     cross_module$work_db <- working_set()
   })
   return(cross_module)
- 
+
 }
-    
+
 ## To be copied in the UI
 # mod_qualityfilter_ui("qualityfilter_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_qualityfilter_server, "qualityfilter_ui_1")
- 
+

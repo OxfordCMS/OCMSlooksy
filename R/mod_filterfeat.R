@@ -4,9 +4,9 @@
 #'
 #' @param id,input,output,session Internal bridgeeters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 #' @import shinyjs
 mod_filterfeat_ui <- function(id){
   ns <- NS(id)
@@ -22,7 +22,7 @@ mod_filterfeat_ui <- function(id){
            tags$em(
              tags$b("NB:"), "Filtering sequences based on sequence quality and minimum count threshold has already been performed during quality control processing of the dataset. Filtering features at this stage should only be done if you have additional reasoning for omitting certain sequences or features"),
  br())
-        ) # end column 1 description text    
+        ) # end column 1 description text
       ), # end fluidRow
       fluidRow(
         # filter menu controls------------------------------------------------
@@ -35,7 +35,7 @@ mod_filterfeat_ui <- function(id){
                            choices = c('Use all features' = 'all',
                                        'Filter features' = 'some'),
                            selected = 'all'),
-              
+
               hidden(div(
                 id = ns('asv_filter_options_div'),
                 radioButtons(
@@ -90,7 +90,7 @@ mod_filterfeat_ui <- function(id){
               )
             ) # end column for submit/clear button
           ) # end fluidRow in wellPanel
-        ) # end wellPanel  
+        ) # end wellPanel
       ), # end fluidRow
       hidden(div(
         id = ns('asv_hist_div'),
@@ -102,7 +102,7 @@ mod_filterfeat_ui <- function(id){
             p("2) 'Percent of sample total' looks at read counts as abundances relative to the sample total. This is useful for when you want to keep features that make up at least x% in your samples."),
             p("3) 'Percent of dataset total' looks at read counts as abundances relative to the dataset total. This is useful for when you want to keep features that make up at least x% in your dataset."), br(),
             p("*Sequence prevalence is calculated as the number of samples in which sequence abundance is greater than or equal to the cut-off threshold.")
-          ), # end left side column 6 
+          ), # end left side column 6
           column(
             width = 6,
             tabsetPanel(
@@ -135,7 +135,7 @@ mod_filterfeat_ui <- function(id){
             shinycssloaders::withSpinner()
         ) # end fluidRow
       )), # end asv_select_div
-      hidden(div(    
+      hidden(div(
         id = ns('prev_filter_div'),
         fluidRow(
           column(
@@ -160,26 +160,26 @@ mod_filterfeat_ui <- function(id){
       fluidRow(
         uiOutput(ns('secondary_check_ui'))
       ),
-      hidden(div(    
+      hidden(div(
         id = ns('preview_asv_div'),
         fluidRow(
           h3('Features included in analysis'),
           DT::dataTableOutput(ns('preview_asv'))  %>%
             shinycssloaders::withSpinner()
-        ) # end fluidRow  
+        ) # end fluidRow
       )) # end hidden div preview asv div
   ) # end taglist
 }
-    
+
 #' filterfeat Server Function
 #'
 #' @param input,output,session Internal bridgeeters for {shiny}.
 #' @param bridge reactiveValues. contains objects to be passed from outer module
-#' 
-#' @noRd 
+#'
+#' @noRd
 mod_filterfeat_server <- function(input, output, session, bridge){
   ns <- session$ns
-  
+
   # unpack data from parent module----------------------------------------------
   met <- reactive(bridge$work_db$met)
   asv <- reactive(bridge$work_db$asv)
@@ -188,17 +188,17 @@ mod_filterfeat_server <- function(input, output, session, bridge){
 
   # control UI based on filter method--------------------------------------
   observeEvent(input$asv_select_prompt, {
-    toggle("asv_filter_options_div", 
+    toggle("asv_filter_options_div",
            condition = input$asv_select_prompt == 'some')
   })
 
   observe({
     # by read count
     toggle('asv_hist_div',
-           condition = input$asv_select_prompt == 'some' & 
+           condition = input$asv_select_prompt == 'some' &
              grepl('asv_by_count', input$asv_filter_options))
     toggle(id = 'asv_count_div',
-           condition = input$asv_select_prompt == 'some' & 
+           condition = input$asv_select_prompt == 'some' &
              grepl('asv_by_count',input$asv_filter_options))
     # by selected ASV
     toggle(id = 'asv_select_div',
@@ -208,7 +208,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
 
   observeEvent(input$submit_asv, {
     show("preview_asv_div")
-    toggle(id = 'prev_filter_div', 
+    toggle(id = 'prev_filter_div',
            condition = input$asv_select_prompt == 'some' &
              grepl('asv_by_count', input$asv_filter_options))
   })
@@ -263,7 +263,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
       select(-Taxon, -sequence) %>%
       arrange(Kingdom, Phylum, Class, Order, Family, Genus, Species)
   })
-  
+
   # by selecting ASVs
   output$asv_table_select <- DT::renderDataTable(server = FALSE, {
     DT::datatable(asv_table_select(), filter = 'top',
@@ -282,20 +282,20 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     as.data.frame(asv()) %>%
     column_to_rownames('featureID')
   })
-  
+
   # get sample prevalence for features
   prev_data <- reactive({
     # convert asv counts to binary
     binary <- (asv_mat() != 0) * 1 # true means present
     rowSums(binary)
   })
-  
+
   # relative abundance based on sample total
   relab_samptot <- reactive({
     # convert to relative abundance
     apply(asv_mat(), 2, function(x) x/sum(x))
   })
-  
+
   relab_datatot <- reactive({
     data_total <- sum(asv_mat())
     asv_mat() / data_total
@@ -335,7 +335,9 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     plot_ly(nbinsx=nrow(met())) %>%
       add_histogram(x=hist_prev_pdata()$prevalence) %>%
       layout(shapes=list(vline(input$prevalence)),
-             bargap=0.1)
+             bargap=0.1,
+             xaxis = list(title = "Prevalence (# of samples)"),
+             yaxis = list(title = 'Number of features'))
     # ggplotly(hist_prev_plot())
   })
   output$hist_readcount_plot <- renderPlotly({
@@ -343,11 +345,15 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     out <- plot_ly(nbinsx=ceiling(max(wip()$read_count)/2)) %>%
       add_histogram(x=wip()$read_count) %>%
       layout(bargap=0.1,
-             xaxis=list(range=c(0,20)))
+             xaxis=list(range=c(0,20),
+                        title = "Read Count (bin size = 1)"),
+             yaxis = list(title = 'Number of features'))
 
     if(input$cutoff_method == 'abs_count') {
       out <- out %>%
-        layout(shapes=list(vline(input$asv_cutoff)))
+        layout(shapes=list(vline(input$asv_cutoff)),
+               xaxis=list(title = "Read Count (bin size = 1)"),
+               yaxis = list(title = 'Number of features'))
     }
 
     out
@@ -358,11 +364,15 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     out <- plot_ly(nbinsx=1000) %>%
       add_histogram(x=hist_samptot_pdata()$relab_samptot) %>%
       layout(bargap=0.1,
-             xaxis=list(range=c(0,0.015)))
+             xaxis=list(range=c(0,0.015),
+                        title = "Relative abundance (bin size = 1000)"),
+             yaxis = list(title = 'Number of features'))
 
     if(input$cutoff_method == 'percent_sample') {
       out <- out %>%
-        layout(shapes=list(vline(input$asv_cutoff)))
+        layout(shapes=list(vline(input$asv_cutoff)),
+               xaxis = list(title = "Relative abundance (bin size = 0.001%)"),
+               yaxis = list(title = 'Number of features'))
     }
 
     out
@@ -373,11 +383,15 @@ mod_filterfeat_server <- function(input, output, session, bridge){
     out <- plot_ly(nbinsx=1000) %>%
       add_histogram(x=hist_datatot_pdata()$relab_datatot) %>%
       layout(bargap=0.1,
-             xaxis=list(range=c(0,0.001)))
+             xaxis=list(range=c(0,0.001),
+                        title = "Relative abundance (bin size = 0.00005%)"),
+             yaxis = list(title = 'Number of features'))
 
     if(input$cutoff_method == 'percent_total') {
       out <- out %>%
-        layout(shapes=list(vline(input$asv_cutoff)))
+        layout(shapes=list(vline(input$asv_cutoff)),
+               xaxis = list(title = "Relative abundance (bin size = 1000)"),
+               yaxis = list(title = 'Number of features'))
     }
 
     out
@@ -409,7 +423,7 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   })
 
 
-  
+
   # define ASVs to keep---------------------------------------------------------
 
   calculate_keep <- eventReactive(input$submit_asv, {
@@ -706,7 +720,7 @@ withBusyIndicatorServer('submit_asv', 'filterfeat_ui_1', {
       asv_select_prompt = input$asv_select_prompt
     )
   })
-  observe({  
+  observe({
     cross_mod$params$asv_filter_options <- input$asv_filter_options
     cross_mod$params$cutoff_method <- input$cutoff_method
     cross_mod$params$asv_cutoff <- input$asv_cutoff
@@ -721,10 +735,10 @@ withBusyIndicatorServer('submit_asv', 'filterfeat_ui_1', {
   })
   return(cross_mod)
 }
-    
+
 ## To be copied in the UI
 # mod_filterfeat_ui("filterfeat_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_filterfeat_server, "filterfeat_ui_1")
- 
+

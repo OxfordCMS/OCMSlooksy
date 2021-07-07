@@ -4,11 +4,11 @@
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 #' @import shinyjs
-#'  
+#'
 mod_beta_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -23,7 +23,7 @@ mod_beta_ui <- function(id){
       # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
       navlistPanel(
         '',
-        id = 'beta_menu', 
+        id = 'beta_menu',
         well=FALSE,
         widths=c(3,9),
       # info tab body-----------------------------------------------------
@@ -35,9 +35,22 @@ mod_beta_ui <- function(id){
           column(
             width = 12,
             br(),br(),
-            h1("\u03B2-Diversity")
-          )
-        )
+            h1("\u03B2-Diversity"),
+            div(
+              p("This analysis task assesses the microbiome of the entire dataset. \u03B2-Diversity describes the microbial ecosystem across samples (as opposed to \u03B1-diversity which is calculated within one sample at a time). This analysis tasks provides several data visualization tools that describes how similar (or dissimilar) samples are to one another based on their microbiome"),
+              p("Task overview:"),
+              tags$ul(
+                tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
+                tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
+                tags$li(tags$b("Read Count Transformation:"), "Normalises and Transforms read count. Note some subsequent analyses and parameters are only available under certain normalisation/transformation methods. Details below."),
+                tags$li(tags$b('Sample Dissimilarity:'), "Calculates pair-wise sample dissimilarity within sample groups and performs statistical tests where applicable. Only available with percent abundance normalisation"),
+                tags$li(tags$b("PCoA:"), "Principal Coordinate Analysis, a multivariate analysis that uses distance metrics to cluster samples based on their sample similarity"),
+                tags$li(tags$b("PCA:"), "Principal Component Analysis, a multivariate analysis that clusters samples based on their variance. Unavailable with percent abundance normalisation."),
+                tags$li(tags$b("PERMANOVA:"), "Permutational Multivariate Analysis of Variance assesses sample dissimilarity based on distance measures and evaluates the contribution of experiment (metadata) variables to the overall variance observed. It does this by partitioning variance into variables within an experimental design.")
+              ) # end tags$ul
+            ) # end div
+          ) # end column
+        ) # end fluidRow
       ), # end tabPanel
       # aggregate tab body------------------------------------------------
       tabPanel(
@@ -59,7 +72,7 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_filterfeat_ui(ns("filterfeat_ui_1"))  
+            mod_filterfeat_ui(ns("filterfeat_ui_1"))
           )
         )
       ), # end tabItem
@@ -71,7 +84,7 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width=12,
-            mod_transform_ui(ns("transform_ui_1"))    
+            mod_transform_ui(ns("transform_ui_1"))
           )
         )
       ), # end tabPanel
@@ -95,11 +108,11 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width=12,
-            mod_ov_pcoa_ui(ns("ov_pcoa_ui_1"))    
+            mod_ov_pcoa_ui(ns("ov_pcoa_ui_1"))
           )
         )
       ),
-      # PCA body----------------------------------------------------------    
+      # PCA body----------------------------------------------------------
       tabPanel(
         'PCA',
         value = 'pca_tab',
@@ -107,7 +120,7 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_ov_pca_ui(ns("ov_pca_ui_1"))    
+            mod_ov_pca_ui(ns("ov_pca_ui_1"))
           )
         )
       ),
@@ -118,7 +131,7 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_ov_permanova_ui(ns("ov_permanova_ui_1"))    
+            mod_ov_permanova_ui(ns("ov_permanova_ui_1"))
           )
         )
       ),
@@ -137,45 +150,45 @@ mod_beta_ui <- function(id){
     ) # end fluidPage
   ) # end taglist
 }
-    
+
 #' beta Server Function
 #'
-#' @noRd 
+#' @noRd
 mod_beta_server <- function(input, output, session, improxy){
   ns <- session$ns
-  
+
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#beta_menu li a[data-value=filter_beta_tab]",
                 condition = !is.null(agg_output$output) &&
                   agg_output$output$agg_calculate > 0)
   })
-  
+
   observe({
     toggleState(selector = "#beta_menu li a[data-value=transform_tab]",
                 condition = filter_output$params$filter_submit > 0)
   })
-  
+
   observe({
     toggleState(selector = "#beta_menu li a[data-value=diss_tab]",
                 condition = transform_output$output$transform_submit > 0)
   })
-  
+
   observe({
     toggleState(selector = "#beta_menu li a[data-value=pcoa_tab]",
                 condition = transform_output$output$transform_submit > 0)
   })
-  
+
   observe({
     toggleState(selector = "#beta_menu li a[data-value=pca_tab]",
                 condition = transform_output$output$transform_submit > 0)
   })
-  
+
   observe({
     toggleState(selector = "#beta_menu li a[data-value=permanova_tab]",
                 condition = transform_output$output$transform_submit > 0)
   })
-  
+
   observe({
     toggleState(selector = "#beta_menu li a[data-value=beta_report_tab]",
                 condition = transform_output$output$transform_submit > 0)
@@ -187,7 +200,7 @@ mod_beta_server <- function(input, output, session, improxy){
   })
   # initiate list to pass onto report submodule
   for_report <- reactiveValues()
-  
+
   # store values to pass to report
   observe({
     for_report$params <- list(
@@ -199,44 +212,44 @@ mod_beta_server <- function(input, output, session, improxy){
   })
   # aggregate features----------------------------------------------------------
   agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
-  
+
   # store data in reactiveValues to pass onto submodules
   observe({
     if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
-      
+
       # add aggregate features to bridge to be passed to submodules
       bridge$work_db <- list(
         met = improxy$work_db$met,
         asv = agg_output$output$aggregated_count,
         tax = tax_entry
       )
-      
-    } else { 
+
+    } else {
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
     }
-    
+
   })
-  
+
   observe({
     # add aggregate features to report params
     for_report$params$aggregate_by <- agg_output$output$aggregate_by
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
-  
+
   # filter features-------------------------------------------------------------
-  
+
   # submodule returns list of filtered met, asv and tax tables
-  
-  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)  
-  
+
+  filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
+
   # add filtered data to bridge
   observe({
     bridge$filtered <- filter_output$filtered
   })
-  
+
   # update report params
   observe({
     #feature filter
@@ -342,10 +355,10 @@ mod_beta_server <- function(input, output, session, improxy){
              template = "beta_report",
              file_name = "beta_report")
 }
-    
+
 ## To be copied in the UI
 # mod_beta_ui("beta_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_beta_server, "beta_ui_1")
- 
+

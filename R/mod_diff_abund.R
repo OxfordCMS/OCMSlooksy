@@ -34,8 +34,16 @@ mod_diff_abund_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              h1("Differential Abundance"),
-              p("Compare groups to see what taxa are differentially abundant between the groups. This task uses DESeq2 and provides a couple different methods of visualising the results. ")
+              div(
+                h1("Differential Abundance"),
+                p("Compare groups to see what taxa are differentially abundant between the groups. This task uses DESeq2 and provides a couple different methods of visualising the results. "),
+                p("Task overview:"),
+                tags$ul(
+                  tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
+                  tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
+                  tags$li(tags$b("Differential Abundance:"), "Compare groups within an experiment variable and measure the log-fold change and statistical significance of taxa. This task employs ", code("DESeq2"), " to assess differential abundance.")
+                )
+              )
             )
           )
         ), # end tabPanel
@@ -64,7 +72,7 @@ mod_diff_abund_ui <- function(id){
           )
         ), # end tabPanel
         tabPanel(
-          'DESeq2',
+          'Differential Abundance',
           value = "deseq_tab",
           fluidRow(
             br(),br(),
@@ -92,8 +100,8 @@ mod_diff_abund_ui <- function(id){
                 ),
                 column(
                   width = 9,
-                  p("Compare groups using DESeq2. DESeq2 normalises and transforms data by [...]. DESeq2 assess differential abundance based on the assumption of a negative bionmial distribution..."
-                  )
+                  # normalisation and transformation definitions from biostars discussion https://www.biostars.org/p/275010/
+                  p("Compare groups using DESeq2. DESeq2 normalises counts by dividing read count by the geometric mean of that taxon across all samples. Normalised counts are then transformed by ", code("log2"), ". DESeq2 assess differential abundance using negative bionmial generalized linear models and tests model fit with the Wald test. Details on ", code("DESeq2"), " can be found in the ", a("package vignette", href="https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html"), ".")
                 )
               ),
               fluidRow(

@@ -33,10 +33,17 @@ mod_prop_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              h1("Feature Comparison")
+              div(
+                h1("Feature Comparison"),
+                p("Task overview:"),
+                tags$ul(
+                  tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
+                  tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
+                  tags$li(tags$b("Pairwise Feature Comparison:"), "Evaluates correlation of taxa in a pairwise manner using a proportionality index, \u03C1. This package employs the ", code("propr"), " package to assess proportionality.")
+                )
+              )
             )
           )
-
         ), # end tabPanel
         # aggregate tab body------------------------------------------------
         tabPanel(

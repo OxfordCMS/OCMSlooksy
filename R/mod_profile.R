@@ -376,9 +376,14 @@ mod_profile_server <- function(input, output, session, improxy){
         unite(x, !!sym(input$bar_x), !!sym(input$bar_panel)) %>%
         spread(x, !!sym(input$bar_y))
     }
-    x_name <- colnames(out)
 
-    out <- DT::datatable(out, colnames = x_name,
+    out
+  })
+
+  output$bar_table <- DT::renderDataTable(server = FALSE, {
+    x_name <- colnames(bar_table())
+
+    out <- DT::datatable(bar_table(), colnames = x_name,
                          extensions = 'Buttons',
                          rownames = FALSE,
                          options = list(
@@ -391,10 +396,6 @@ mod_profile_server <- function(input, output, session, improxy){
                         digits = 3)
     }
     out
-  })
-
-  output$bar_table <- DT::renderDataTable(server = FALSE, {
-    bar_table()
   })
 
   p_bar <- eventReactive(input$submit_bar, {

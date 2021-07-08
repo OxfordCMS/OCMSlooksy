@@ -624,13 +624,7 @@ mod_qc_server <- function(input, output, session, improxy){
   p_rare <- reactive({
     p <- ggplot(pdata_rare(), aes(x=Depth, y=Richness, color=sampleID)) +
       geom_line() +
-      guides(color = 'none')
-    # geom_label not compatible with plotly
-    # geom_label(aes(label=sampleID, colour = sampleID),
-    #            fill = alpha(c("white"), 0.2),
-    #            nudge_y = max(rare_df()$Richness)*0.01)
-
-    p <- p +
+      scale_colour_discrete(guide=FALSE) +
       theme_bw(12) +
       xlab('Number of sequences') +
       ylab('Number of features')

@@ -441,14 +441,16 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   selected_samp <- reactiveVal()
 
   # store selected feature
-  observeEvent(event_data("plotly_selected", source="plotly_pcoa"), {
+  observeEvent(event_data("plotly_selected", source="plotly_pcoa"),
+               suspended = input$pcoa_calculate == 0, {
     curr_selected<- event_data("plotly_selected", source='plotly_pcoa')$customdata
     updated_samp <- unique(c(selected_samp(), curr_selected))
     selected_samp(updated_samp)
   })
 
   # clear selection
-  observeEvent(event_data("plotly_deselect", source="plotly_pcoa"), {
+  observeEvent(event_data("plotly_deselect", source="plotly_pcoa"),
+               suspended = input$pcoa_calculate == 0,{
     selected_samp(NULL)
   })
 

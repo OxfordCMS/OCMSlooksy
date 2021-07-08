@@ -83,20 +83,21 @@ mod_profile_ui <- function(id){
               width = 4,
               # Bar plot controls---------------------------------------------------
               wellPanel(
-                br(),
-                tags$div(style = 'text-align: center', tags$b('Plot Parameters')),
+                tags$div(style = 'text-align: center',
+                         tags$b('Plot Parameters')),
                 uiOutput(ns('bar_x_ui')),
                 uiOutput(ns('bar_panel_ui')),
-                radioButtons(ns('bar_y'), 'Response measure:',
+                radioButtons(ns('bar_y'), 'y-axis',
                              c('Relative abundance' = 'rel_abund',
                                'Read count' = 'cnt_abund')),
+                uiOutput(ns('tax_level_ui')),
                 withBusyIndicatorUI(
                   actionButton(ns('submit_bar'), "Apply changes"))
               ),
             ),
             column(
               width = 8,
-              p("Observing relative abundance (%) or sequence abundance (count) based on metadata variables. The mean relative abundance is shown when selected group contains multiple samples. You can also panel the bar plot by one metadata variable. Click 'Apply changes' to update plots.")
+              p("Observing relative abundance (%) or sequence abundance (count) based on metadata variables. The mean relative abundance is shown when selected group contains multiple samples. You can also panel the bar plot by one metadata variable. Finally, you man choose the taxonomic level at which to visualise the microbiome profiles. Click 'Apply changes' to update plots.")
             ),
             hr()
           ),
@@ -126,7 +127,7 @@ mod_profile_ui <- function(id){
             column(
               width = 12,
               h1("Profile Sparsity"),
-              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity).")
+              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity). Sparsity is evaluated at the level of count aggregation in the first step of this analysis task.")
             )
           ),
           fluidRow(
@@ -291,30 +292,35 @@ mod_profile_server <- function(input, output, session, improxy){
                 selected = 'none')
   })
 
-
+  output$tax_level_ui <- renderUI({
+    choices <- c('Phylum','Class','Order','Family','Genus')
+    selectInput(ns('tax_level'), 'Taxonomic level',
+                choices= choices[1:which(choices == agg_output$output$aggregate_by)], selected = agg_output$output$aggregate_by)
+  })
   # calculate output bar plot---------------------------------------------------
   bar_data <- eventReactive(input$submit_bar, {
 
     out <- bridge$filtered$asv %>%
       gather('sampleID','read_count', -featureID) %>%
+      left_join(bridge$filtered$tax, 'featureID') %>%
       # sample total read count
       group_by(sampleID) %>%
       mutate(sample_total = sum(read_count)) %>%
       # aggregate on taxon within each sample
-      group_by(sampleID, featureID) %>%
+      group_by(sampleID, !!sym(input$tax_level)) %>%
       summarise(sample_tax_cnt = sum(read_count),
                 sample_tax_rel = sample_tax_cnt / sample_total) %>%
-      left_join(bridge$filtered$tax, 'featureID') %>%
       left_join(bridge$filtered$met, 'sampleID')
 
     if(input$bar_panel == 'none') {
       out <- out   %>%
         # mean of aggregated counts within selected group
-        group_by(!!sym(input$bar_x), featureID)
+        group_by(!!sym(input$bar_x), !!sym(input$tax_level))
     } else {
       out <- out %>%
         # mean of aggregated counts within selected group
-        group_by(!!sym(input$bar_panel), !!sym(input$bar_x), featureID)
+        group_by(!!sym(input$bar_panel), !!sym(input$bar_x),
+                 !!sym(input$tax_level))
     }
     out %>%
       summarise(cnt_abund = mean(sample_tax_cnt),
@@ -349,29 +355,28 @@ mod_profile_server <- function(input, output, session, improxy){
 
     if(input$bar_y == 'rel_abund') {
       sprintf('%sRelative Abundance (%%), %s',
-              y_title, agg_output$output$aggregate_by)
+              y_title, input$tax_level)
     }
     else {
       sprintf('%sCumulative Read Count, %s',
-              y_title, agg_output$output$aggregate_by)
+              y_title, input$tax_level)
     }
   })
 
   bar_table <- eventReactive(input$submit_bar, {
     if(input$bar_panel == 'none') {
       out <- bar_data() %>%
-        distinct(!!sym(input$bar_x), !!sym(input$bar_y), featureID) %>%
+        distinct(!!sym(input$bar_x), !!sym(input$bar_y),
+                 !!sym(input$tax_level)) %>%
         spread(!!sym(input$bar_x), !!sym(input$bar_y))
     } else {
       out <- bar_data() %>%
         distinct(!!sym(input$bar_x), !!sym(input$bar_panel),
-                 !!sym(input$bar_y), featureID) %>%
+                 !!sym(input$bar_y), !!sym(input$tax_level)) %>%
         unite(x, !!sym(input$bar_x), !!sym(input$bar_panel)) %>%
         spread(x, !!sym(input$bar_y))
     }
     x_name <- colnames(out)
-    ind <- which(x_name == 'featureID')
-    x_name[ind] <- agg_output$output$aggregate_by
 
     out <- DT::datatable(out, colnames = x_name,
                          extensions = 'Buttons',
@@ -382,7 +387,7 @@ mod_profile_server <- function(input, output, session, improxy){
                            buttons = c('copy','csv')))
     if(input$bar_y == 'rel_abund') {
       out <- out %>%
-        DT::formatRound(column = x_name[which(x_name != agg_output$output$aggregate_by)],
+        DT::formatRound(column = x_name[which(x_name != input$tax_level)],
                         digits = 3)
     }
     out
@@ -394,21 +399,21 @@ mod_profile_server <- function(input, output, session, improxy){
 
   p_bar <- eventReactive(input$submit_bar, {
     p <- ggplot(bar_data(), aes_string(x = input$bar_x, y = input$bar_y,
-                                       fill = 'featureID')) +
+                                       fill = input$tax_level)) +
       geom_col() +
       # geom_bar(stat = 'identity') +
       xlab(input$bar_x) +
-      scale_fill_discrete(name = agg_output$output$aggregate_by) +
+      scale_fill_discrete(name = input$tax_level) +
       theme_bw(12) +
       theme(axis.text.x = element_text(angle = 90))
 
     if(input$bar_y == 'rel_abund') {
       p <- p +
-        ylab(sprintf('Mean Relative Abundance (%%), %s', agg_output$output$aggregate_by))
+        ylab(sprintf('Mean Relative Abundance (%%), %s', input$tax_level))
     }
     else {
       p <- p +
-        ylab(sprintf('Mean Read Count, %s', agg_output$output$aggregate_by))
+        ylab(sprintf('Mean Read Count, %s', input$tax_level))
     }
 
     if(input$bar_panel != 'none') {

@@ -6,12 +6,10 @@ app_ui <- function() {
     # Leave this function for adding external resources
     golem_add_external_resources(),
     # List the first level UI elements here
-    # h3('Check'),
-    # verbatimTextOutput('check'),
+
     navbarPage(
       theme = shinythemes::shinytheme('flatly'),
       title = "OCMSlooksy", id = 'tabs', position = 'fixed-top',
-
       # Introduction---------------------------------------------------
       tabPanel(title = "Introduction", value = 'intro', icon = icon("book"),
               mod_intro_ui("intro_ui_1")),
@@ -20,7 +18,6 @@ app_ui <- function() {
       tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
               mod_import_ui("import_ui_1")),
 
-      # tabPanel(title = "Test tab", value = 'testTab', icon = icon("user-astronaut")),
       # # QC report----------------------------------------------------
       tabPanel(title = "QC Report", value = 'qc', icon = icon("broom"),
               mod_qc_ui("qc_ui_1")),
@@ -28,10 +25,15 @@ app_ui <- function() {
       # Quality filter samples-----------------------------------------
       tabPanel(title = "Filter Samples", value = 'qualityfilter',
               icon = icon("filter"),
+#
+#               fluidRow(
+#                 wellPanel(h3('Check'),verbatimTextOutput('check'))
+#               ),
               mod_qualityfilter_ui("qualityfilter_ui_1")),
 
       navbarMenu(
         title = "Analysis Tasks",
+        menuName = 'analysis_tasks',
 
         # relative abundance profiles------------------------------------
         tabPanel(title = "Microbiome Profile", value = 'profile',

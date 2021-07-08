@@ -164,7 +164,8 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
            inner_join(tax() %>% mutate_all(as.character), 'featureID') %>%
            inner_join(met_filtered(), 'sampleID'),
          sample_select_prompt = input$sample_select_prompt,
-         sample_select = all_sample()[rows_selected()]
+         sample_select = all_sample()[rows_selected()],
+         submit_sample = input$submit_sample
     )
   })
 

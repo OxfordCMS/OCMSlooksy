@@ -341,10 +341,8 @@ mod_import_server <- function(input, output, session, parent_session) {
 
   # preview of count table----------------------------------------------------
   output$asv_preview <- DT::renderDT({
-    out <- asv_tax() %>%
-      spread(sampleID, read_count)
 
-    DT::datatable(out, extensions = list(c('Buttons', 'FixedColumns')),
+    DT::datatable(asv(), extensions = list(c('Buttons', 'FixedColumns')),
                   rownames = FALSE,
                   options = list(
                     pageLength = 30,

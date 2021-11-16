@@ -2,21 +2,27 @@
 % Please edit documentation in R/create_db.R
 \name{create_db}
 \alias{create_db}
-\title{create_db
-generates qualitative colour palette from RColorBrewer}
+\title{create_db}
 \usage{
-create_db(counts, taxonomy, overwrite = FALSE, outdir, fromfile = FALSE)
+create_db(
+  counts,
+  taxonomy,
+  overwrite = FALSE,
+  outdir,
+  db_name = "OCMSlooksy.db",
+  fromfile = TRUE
+)
 }
 \arguments{
-\item{counts}{dataframe of counts with samples in columns, features in rows. 
-First column should contain feature identities under the heading of 
+\item{counts}{file or dataframe of counts with samples in columns, features in rows.
+First column should contain feature identities under the heading of
 \code{featureID}. Feature IDs must be unique.}
 
-\item{taxonomy}{dataframe of taxonomy classifications corresponding to the 
-counts table. Must contain the columns \code{featureID}, \code{sequence}, 
+\item{taxonomy}{file or dataframe of taxonomy classifications corresponding to the
+counts table. Must contain the columns \code{featureID}, \code{sequence},
 \code{Kingdom}, \code{Phylum}, \code{Class}, \code{Order}, \code{Family},
-\code{Genus}, \code{Species}, \code{Taxon}. \code{Taxon} contains 
-taxonomic lassifications at all taxonomic levels, seperated by a semicolon. 
+\code{Genus}, \code{Species}, \code{Taxon}. \code{Taxon} contains
+taxonomic classifications at all taxonomic levels, seperated by a semicolon.
 Unclassified taxa should be represented with \code{NA}.}
 
 \item{overwrite}{logic. default FALSE. Allow database tables to overwrite
@@ -24,14 +30,46 @@ existing tables of the same name.}
 
 \item{outdir}{output directory.}
 
-\item{fromfile}{default FALSE. read count table and taxonomy tables from 
+\item{db_name}{string. Name of database file. Default 'OCMSlooksy.db'}
+
+\item{fromfile}{default TRUE. read count table and taxonomy tables from
 file (tab delimited or comma delimited)}
 }
 \value{
 sqlite database with merged_abundance_id (counts) and
-  merged_taxonomy (taxonomy) in a sqlite database file named 'csvdb'
+merged_taxonomy (taxonomy) in a sqlite database file named as specified by \code{db_name}
 }
 \description{
-create_db
-generates qualitative colour palette from RColorBrewer
+generates an sqlite database from 16S rRNA gene counts produced by 16S rRNA gene sequence processing pipelines. Depending on the pipeline used, count and taxonomy tables may have to be formatted according to \code{create_db} function specifications. This function will configure the sqlite database such that is is compatible as an input into the \code{OCMSlooksy} RShiny app.
+}
+\details{
+This function requires two tables: a count table which contains feature
+(ASVs or OTUs) for each sample, and a taxonomy table which contains the
+taxonomy classification associated with features found in the count table.
+16S rRNA gene sequence processing pipelines vary in the format of their
+outputs, but most provide a tab-delimitted or comma-delimited spreadsheet
+containing this information. You will need to re-format (or create a new file)
+such that the count and taxonomy tables conform to the following requirements:
+
+count table:
+\itemize{
+\item samples in columns and features (ASVs or OTUs) in rows
+\item first column should contain feature identities under the heading \code{featureID} (column name is case sensitive)
+\item feature IDs must be unique
+}
+
+taxonomy table:
+\itemize{
+\item contains taxonomy classifications that correspond to features in count table
+\item first column contains feature IDs under the heading \code{featureID}
+\item Must contain the columns \code{featureID}, \code{sequence},
+\code{Kingdom}, \code{Phylum}, \code{Class}, \code{Order}, \code{Family},
+\code{Genus}, \code{Species}, \code{Taxon}. Column names are case-sensitive.
+\item if \code{sequence} for a feature is not known, you can leave the column empty
+\item if \code{species} for a feature is not known or us not classified, set species to \code{NA}. The same rule applies other taxonomy levels.
+\item \code{Taxon} contains classifications at all taxonomic levels, separated by a semicolon. Taxonomy names can be pre-pended with the initial of the taxonomy level but it is not necessary.
+(e.g. k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Ruminococcaceae;g__Faecalibacterium;s__NA")
+}
+
+The count and taxonomy tables can be supplied as .tsv or .csv files by setting \code{fromfile = TRUE} (default). Alternatively, if count and taxonomy tables are already in R, set \code{fromfile = FALSE} and supply the dataframes to the \code{counts} and \code{taxonomy} arguments, respectively.
 }

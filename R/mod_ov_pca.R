@@ -33,8 +33,8 @@ mod_ov_pca_ui <- function(id){
         width = 9,
         p("PCA is a non-supervised multivariate analysis that provides a good 'first look' at microbiome data. Since feature values (even when transformed) can span multiple order of magnitudes, it is recommended that feature values are scaled for PCA so all features are weighted equally."),
         p("1) Unit variance scaling mean centres the value and divides by the standard deviation of the feature. After unit variance scaling, all features have the same mean and standard deviation. (x - mean(x)) / sd(x))"), br(),
-        p("Pareto scaling divides mean-centred values by the square root of the feature values. Pareto scaling diminishes the effects of features that exhibit large fold so the changes in features with different magnitudes are weighted more evenly. (x - mean(x)) / sqrt(x))"), br(),
-        p("Vast scaling (or variable stability scaling) uses the ratio of the mean and the standard deviation to in order to prioritise features that are more stable, while placind lesser importance on features with greater relative standard devieation. ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))"),
+        p("2) Pareto scaling divides mean-centred values by the square root of the feature values. Pareto scaling diminishes the effects of features that exhibit large fold so the changes in features with different magnitudes are weighted more evenly. (x - mean(x)) / sqrt(x))"), br(),
+        p("3) Vast scaling (or variable stability scaling) uses the ratio of the mean and the standard deviation to in order to prioritise features that are more stable, while placing lesser importance on features with greater relative standard devieation. ((x - mean(x)) / sd(x)) * (mean(x) / sd(x)))"),
         br(),
         p('Definitions obtained from', a("van den Berg et al., 2006", href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1534033/"))
       ),
@@ -54,7 +54,6 @@ mod_ov_pca_ui <- function(id){
         h2('PCA Plot'),
 
         wellPanel(
-          tags$div(style = 'text_align: center', h4("Plot Parameters")),
           fluidRow(
             # Plot controls
             column(width = 3,
@@ -62,16 +61,23 @@ mod_ov_pca_ui <- function(id){
                    uiOutput(ns('yPC_ui'))),
             column(
               width = 3,
-              checkboxInput(ns('show_loading'), "Show loadings", FALSE),
-              checkboxInput(ns('load_arrow'), 'Show loading arrows', FALSE),
-              checkboxInput(ns('show_ellipse'),"Show Ellipse", value = TRUE)
+              conditionalPanel(
+                condition = sprintf("input['%s'] == 'biplot'", ns('plot_tab')),
+                checkboxInput(ns('show_loading'), "Show loadings", TRUE),
+                checkboxInput(ns('load_arrow'), 'Show loading arrows', FALSE)
+              ), # end conditionalPanel for biplot loading
+              conditionalPanel(
+                condition = sprintf("input['%s'] != 'loading'", ns('plot_tab')),
+                checkboxInput(ns('show_ellipse'),"Show CI", value = TRUE)
+              ) # end conditionalPanel for CI ellipse control
             ),
 
             conditionalPanel(
-              condition = paste0("input['", ns('show_ellipse'), "'] == true"),
+              condition = sprintf("input['%s'] != 'loading' & input['%s'] == true",
+                                  ns('plot_tab'), ns('show_ellipse')),
               column(
                 width = 3,
-                h4("Ellipse aesthetics"),
+                h4("CI aesthetics"),
                 selectInput(ns('pca_ell_type'), "Type of ellipse",
                             choices = c('t-distribution' = 't',
                                         'normal distribution' = 'norm',
@@ -90,31 +96,34 @@ mod_ov_pca_ui <- function(id){
             ) # end conditionalPanel ellipses parameters
           ), # end fluidRow inside wellPanel
           fluidRow(
-            column(
-              width = 3,
-              # score point aesthetics
-              h4("Score points aesthetics"),
-              uiOutput(ns('score_pt_colour_ui')),
-              uiOutput(ns('score_pt_shape_ui')),
-              sliderInput(ns('score_pt_size'), 'Point size:',
-                         min = 0.1, max = 5, value = 3, step = 0.5,
-                         ticks = FALSE),
-              sliderInput(ns('score_pt_alpha'), 'Point transparency:',
-                          min = 0.1, max = 1, value = 1, step = 0.1)
-            ),
-            # score label aesthetics
-            column(
-              width = 3,
-              h4("Score labels aesthetics"),
-              uiOutput(ns('score_label_ui')),
-              uiOutput(ns('score_lab_colour_ui')),
-              sliderInput(ns('score_lab_size'), 'Label size:',
-                         min = 0.1, max = 5, value = 3, step = 0.5),
-              sliderInput(ns('score_lab_alpha'), 'Label transparency:',
-                          min = 0.1, max = 1, value = 1, step = 0.1)
-             ),
+            conditionalPanel(
+              condition = paste0("input['", ns('plot_tab'), "'] != 'loading'"),
+              column(
+                width = 3,
+                # score point aesthetics
+                h4("Score points aesthetics"),
+                uiOutput(ns('score_pt_colour_ui')),
+                uiOutput(ns('score_pt_shape_ui')),
+                sliderInput(ns('score_pt_size'), 'Point size:',
+                            min = 0.1, max = 5, value = 3, step = 0.5,
+                            ticks = FALSE),
+                sliderInput(ns('score_pt_alpha'), 'Point transparency:',
+                            min = 0.1, max = 1, value = 1, step = 0.1)
+              ),
+              # score label aesthetics
+              column(
+                width = 3,
+                h4("Score labels aesthetics"),
+                uiOutput(ns('score_label_ui')),
+                uiOutput(ns('score_lab_colour_ui')),
+                sliderInput(ns('score_lab_size'), 'Label size:',
+                            min = 0.1, max = 5, value = 3, step = 0.5),
+                sliderInput(ns('score_lab_alpha'), 'Label transparency:',
+                            min = 0.1, max = 1, value = 1, step = 0.1)
+              )
+            ), # end conditionalPanel score aesthetics
              conditionalPanel(
-               condition = paste0("input['", ns('show_loading'), "'] == true"),
+               condition = sprintf("(input['%s'] == 'loading') | (input['%s'] == 'biplot' & input['%s'] == true)", ns('plot_tab'), ns('plot_tab'), ns('show_loading')),
                column(
                  width = 3,
                  # loading point aesthetics
@@ -140,23 +149,60 @@ mod_ov_pca_ui <- function(id){
              ) # end conditionalPanel for loading aesthethics
           ) # end fluidRow inside wellPanel
         ) # end wellPanel
-      ) # end fluidRow
-    )), # end pca hidden div
-    fluidRow(
-      column(
-        width = 1, style = 'padding:0px;',
-        mod_download_ui(ns("download_pca"))
-      ),
-      column(
-        width = 11, style = 'padding:0px;',
-        shinyjqui::jqui_resizable(
-          plotlyOutput(ns('plot_pca'), width = '100%', height = 'auto')
-        )
-      )
-    ), # end fluidRow
-    fluidRow(
-      DT::dataTableOutput(ns('table_selected'))
-    )
+      ), # end fluidRow
+      fluidRow(
+        tabsetPanel(
+          id=ns('plot_tab'),
+          type='tabs',
+          tabPanel(
+            "Score plot",
+            value = 'score',
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_pca_score"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('plot_pca_score'))
+            ),
+            column(
+              width = 12,
+              DT::dataTableOutput(ns('table_score_selected'))
+            )
+          ),
+          tabPanel(
+            "Loading plot",
+            value = 'loading',
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_pca_load"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              plotlyOutput(ns('plot_pca_load'))
+            ),
+            column(
+              width = 12,
+              DT::dataTableOutput(ns('table_load_selected'))
+            )
+          ),
+          tabPanel(
+            "Biplot",
+            value = 'biplot',
+            column(
+              width = 1, style = 'padding:0px;',
+              mod_download_ui(ns("download_pca_biplot"))
+            ),
+            column(
+              width = 11, style = 'padding:0px;',
+              shinyjqui::jqui_resizable(
+                plotlyOutput(ns('plot_pca_biplot'), width = '100%', height = 'auto')
+              )
+            )
+          ) # end biplot tab panel
+        ) # end tabset panel
+      ) # end fluidROw
+    )) # end pca hidden div
   ) # end taglist
 }
 
@@ -246,9 +292,6 @@ mod_ov_pca_server <- function(input, output, session, bridge){
                 choices = c('none', colnames(bridge$filtered$tax)), selected = 'none')
   })
 
-  # output$check <- renderPrint({
-  #
-  # })
   # calculate pca---------------------------------------------------------------
 
   # centre and scale
@@ -309,7 +352,7 @@ mod_ov_pca_server <- function(input, output, session, bridge){
     # out <- t(apply(d_pcx()$rotation, 1, function(x) x * lam()))
     out <- as.data.frame(d_pcx()$rotation) %>%
       mutate(featureID = rownames(d_pcx()$rotation)) %>%
-      select('featureID', xPC(), yPC()) %>%
+      select(featureID, xPC(), yPC()) %>%
       left_join(bridge$filtered$tax, 'featureID')
     out <- out[, c(xPC(), yPC(), colnames(bridge$filtered$tax))]
     out
@@ -337,7 +380,7 @@ mod_ov_pca_server <- function(input, output, session, bridge){
       DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
 
-  # pca plot parameters
+  # pca plot parameters---------------------------------------------------------
   ## initiate parameters as objects
   score_pt_colour <- reactiveVal('black')
   score_pt_shape <- reactiveVal(1)
@@ -353,7 +396,7 @@ mod_ov_pca_server <- function(input, output, session, bridge){
 
   observeEvent(input$score_pt_shape, {
     if(input$score_pt_shape == 'none') score_pt_colour(1)
-    else score_pt_colour(input$score_pt_shape)
+    else score_pt_shape(input$score_pt_shape)
   })
 
   ## score label parameters
@@ -363,8 +406,8 @@ mod_ov_pca_server <- function(input, output, session, bridge){
   })
 
   observeEvent(input$score_label_by, {
-    if(input$score_label_by == 'none') FALSE
-    else score_label <- TRUE
+    if(input$score_label_by == 'none') score_label(FALSE)
+    else score_label(TRUE)
   })
 
   observeEvent(input$score_lab_colour, {
@@ -372,18 +415,18 @@ mod_ov_pca_server <- function(input, output, session, bridge){
     else score_lab_colour(input$score_lab_colour)
   })
 
-  ## loading point parameters
+  ## loading point parameters---------------------------------------------------
   # initiate parameters
   load_pt_colour <- reactiveVal('darkred')
   load_pt_shape <- reactiveVal(2)
   load_label_by <- reactiveVal(NULL)
   show_load_label <- reactiveVal(FALSE)
   load_lab_colour <- reactiveVal('darkred')
-  # show_loading <- reactiveVal(FALSE)
-  # observeEvent(input$show_loading, {
-  #   show_loading(input$show_loading)
-  # })
-  #
+
+  output$check <- renderPrint({
+    print(selected_samp())
+  })
+
   observeEvent(input$load_pt_colour, {
     if(input$load_pt_colour == 'none') load_pt_colour('darkred')
     else load_pt_colour(input$load_pt_colour)
@@ -402,16 +445,181 @@ mod_ov_pca_server <- function(input, output, session, bridge){
 
   observeEvent(input$load_label_by, {
     if(input$load_label_by == 'none') show_load_label(FALSE)
-    else show_load_label <- show_load_label(TRUE)
+    else show_load_label(TRUE)
   })
 
   observeEvent(input$load_lab_colour, {
     if(input$load_lab_colour == 'none') load_lab_colour('darkred')
-    else observe(input$load_lab_colour)
+    else load_lab_colour(input$load_lab_colour)
   })
 
+  # score plot------------------------------------------------------------------
+  p_score <- reactive({
+    req(input$pca_calculate, input$score_pt_colour)
+    column_name <- colnames(score_data())
+
+    p <- ggplot(data=score_data(),
+                aes_string(x = column_name[1], y = column_name[2],
+                           customdata = 'sampleID'))
+
+    # score points
+    if (!is.logical(score_pt_shape()) || score_pt_shape()) {
+      p <- p + ggfortify:::geom_factory(ggplot2::geom_point, score_data(),
+                                        colour = score_pt_colour(),
+                                        size = input$score_pt_size,
+                                        alpha = input$score_pt_alpha,
+                                        shape = score_pt_shape())
+    }
+
+    # score labels
+    p <- ggfortify:::plot_label(p = p, data = score_data(), label = score_label(),
+                                label.label = score_label_by(),
+                                label.colour = score_lab_colour(),
+                                label.alpha = input$score_lab_alpha,
+                                label.size = input$score_lab_size)
+
+    if(input$show_ellipse & input$score_pt_colour != 'none') {
+      p <- p + ggfortify:::geom_factory(ggplot2::stat_ellipse, score_data(),
+                                        colour = score_pt_colour(),
+                                        group = score_pt_colour(),
+                                        level = input$pca_ell_ci,
+                                        type = input$pca_ell_type,
+                                        linetype = input$pca_ell_line)
+    }
+
+    p <- p +
+      theme_bw(12) +
+      xlab(sprintf("PC%s (%s%%)",
+                   input$xPC,
+                   round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
+      ylab(sprintf("PC%s (%s%%)",
+                   input$yPC,
+                   round(pcx_summary()['Variance Explained', input$yPC]), 2))
+    p
+  })
+
+  output$plot_pca_score <- renderPlotly({
+    ggplotly(p_score(), source='plotly_score') %>%
+      layout(dragmode = 'select')
+  })
+
+  # download data
+  for_download1 <- reactiveValues()
+  observe({
+    req(input$pca_scale, input$pca_calculate)
+    for_download1$figure <- p_score()
+    for_download1$fig_data <- score_data()
+  })
+
+  callModule(mod_download_server, "download_pca_score", bridge = for_download1,
+             'pca_score')
+  # metadata of selected samples------------------------------------------------
+  selected_samp <- reactiveVal()
+
+  # store selected feature
+  observeEvent(event_data("plotly_selected", source="plotly_score"),
+               suspended = input$pca_calculate == 0, {
+                 curr_selected<- event_data("plotly_selected",
+                                            source='plotly_score')$customdata
+                 updated_samp <- unique(c(selected_samp(), curr_selected))
+                 selected_samp(updated_samp)
+               })
+
+  # clear selection
+  observeEvent(event_data("plotly_deselect", source="plotly_score"),
+               suspended = input$pca_calculate == 0, {
+                 selected_samp(NULL)
+               })
+
+  output$table_score_selected <- DT::renderDataTable(server=FALSE, {
+    validate(need(!is.null(selected_samp()), "Click and drag (with rectangle or lasso tool) to select points on pca score plot to show sample metadata (double-click to clear)"))
+
+    out <- bridge$filtered$met %>% filter(sampleID %in% selected_samp())
+    DT::datatable(out,
+                  extensions = 'Buttons', filter='top', rownames = FALSE,
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+
+  # loading plot----------------------------------------------------------------
+  p_load <- reactive({
+    req(input$pca_calculate)
+    column_name <- colnames(load_data())
+    p <- ggplot(data = load_data(),
+                aes_string(x = column_name[1], y = column_name[2],
+                           customdata = 'featureID'))
+
+    # loading points
+    p <- p + ggfortify:::geom_factory(ggplot2::geom_point, load_data(),
+                                      colour = load_pt_colour(),
+                                      size = input$load_pt_size,
+                                      alpha = input$load_pt_alpha,
+                                      shape = load_pt_shape())
+
+    # loading labels
+    p <- ggfortify:::plot_label(p = p, data = load_data(),
+                                label = show_load_label(),
+                                label.label = load_label_by(),
+                                label.colour = load_lab_colour(),
+                                label.alpha = input$load_lab_alpha,
+                                label.size = input$load_lab_size)
+
+    p <- p +
+      theme_bw(12) +
+      xlab(sprintf("PC%s (%s%%)",
+                   input$xPC,
+                   round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
+      ylab(sprintf("PC%s (%s%%)",
+                   input$yPC,
+                   round(pcx_summary()['Variance Explained', input$yPC]), 2))
+    p
+  })
+
+  output$plot_pca_load <- renderPlotly({
+    ggplotly(p_load(), source='plotly_load') %>%
+      layout(dragmode = 'select')
+  })
+
+  # download data
+  for_download2 <- reactiveValues()
+  observe({
+    req(input$pca_scale, input$pca_calculate)
+    for_download2$figure <- p_load()
+    for_download2$fig_data <- load_data()
+  })
+
+  callModule(mod_download_server, "download_pca_load", bridge = for_download2,
+             'pca_load')
+  # metadata of selected features------------------------------------------------
+  selected_feat <- reactiveVal()
+
+  # store selected feature
+  observeEvent(event_data("plotly_selected", source="plotly_load"),
+               suspended = input$pca_calculate == 0, {
+                 curr_selected<- event_data("plotly_selected",
+                                            source='plotly_load')$customdata
+                 updated_feat <- unique(c(selected_feat(), curr_selected))
+                 selected_feat(updated_feat)
+               })
+
+  # clear selection
+  observeEvent(event_data("plotly_deselect", source="plotly_load"),
+               suspended = input$pca_calculate == 0, {
+                 selected_feat(NULL)
+               })
+
+  output$table_load_selected <- DT::renderDataTable(server=FALSE, {
+    validate(need(!is.null(selected_feat()), "Click and drag (with rectangle or lasso tool) to select points on pca loading plot to show feature metadata (double-click to clear)"))
+
+    out <- bridge$filtered$tax %>% filter(featureID %in% selected_feat())
+    DT::datatable(out,
+                  extensions = 'Buttons', filter='top', rownames = FALSE,
+                  options = list(scrollX = TRUE,
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+  })
+  # biplot----------------------------------------------------------------------
   p_biplot <- reactive({
-    req(input$xPC, input$yPC)
+    req(input$pca_calculate)
     p_biplot <- cms_biplot(
       score_data(), load_data(),
       xPC = input$xPC, yPC = input$yPC,
@@ -433,7 +641,8 @@ mod_ov_pca_server <- function(input, output, session, bridge){
       # loading label
       loadings.label = show_load_label(), loadings.label.label = load_label_by(),
       loadings.label.colour = load_lab_colour(), loadings.label.repel = FALSE,
-      loadings.label.size = input$load_lab_size, loadings.label.alpha = input$load_lab_alpha
+      loadings.label.size = input$load_lab_size,
+      loadings.label.alpha = input$load_lab_alpha
     )
 
     p_biplot <- p_biplot +
@@ -448,48 +657,19 @@ mod_ov_pca_server <- function(input, output, session, bridge){
     p_biplot
   })
 
-  output$plot_pca <- renderPlotly({
-    ggplotly(p_biplot(), source='plotly_pca') %>%
-      layout(dragmode = 'select')
+  output$plot_pca_biplot <- renderPlotly({
+    ggplotly(p_biplot())
   })
 
   # download data
-  for_download <- reactiveValues()
+  for_download3 <- reactiveValues()
   observe({
     req(input$pca_scale, input$pca_calculate)
-    for_download$figure <- p_biplot()
-    for_download$fig_data <- plyr::rbind.fill(score_data(), load_data())
+    for_download3$figure <- p_biplot()
+    for_download3$fig_data <- bind_rows(score_data(), load_data())
   })
 
-  callModule(mod_download_server, "download_pca", bridge = for_download, 'pca')
-
-  # metadata of selected samples------------------------------------------------
-  selected_samp <- reactiveVal()
-
-  # store selected feature
-  observeEvent(event_data("plotly_selected", source="plotly_pca"),
-               suspended = input$pca_calculate == 0, {
-    curr_selected<- event_data("plotly_selected", source='plotly_pca')$customdata
-    updated_samp <- unique(c(selected_samp(), curr_selected))
-    selected_samp(updated_samp)
-  })
-
-  # clear selection
-  observeEvent(event_data("plotly_deselect", source="plotly_pca"),
-               suspended = input$pca_calculate == 0, {
-    selected_samp(NULL)
-  })
-
-  output$table_selected <- DT::renderDataTable(server=FALSE, {
-    req(input$pca_calculate, selected_samp)
-    validate(need(!is.null(selected_samp()), "Click and drag (with rectangle or lasso tool) to select points on pca plot to show sample metadata (double-click to clear)"))
-
-    out <- bridge$filtered$met %>% filter(sampleID %in% selected_samp())
-    DT::datatable(out,
-                  extensions = 'Buttons', filter='top', rownames = FALSE,
-                  options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv')))
-  })
+  callModule(mod_download_server, "download_pca_biplot", bridge = for_download3, 'pca_biplot')
   # initiate return list--------------------------------------------------------
   cross_module <- reactiveValues()
   observe({

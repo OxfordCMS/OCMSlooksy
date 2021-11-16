@@ -28,7 +28,7 @@ mod_beta_ui <- function(id){
         widths=c(3,9),
       # info tab body-----------------------------------------------------
       tabPanel(
-        'Task Info',
+        'Module Info',
         value = 'info_tab_beta',
         icon = icon('info-circle'),
         fluidRow(
@@ -37,7 +37,7 @@ mod_beta_ui <- function(id){
             br(),br(),
             h1("\u03B2-Diversity"),
             div(
-              p("This analysis task assesses the microbiome of the entire dataset. \u03B2-Diversity describes the microbial ecosystem across samples (as opposed to \u03B1-diversity which is calculated within one sample at a time). This analysis tasks provides several data visualization tools that describes how similar (or dissimilar) samples are to one another based on their microbiome"),
+              p("This analysis module assesses the microbiome of the entire dataset. \u03B2-Diversity describes the microbial ecosystem across samples (as opposed to \u03B1-diversity which is calculated within one sample at a time). This analysis tasks provides several data visualization tools that describes how similar (or dissimilar) samples are to one another based on their microbiome"),
               p("Task overview:"),
               tags$ul(
                 tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),

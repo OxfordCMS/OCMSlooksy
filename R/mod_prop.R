@@ -7,6 +7,7 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @import propr
 mod_prop_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -26,7 +27,7 @@ mod_prop_ui <- function(id){
         # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
         # info tab body-----------------------------------------------------
         tabPanel(
-          "Task info",
+          "Module info",
           value = 'info_tab_prop',
           icon = icon('info-circle'),
           fluidRow(
@@ -35,7 +36,7 @@ mod_prop_ui <- function(id){
               width = 12,
               div(
                 h1("Feature Comparison"),
-                p("Task overview:"),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
@@ -79,7 +80,7 @@ mod_prop_ui <- function(id){
               width = 12,
               h1('Pairwise Feature Comparison'),
               tags$div(
-                'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', code('propr'), 'is used to calculate proportionality. [link to propr vignettes]', br(),
+                'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', a(code('propr'), href="https://cran.r-project.org/web/packages/propr/"), 'is used to calculate proportionality.', br(),
                 "Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by ", code('ALDEx2'), "applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution that spurious correlations may occur with zero counts if your dataset is sparse (high proportion of zeros)" ,
                 br()
               ),
@@ -92,9 +93,8 @@ mod_prop_ui <- function(id){
               column(
                 width = 4,
                 tags$div(
-                  "When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho \u2265 |0.6|."), br()
-              ),
-              br()
+                  "When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho \u2265 |0.6|.")
+              )
             ) # end column 12
           ), # end fulidRow
           fluidRow(

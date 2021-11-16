@@ -16,6 +16,7 @@
 #' @import cluster
 #' @import htmlwidgets
 #' @import shinyWidgets
+#' @import ggfortify
 mod_ov_pcoa_ui <- function(id){
   ns <- NS(id)
   tagList(

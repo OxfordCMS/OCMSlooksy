@@ -1,11 +1,9 @@
 #' cms_biplot
 #'
-#' Modification of \code{ggfortify::ggbiplot} to allow for selection of PCs
+#' Modification of \code{ggfortify::ggbiplot} to allow for variables in aes_string (not just colour specification)
 #'
 #' @param plot.data score data, samples in rows
 #' @param loadings_data loading data, features in rows
-#' @param xPC numeric; PC number for x axis. default 1
-#' @param yPC number; PC number for y axis. default 2
 #' @param colour colour of score points. default NULL
 #' @param size size of score points. default NULL
 #' @param linetype line type of arrows to points. default NULL
@@ -88,8 +86,7 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
   plot.columns <- colnames(plot.data)
 
   # initiate score plot mapping
-  mapping <- ggplot2::aes_string(x = plot.columns[1L], y = plot.columns[2L],
-                                 customdata = 'sampleID')
+  mapping <- ggplot2::aes_string(x = plot.columns[1L], y = plot.columns[2L])
   if (is.logical(shape) && !shape && missing(label)) {
     label <- TRUE
   }
@@ -101,7 +98,8 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
   if (!is.logical(shape) || shape) {
     p <- p + ggfortify:::geom_factory(ggplot2::geom_point, plot.data,
                           colour = colour, size = size, linetype = linetype,
-                          alpha = alpha, fill = fill, shape = shape)
+                          alpha = alpha, fill = fill, shape = shape,
+                          text='sampleID')
   }
 
   # score labels
@@ -130,9 +128,7 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
     loadings.mapping <- ggplot2::aes_string(x = 0, y = 0,
                                             xend = loadings.columns[1L],
                                             yend = loadings.columns[2L])
-
-    loadings.data[, 1L:2L] <- loadings.data[, 1L:2L] * scaler *
-      0.8
+    loadings.data[, 1L:2L] <- loadings.data[, 1L:2L] * scaler * 0.8
 
     # loading points
     if (!is.logical(loadings.shape) || loadings.shape) {
@@ -140,18 +136,21 @@ cms_biplot <- function (plot.data, loadings.data = NULL,
                                         colour = loadings.colour,
                                         size = loadings.size,
                                         alpha = loadings.alpha,
-                                        shape = loadings.shape)
+                                        shape = loadings.shape,
+                                        text = 'featureID')
     }
     # loading arrows
     if(loadings.arrow) {
-      p <- p + ggplot2::geom_segment(data = loadings.data, mapping = loadings.mapping,
+      p <- p + ggplot2::geom_segment(data = loadings.data,
+                                     mapping = loadings.mapping,
                             arrow = grid::arrow(length = grid::unit(8, "points")),
-                            colour = 'grey50', alpha = loadings.alpha)
+                            colour = 'darkred', alpha = loadings.alpha*0.5)
     }
 
 
     # loading labels
-    p <- ggfortify:::plot_label(p = p, data = loadings.data, label = loadings.label,
+    p <- ggfortify:::plot_label(p = p, data = loadings.data,
+                    label = loadings.label,
                     label.label = loadings.label.label,
                     label.colour = loadings.label.colour,
                     label.alpha = loadings.label.alpha,

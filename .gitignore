@@ -6,3 +6,6 @@
 .Rbuildignore
 dev/*
 *.Rproj
+inst/doc
+/doc/
+/Meta/

@@ -274,9 +274,11 @@ mod_filterfeat_server <- function(input, output, session, bridge){
                     dom = 'lfrtip',
                     filter = 'top'))
   })
+
   # # check
   # output$check <- renderPrint({
   # })
+
   # prepare asv dataframe-------------------------------------------------------
   asv_mat <- reactive({
     as.data.frame(asv()) %>%

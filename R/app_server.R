@@ -30,7 +30,7 @@ app_server <- function(input, output, session) {
   observe({
     hideTab(inputId = 'tabs', target = "qc")
     hideTab(inputId = 'tabs', target = 'qualityfilter')
-    hideTab(inputId = 'tabs', target = "analysis_tasks")
+    hideTab(inputId = 'tabs', target = "analysis_module")
   })
 
   analysis_status <- reactiveVal(FALSE)
@@ -38,7 +38,7 @@ app_server <- function(input, output, session) {
     req(cross_module1$import_status)
     if(cross_module1$import_status == "Data validation successful") {
       showTab(inputId = 'tabs', target = 'qualityfilter')
-      showTab(inputId = 'tabs', target = "analysis_tasks")
+      showTab(inputId = 'tabs', target = "analysis_module")
 
       cross_module2 <- callModule(mod_qualityfilter_server,
                                   "qualityfilter_ui_1", cross_module1)

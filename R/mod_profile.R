@@ -7,6 +7,8 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @import heatmaply
+
 mod_profile_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -26,7 +28,7 @@ mod_profile_ui <- function(id){
         widths=c(3,9),
         # info tab----------------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           value = "info_tab_profile",
           icon = icon('info-circle'), selected = TRUE,
           fluidRow(
@@ -36,7 +38,7 @@ mod_profile_ui <- function(id){
               h1('Microbiome Profile'),
               div(
                 p("Examine the relative abundance microbiome profile at various taxonomic levels."),
-                p("Task overview:"),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
@@ -127,7 +129,7 @@ mod_profile_ui <- function(id){
             column(
               width = 12,
               h1("Profile Sparsity"),
-              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity). Sparsity is evaluated at the level of count aggregation in the first step of this analysis task.")
+              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity). Sparsity is evaluated at the level of count aggregation in the first step of this analysis module")
             )
           ),
           fluidRow(
@@ -239,8 +241,11 @@ mod_profile_server <- function(input, output, session, improxy){
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
     }
-
   })
+
+  # output$check <- renderPrint({
+  #   print(summary(bridge$work_db))
+  # })
 
   observe({
     # add aggregate features to report params
@@ -523,10 +528,6 @@ mod_profile_server <- function(input, output, session, improxy){
   # plot heat map
   output$binary_hmap <- renderPlotly({
     binary_hmap()
-  })
-
-
-  output$check <- renderPrint({
   })
 
   # download data

@@ -28,7 +28,7 @@ mod_alpha_ui <- function(id){
         widths=c(3,9),
         # info tab body-----------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           value = 'info_tab_alpha',
           icon = icon('info-circle'),
           fluidRow(
@@ -37,8 +37,8 @@ mod_alpha_ui <- function(id){
               width = 12,
               h1("\u03B1-Diversity"),
               div(
-                p("This analysis task evalutes the microbiome on the basis of u03B1-diversity. u03B1-Diversity is measured on a per-sample basis and is quantified using an u03B1-diversity index, such as Shannon's D. More detail is provided of different u03B1-diversity indeces in the 'u03B1-Diversity Analysis' tab."),
-                p("Task overview:"),
+                p("This analysis module evalutes the microbiome on the basis of u03B1-diversity. u03B1-Diversity is measured on a per-sample basis and is quantified using an u03B1-diversity index, such as Shannon's D. More detail is provided of different u03B1-diversity indeces in the 'u03B1-Diversity Analysis' tab."),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
@@ -81,8 +81,8 @@ mod_alpha_ui <- function(id){
           fluidRow(
             br(),br(),
             h1("\u03B1-Diversity"),
-            p("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon's index (H) and Simpson index are measures of uncertainty in the species identity of a sample (", a("Jost 2006", href="https://doi.org/10.1111/j.2006.0030-1299.14714.x"), ")."),
-            p("Diversity measures, such as Shannon's Diversity and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
+            p("Alpha diversity assesses the diversity of a community (within one sample). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon's index (H) and Simpson index are measures of uncertainty in the species identity of a sample (", a("Jost 2006", href="https://doi.org/10.1111/j.2006.0030-1299.14714.x"), ")."),
+            p("Diversity measures, such as Shannon's Diversity and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diversity measures are equivalent. Entropy indices can be converted to diversity by mathematical transformation."),
             p("Diversity indecies are calculated with", a(code("vegan::diversity"), href="https://cran.r-project.org/web/packages/vegan/vignettes/diversity-vegan.pdf"), "Shannon's D index is calculated as ", code("exp(Shannon's Index)"), "Richness is calculated with", a(code("vegan::specnum"), href="https://cran.r-project.org/web/packages/vegan/vignettes/diversity-vegan.pdf"), ", and evenness is calculated as ", code("Shannon's Index/log(Richness)"), ".")
           ),
           fluidRow(

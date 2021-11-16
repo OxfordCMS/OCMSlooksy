@@ -7,6 +7,8 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @import DESeq2
+#' @import SummarizedExperiment
 mod_diff_abund_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -27,7 +29,7 @@ mod_diff_abund_ui <- function(id){
 
         # info tab body-----------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           value = 'info_tab_diff',
           icon = icon('info-circle'),
           fluidRow(
@@ -36,12 +38,12 @@ mod_diff_abund_ui <- function(id){
               width = 12,
               div(
                 h1("Differential Abundance"),
-                p("Compare groups to see what taxa are differentially abundant between the groups. This task uses DESeq2 and provides a couple different methods of visualising the results. "),
-                p("Task overview:"),
+                p("Compare groups to see what taxa are differentially abundant between the groups. This module uses DESeq2 and provides a couple different methods of visualising the results. "),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
-                  tags$li(tags$b("Differential Abundance:"), "Compare groups within an experiment variable and measure the log-fold change and statistical significance of taxa. This task employs ", code("DESeq2"), " to assess differential abundance.")
+                  tags$li(tags$b("Differential Abundance:"), "Compare groups within an experiment variable and measure the log-fold change and statistical significance of taxa. This module employs ", code("DESeq2"), " to assess differential abundance.")
                 )
               )
             )
@@ -101,7 +103,7 @@ mod_diff_abund_ui <- function(id){
                 column(
                   width = 9,
                   # normalisation and transformation definitions from biostars discussion https://www.biostars.org/p/275010/
-                  p("Compare groups using DESeq2. DESeq2 normalises counts by dividing read count by the geometric mean of that taxon across all samples. Normalised counts are then transformed by ", code("log2"), ". DESeq2 assess differential abundance using negative bionmial generalized linear models and tests model fit with the Wald test. Details on ", code("DESeq2"), " can be found in the ", a("package vignette", href="https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html"), ".")
+                  p("Compare groups using DESeq2. DESeq2 normalises counts by dividing read count by the geometric mean of that taxon across all samples. Normalised counts are then transformed by ", code("log2"), ". DESeq2 assess differential abundance using negative binomial generalized linear models and tests model fit with the Wald test. Details on ", code("DESeq2"), " can be found in the ", a("package vignette", href="https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html"), ".")
                 )
               ),
               fluidRow(
@@ -413,7 +415,7 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   output$dds_summary <- renderPrint({
     req(input$variable)
     cat('Model design:\n')
-    print(sprintf("~%s", input$variable))
+    print(paste(as.character(deseq_design()), collapse=''))
     cat('\nModel summary:\n')
     print(summary(dds_obj()))
     cat('\nEstimated effects of the Model"\n')

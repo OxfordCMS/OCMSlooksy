@@ -35,9 +35,9 @@ mod_qc_ui <- function(id){
         #   box(width = 12, h3('Check'),
         #       verbatimTextOutput(ns('check')))),
 
-        # task info---------------------------------------------------------
+        # module info---------------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           id = 'info_tab_qc',
           icon = icon('info-circle'), selected = TRUE,
           fluidRow(

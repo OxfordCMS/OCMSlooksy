@@ -85,10 +85,6 @@ mod_ov_diss_server <- function(input, output, session, bridge){
 
   })
 
-  # output$check <- renderPrint({
-  #
-  # })
-
   # perform checks--------------------------------------------------------------
   # check for number of samples per group
   grp_tally <- reactive({
@@ -127,6 +123,9 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   # initiate message about statistic calculation
   diss_check <- reactiveValues()
 
+  # output$check <- renderPrint({
+  # })
+
   # pairwise dissimilarity------------------------------------------------------
   diss_result <- eventReactive(input$diss_calculate, {
 
@@ -139,8 +138,9 @@ mod_ov_diss_server <- function(input, output, session, bridge){
       # get sampleID in current panel group
       panel_sample <-  met_diss() %>%
         filter(panel %in% c(iter()$panel[i])) # making this %in% statement even though only one value to help search for NAs. filtering for NA with %in% vector keeps NAs
+
       # get count data in current panel group
-      panel_data <- bridge$asv_transform[,panel_sample$sampleID]
+      panel_data <- bridge$asv_transform[,as.character(panel_sample$sampleID)]
 
       validate(
         need(nrow(panel_sample) >= 2, "Cannot assess sample pairwise dissimilarity within the group. Must have at least 2 samples per panel"),
@@ -157,7 +157,7 @@ mod_ov_diss_server <- function(input, output, session, bridge){
           filter(.data[[input$diss_grp]] %in% c(iter()$grouping))
 
         # get count data in current group
-        curr_data <- panel_data[,curr_sample$sampleID]
+        curr_data <- panel_data[,as.character(curr_sample$sampleID)]
 
         # handle empty subgroup
         if(nrow(curr_sample) > 0) {
@@ -385,7 +385,7 @@ mod_ov_diss_server <- function(input, output, session, bridge){
 
     if(input$diss_panel != 'none') {
       p <- p +
-        facet_wrap(~panel_text, scales='free')
+        facet_wrap(~panel_text, scales='free_x')
     }
 
     p

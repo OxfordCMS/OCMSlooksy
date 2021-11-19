@@ -39,7 +39,7 @@ mod_ov_pcoa_ui <- function(id){
     ),
     hidden(div(
       id = ns('pcoa_body_div'),
-      h2("Distance Matrix"),
+      uiOutput(ns('distance_title')),
       DT::dataTableOutput(ns('dist_table'))  %>%
         shinycssloaders::withSpinner(),
       h2("PCoA Summary"),
@@ -138,7 +138,9 @@ mod_ov_pcoa_ui <- function(id){
 mod_ov_pcoa_server <- function(input, output, session, bridge){
   ns <- session$ns
 
-
+#   # check
+#   output$check <- renderPrint({
+#   })
   # toggle div for input controls-----------------------------------------------
   observeEvent(input$pcoa_calculate, {
     show('pcoa_body_div')
@@ -153,6 +155,10 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
 
   ## render controls - PCoA-----------------------------------------------------
   # render pcoa distance ui
+  output$distance_title <- renderUI({
+    h2(sprintf("Distance Matrix, %s", input$pcoa_dist))
+  })
+
   output$pcoa_dist_ui <- renderUI({
     if(bridge$transform_method == 'percent') choices <- 'bray'
     else choices <- c("manhattan", "euclidean", "canberra")
@@ -213,12 +219,12 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
 
   ## samples as rows
   dist_data <- eventReactive(input$pcoa_calculate, {
-    req(input$pcoa_dist)
     vegan::vegdist(t(bridge$asv_transform), method = input$pcoa_dist)
   })
 
   output$dist_table <- DT::renderDataTable(server = FALSE, {
-    DT::datatable(as.data.frame(as.matrix(dist_data())),
+    out <- as.data.frame(as.matrix(dist_data()))
+    DT::datatable(out,
                   extensions = 'Buttons',
                   options = list(scrollX = TRUE,
                                  dom = 'Blfrtip', buttons = c('copy','csv')))
@@ -430,8 +436,6 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   # download data
   for_download <- reactiveValues()
   observe({
-    req(input$pcoa_dist, input$pcoa_calculate,
-        input$xPCo, input$yPCo)
     for_download$figure <- p_pcoa()
     for_download$fig_data <- pdata_pcoa()
   })
@@ -456,7 +460,6 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   })
 
   output$table_selected <- DT::renderDataTable(server=FALSE, {
-    req(input$pcoa_calculate, selected_samp)
     validate(need(!is.null(selected_samp()), "Click and drag (with rectangle or lasso tool) to select points on pcoa plot to show sample metadata (double-click to clear)"))
 
     out <- bridge$filtered$met %>% filter(sampleID %in% selected_samp())
@@ -470,16 +473,11 @@ mod_ov_pcoa_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
-      pcoa_dist = input$pcoa_dist,
       pcoa_summary = pcoa_summary(),
       p_pcoa = p_pcoa()
     )
 
   })
-
-  # # check
-  # output$check <- renderPrint({
-  # })
 
   return(cross_module)
 }

@@ -34,7 +34,6 @@ app_ui <- function() {
       navbarMenu(
         title = "Analysis Modules",
         menuName = 'analysis_module',
-
         # relative abundance profiles------------------------------------
         tabPanel(title = "Microbiome Profile", value = 'profile',
                 icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),

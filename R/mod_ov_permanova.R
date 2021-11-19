@@ -27,13 +27,15 @@ mod_ov_permanova_ui <- function(id){
         actionButton(ns('permanova_calculate'), 'Calculate PERMANOVA')
       )
     ),
-    fluidRow(
-      column(
-        width = 12,
-        h3('PERMANOVA Results'),
-        DT::dataTableOutput(ns('permanova_summary'))
+    hidden(div(ns('permanova_result_div'),
+      fluidRow(
+        column(
+          width = 12,
+          h3('PERMANOVA Results'),
+          DT::dataTableOutput(ns('permanova_summary'))
+        )
       )
-    )
+    ))
   )
 }
 
@@ -48,6 +50,10 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   # bridge$filtered$tax # taxonomy table
 
   # render input ui-------------------------------------------------------------
+  observeEvent(input$permanova_calculate, {
+    show('permanova_result_div')
+  })
+
   output$formula_ui <- renderUI({
     bucket_list(
       header = "Groups to compare in PERMANOVA",
@@ -142,10 +148,6 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
-      permanova_stratify = input$stratify,
-      permanova_dist = input$permanova_dist,
-      permanova_calculate = input$permanova_calculate,
-      permanova_terms = input$formula_terms,
       permanova_formula = formula_preview(),
       permanova_summary = as.data.frame(fit()$aov.tab)
     )

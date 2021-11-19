@@ -25,30 +25,32 @@ mod_ov_diss_ui <- function(id){
         )
       )
     ),
-    fluidRow(
-      tags$b(textOutput(ns('validation_msg'))),
-      br(),
-      htmlOutput(ns('diss_message_ui'))
-    ),
-    fluidRow(
-      column(
-        width = 1, style = 'padding:0px;',
-        mod_download_ui(ns('download_diss')),
+    hidden(div(id=ns('diss_result_div'),
+      fluidRow(
+        tags$b(textOutput(ns('validation_msg'))),
+        br(),
+        htmlOutput(ns('diss_message_ui'))
       ),
-      column(
-        width = 11, style = 'padding:0px;',
-        plotlyOutput(ns('diss_plot'), width = '100%',
-                     height= 'auto') %>%
-          shinycssloaders::withSpinner()
+      fluidRow(
+        column(
+          width = 1, style = 'padding:0px;',
+          mod_download_ui(ns('download_diss')),
+        ),
+        column(
+          width = 11, style = 'padding:0px;',
+          plotlyOutput(ns('diss_plot'), width = '100%',
+                       height= 'auto') %>%
+            shinycssloaders::withSpinner()
+        )
+      ),
+      fluidRow(
+        DT::dataTableOutput(ns("diss_stat"))
+      ),
+      fluidRow(
+        DT::dataTableOutput(ns('diss_result'))  %>%
+            shinycssloaders::withSpinner()
       )
-    ),
-    fluidRow(
-      DT::dataTableOutput(ns("diss_stat"))
-    ),
-    fluidRow(
-      DT::dataTableOutput(ns('diss_result'))  %>%
-          shinycssloaders::withSpinner()
-    )
+    ))
   )
 }
 
@@ -62,7 +64,11 @@ mod_ov_diss_server <- function(input, output, session, bridge){
   # bridge$filtered$met # metadata table
   # bridge$filtered$tax # taxonomy table
 
-  # render controls - dissimilarity
+  # render controls - dissimilarity---------------------------------------------
+  observeEvent(input$diss_calculate, {
+    show('diss_result_div')
+  })
+
   output$diss_grp_ui <- renderUI({
     selectInput(ns('diss_grp'), "Compare Sample Groups",
                 choices = colnames(bridge$work_db$met), selected = 'sampleID')

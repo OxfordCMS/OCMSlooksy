@@ -29,8 +29,20 @@ mod_transform_ui <- function(id){
                                    'log10 of percent abundance' = 'log10',
                                    'percent abundance' = 'percent'),
                        selected = 'log10'),
-          withBusyIndicatorUI(
-            actionButton(ns('transform_submit'), "Apply change")
+          div(
+            style="display:inline-block;",
+            withBusyIndicatorUI(
+              actionButton(ns('transform_submit'), "Apply change")
+            )
+          ),
+          div(
+            style="display:inline-block;",
+            withBusyIndicatorUI(
+              actionButton(ns('transform_clear'),
+                           tags$div(title = "Reset transformation/normalization",
+                                    icon("undo-alt"))
+              )
+            )
           )
         )
       ),
@@ -45,10 +57,13 @@ mod_transform_ui <- function(id){
       ),
       hr()
     ),
-    fluidRow(
-      DT::dataTableOutput(ns('preview_transform')) %>%
-        shinycssloaders::withSpinner())
-    )
+    hidden(div(
+      id = ns('transform_result_div'),
+      fluidRow(
+        DT::dataTableOutput(ns('preview_transform')) %>%
+          shinycssloaders::withSpinner())
+      )
+    ))
 
 }
 
@@ -58,9 +73,15 @@ mod_transform_ui <- function(id){
 mod_transform_server <- function(input, output, session, bridge){
   ns <- session$ns
 
+  observeEvent(input$transform_submit, {
+    show('transform_result_div')
+  })
+
+  # initiate reactive output
+  asv_transform <- reactiveVal()
+
   withBusyIndicatorServer('transform_submit', 'mod_transform_ui_1', {
-    asv_transform <- eventReactive(input$transform_submit, {
-      req(input$transform_method)
+    observeEvent(input$transform_submit, {
 
       asv_df <- as.data.frame(bridge$filtered$asv)
       rownames(asv_df) <- asv_df$featureID
@@ -105,14 +126,15 @@ mod_transform_server <- function(input, output, session, bridge){
         out <- asv_df
       }
 
-      out
+      asv_transform(out)
     })
   })
 
-
+  observeEvent(input$transform_clear, {
+    asv_transform(NULL)
+  })
   output$preview_transform <- DT::renderDataTable(server = FALSE, {
-    req(input$transform_submit,
-        input$transform_method)
+    validate(need(!is.null(asv_transform()), "No transformation/normatlization method applied. If you want to work with non-transformed/non-normalized counts, please select 'none' under 'Transformation method' and click 'Apply change'"))
 
     DT::datatable(asv_transform(),
                   extensions = list('Buttons'),
@@ -125,15 +147,13 @@ mod_transform_server <- function(input, output, session, bridge){
       DT::formatRound(column = colnames(asv_transform()), digits = 3)
   })
 
-  output$check <- renderPrint({
-  })
+  # output$check <- renderPrint({
+  # })
   cross_module <- reactiveValues()
+
   observe({
-    cross_module$output <- list(transform_submit= input$transform_submit)
-  })
-  observe({
-    cross_module$output$asv_transform <- asv_transform()
-    cross_module$output$transform_method <- input$transform_method
+    req(input$transform_submit)
+    cross_module$output <-list(asv_transform = asv_transform())
   })
 
   return(cross_module)

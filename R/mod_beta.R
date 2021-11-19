@@ -72,7 +72,9 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_filterfeat_ui(ns("filterfeat_ui_1"))
+            div(id=ns('filtfeat_mod_div'),
+              mod_filterfeat_ui(ns("filterfeat_ui_1"))
+            )
           )
         )
       ), # end tabItem
@@ -84,7 +86,9 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width=12,
-            mod_transform_ui(ns("transform_ui_1"))
+            div(id=ns('transform_mod_div'),
+              mod_transform_ui(ns("transform_ui_1"))
+            )
           )
         )
       ), # end tabPanel
@@ -96,7 +100,9 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_ov_diss_ui(ns("ov_diss_ui_1"))
+            div(id=ns('diss_mod_div'),
+              mod_ov_diss_ui(ns("ov_diss_ui_1"))
+            )
           )
         )
       ), # end tabPanel
@@ -108,7 +114,9 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width=12,
-            mod_ov_pcoa_ui(ns("ov_pcoa_ui_1"))
+            div(id=ns('pcoa_mod_div'),
+              mod_ov_pcoa_ui(ns("ov_pcoa_ui_1"))
+            )
           )
         )
       ),
@@ -120,7 +128,9 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_ov_pca_ui(ns("ov_pca_ui_1"))
+            div(id=ns('pca_mod_div'),
+              mod_ov_pca_ui(ns("ov_pca_ui_1"))
+            )
           )
         )
       ),
@@ -131,7 +141,9 @@ mod_beta_ui <- function(id){
           br(),br(),
           column(
             width = 12,
-            mod_ov_permanova_ui(ns("ov_permanova_ui_1"))
+            div(id=ns('permanova_mod_div'),
+              mod_ov_permanova_ui(ns("ov_permanova_ui_1"))
+            )
           )
         )
       ),
@@ -157,44 +169,115 @@ mod_beta_ui <- function(id){
 mod_beta_server <- function(input, output, session, improxy){
   ns <- session$ns
 
+  output$check <- renderPrint({
+  })
+  # initiate a reactive to track/permit progress through analysis module--------
+  progress <- reactiveValues(complete_agg = 0, complete_featfilt = 0,
+                             complete_transform = 0)
+
+  observeEvent(input[['aggregate_ui_1-agg_calculate']], {
+    progress$complete_agg <- 1
+    if(progress$complete_featfilt == 1) {
+      progress$complete_featfilt <- 0
+    }
+    if(progress$complete_transform == 1) {
+      progress$complete_transform <- 0
+    }
+
+  })
+
+  observeEvent(input[['aggregate_ui_1-agg_clear']], {
+    progress$complete_agg <- 0
+    if(progress$complete_featfilt == 1) {
+      progress$complete_featfilt <- 0
+    }
+    if(progress$complete_transform == 1) {
+      progress$complete_transform <- 0
+    }
+  })
+
+  observeEvent(input[['filterfeat_ui_1-submit_asv']], {
+    progress$complete_featfilt <- 1
+    if(progress$complete_transform == 1) {
+      progress$complete_transform <- 0
+    }
+  })
+
+  observeEvent(input[['filterfeat_ui_1-clear_asv']], {
+    progress$complete_featfilt <- 0
+    if(progress$complete_transform == 1) {
+      progress$complete_transform <- 0
+    }
+  })
+
+  observe({
+    if(progress$complete_featfilt == 0) {
+      reset('filtfeat_mod_div')
+      hide('filterfeat_ui_1-prev_filter_div')
+      hide('filterfeat_ui_1-preview_asv_div')
+    }
+  })
+
+  observe({
+    if(progress$complete_transform == 0) {
+      reset('transform_mod_div')
+      reset('diss_mod_div')
+      hide('ov_diss_ui_1-diss_result_div')
+      reset('pcoa_mod_div')
+      hide('ov_pcoa_ui_1-pcoa_body_div')
+      reset('pca_mod_div')
+      hide('ov_pca_ui_1-pca_summary_div')
+      hide('ov_pca_ui_1-pca_body_div')
+      reset('permanova_mod_div')
+      hide('ov_permanova_ui_1-permanova_result_div')
+    }
+  })
+
+  observeEvent(input[['transform_ui_1-transform_submit']], {
+    progress$complete_transform <- 1
+  })
+
+  observeEvent(input[['transform_ui_1-transform_clear']], {
+    progress$complete_transform <- 0
+  })
+
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#beta_menu li a[data-value=filter_beta_tab]",
-                condition = !is.null(agg_output$output) &&
-                  agg_output$output$agg_calculate > 0)
+                condition = progress$complete_agg == 1)
   })
 
   observe({
     toggleState(selector = "#beta_menu li a[data-value=transform_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
 
   observe({
     toggleState(selector = "#beta_menu li a[data-value=diss_tab]",
-                condition = transform_output$output$transform_submit > 0)
+                condition = progress$complete_transform == 1)
   })
 
   observe({
     toggleState(selector = "#beta_menu li a[data-value=pcoa_tab]",
-                condition = transform_output$output$transform_submit > 0)
+                condition = progress$complete_transform == 1)
   })
 
   observe({
     toggleState(selector = "#beta_menu li a[data-value=pca_tab]",
-                condition = transform_output$output$transform_submit > 0)
+                condition = progress$complete_transform == 1)
   })
 
   observe({
     toggleState(selector = "#beta_menu li a[data-value=permanova_tab]",
-                condition = transform_output$output$transform_submit > 0)
+                condition = progress$complete_transform == 1)
   })
 
   observe({
     toggleState(selector = "#beta_menu li a[data-value=beta_report_tab]",
-                condition = transform_output$output$transform_submit > 0)
+                condition = progress$complete_transform == 1)
   })
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues(transform_method = NULL)
+  bridge <- reactiveValues()
   observe({
     bridge$qualfilt_db <- improxy$work_db
   })
@@ -215,6 +298,8 @@ mod_beta_server <- function(input, output, session, improxy){
 
   # store data in reactiveValues to pass onto submodules
   observe({
+    req(input[['aggregate_ui_1-agg_calculate']])
+
     if(!is.null(agg_output$output)) {
       tax_entry <- dplyr::select(agg_output$output$aggregated_tax, -n_collapse)
 
@@ -229,12 +314,11 @@ mod_beta_server <- function(input, output, session, improxy){
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
     }
-
   })
 
   observe({
     # add aggregate features to report params
-    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregate_by <- input[['aggregate_ui_1-aggregate_by']]
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
@@ -246,19 +330,20 @@ mod_beta_server <- function(input, output, session, improxy){
   filter_output <- callModule(mod_filterfeat_server, "filterfeat_ui_1", bridge)
 
   # add filtered data to bridge
-  observe({
+  observeEvent(input[['filterfeat_ui_1-submit_asv']], {
     bridge$filtered <- filter_output$filtered
   })
 
   # update report params
   observe({
     #feature filter
-    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_select_prompt <-
+      input[['filterfeat_ui_1-asv_select_prompt']]
     for_report$params$asv_filter_options <-
-      filter_output$params$asv_filter_options
-    for_report$params$cutoff_method <- filter_output$params$cutoff_method
-    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
-    for_report$params$prevalence <- filter_output$params$prevalence
+      input[['filterfeat_ui_1-asv_filter_options']]
+    for_report$params$cutoff_method <- input[['filterfeat_ui_1-cutoff_method']]
+    for_report$params$asv_cutoff <- input[['filterfeat_ui_1-asv_cutoff']]
+    for_report$params$prevalence <- input[['filterfeat_ui_1-prevalence']]
     for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
     for_report$params$asv_remove <- filter_output$params$asv_remove
     for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot
@@ -274,23 +359,27 @@ mod_beta_server <- function(input, output, session, improxy){
 
   # add transformed data to reactive values
   observe({
+    req(input[['transform_ui_1-transform_submit']])
     # add to bridge
+    bridge$transform_method <- input[['transform_ui_1-transform_method']]
     bridge$asv_transform <- transform_output$output$asv_transform
-    bridge$transform_method <- transform_output$output$transform_method
+
+
+  })
+
+  observe({
+    req(input[['transform_ui_1-transform_submit']])
     # add to report params
-    for_report$params$transform_method <-
-      transform_output$output$transform_method
+    for_report$params$transform_method <- input[['transform_ui_1-transform_method']]
     for_report$params$asv_transform <- transform_output$output$asv_transform
   })
 
-  # output$check <- renderPrint({
-  # })
   # render dissimilarity and pca tabsitem--------------------------------------
   observe({
-    req(bridge$transform_method)
-    toggle(condition=bridge$transform_method == 'percent',
+    req(input[['transform_ui_1-transform_method']])
+    toggle(condition=input[['transform_ui_1-transform_method']] == 'percent',
            selector = "#beta_menu li a[data-value=diss_tab]")
-    toggle(condition=bridge$transform_method != 'percent',
+    toggle(condition=input[['transform_ui_1-transform_method']] != 'percent',
            selector = "#beta_menu li a[data-value=pca_tab]")
   })
 
@@ -299,8 +388,9 @@ mod_beta_server <- function(input, output, session, improxy){
 
   # dissimilarity
   observe({
-    req(bridge$transform_method)
-    if(bridge$transform_method == 'percent') {
+    req(input[['transform_ui_1-transform_method']],
+        input[['ov_diss_ui_1-diss_calculate']])
+    if(input[['transform_ui_1-transform_method']] == 'percent') {
       for_report$params$diss_grp <- dissimilarity$output$diss_grp
       for_report$params$diss_panel <- dissimilarity$output$diss_panel
       for_report$params$validation_msg <- dissimilarity$output$validation_msg
@@ -315,10 +405,11 @@ mod_beta_server <- function(input, output, session, improxy){
     pcoa_output <- callModule(mod_ov_pcoa_server, "ov_pcoa_ui_1",
                               bridge = bridge)
 
+  # pcoa
   observe({
-    # pcoa
-    for_report$params$pcoa_dist <- pcoa_output$pcoa$pcoa_dist
-    for_report$params$pcoa_summary <- pcoa_output$pcoa$pcoa_summary
+    req(input[['ov_pcoa_ui_1-pcoa_calculate']])
+    for_report$params$pcoa_dist <- input[['ov_pcoa_ui_1-pcoa_dist']]
+    for_report$params$pcoa_summary <- pcoa_output$output$pcoa_summary
     for_report$params$p_pcoa <- pcoa_output$output$p_pcoa
   })
 
@@ -327,9 +418,12 @@ mod_beta_server <- function(input, output, session, improxy){
 
   # pca
   observe({
-      for_report$params$pca_scale <- pca_output$output$pca_scale
+    req(input[['ov_pca_ui_1-pca_calculate']])
+      for_report$params$pca_scale <- input[['ov_pca_ui_1-pca_scale']]
       for_report$params$pca_summary <- pca_output$output$pca_summary
-      for_report$params$p_pca <- pca_output$output$p_pca
+      for_report$params$p_biplot <- pca_output$output$p_biplot
+      for_report$params$p_score <- pca_output$output$p_score
+      for_report$params$p_load <- pca_output$output$p_load
   })
 
   # PERMANOVA ------------------------------------------------------------------
@@ -338,12 +432,10 @@ mod_beta_server <- function(input, output, session, improxy){
 
   # permanova
   observe({
-    for_report$params$permanova_stratify <-
-      permanova_output$output$permanova_stratify
-    for_report$params$permanova_dist <-
-      permanova_output$output$permanova_dist
-    for_report$params$permanova_terms <-
-      permanova_output$output$permanova_terms
+    req(input[['ov_permanova_ui_1-pcoa_calculate']])
+    for_report$params$permanova_stratify <- input[['ov_permanova_ui_1-stratify']]
+    for_report$params$permanova_dist <- input[['ov_permanova_ui_1-permanova_dist']]
+    for_report$params$permanova_terms <- input[['ov_permanova_ui_1-formula_terms']]
     for_report$params$permanova_formula <-
       permanova_output$output$permanova_formula
     for_report$params$permanova_summary <-

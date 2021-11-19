@@ -674,9 +674,10 @@ mod_ov_pca_server <- function(input, output, session, bridge){
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
-      pca_scale = input$pca_scale,
       pca_summary = pcx_summary(),
-      p_pca = p_biplot()
+      p_score = p_score(),
+      p_load = p_load(),
+      p_biplot = p_biplot()
     )
   })
 

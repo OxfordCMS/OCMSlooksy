@@ -9,3 +9,4 @@ dev/*
 inst/doc
 /doc/
 /Meta/
+._*.png

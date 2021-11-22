@@ -230,23 +230,6 @@ Different types of data analysis are organized into "analysis modules" to reflec
 
 Next, you must select the samples you would like to analyze in the [Filter Samples](#FilterSample) tab before proceeding with the analysis modules. Analysis modules are listed in a dropdown menu from the [Analysis Module](#AnalysisModule) tab. Modules typically include several data preparation steps that are necessary to prepare your data for the analyses conducted in a given module. A data module may contain one or several different analyses. Data preparation steps are listed in the side bar on the left hand side of the screen, and you progress through the steps in a top-down order. Once data preparation has been completed, the analyses within a module can be completed in any order.
 
-## Downloading tables and figures
-All tables shown in the app are downloadable via the "copy" and "csv" buttons in the top left corner of the table. The "copy" button copies the entire table to your clipboard, while the "csv" button allows you to save to your computer. There is also a search bar in the top right corner of each table. This allows you to search the entire contents of the table. Some tables have search bars under each column, which allows you to search the table by columns.
-
-![Figure 2A. Saving and interacting with tables](screenshots/savetable.png){width=100%}
-
-All plots have a save icon (`r shiny::icon('save')`) that contains a drop-down menu of the different ways the plot can be downloaded.
-
-![Figure 2B. Saving plots](screenshots/saveplot.png)
-
-* "Original plot" downloads the static figure as a .png file. Note this defaults to 5in x 7in so large figures may looked squished
-* "Interactive plot" downloads the interactive figure as a .html file.
-* "Plot data" downloads the data used to generate the plot as a .csv file. This may be useful if you wish to recreate the plot yourself in R or using other software.
-* "RDS" downloads the plot as an R object in the form of an .RDS file. In most cases, this is a `ggplot` object, while heatmaps are saved as an object of class `heatmapr` from the R package `heatmaply`. This is is useful if you wish to modify the plot in R.
-* "All" downloads "Original plot," "Interactive Plot," "Plot data," and "RDS" in a .zip file.
-
-Note: Given constraints with the `heatmaply` package used to generate interactive heatmaps, you cannot download heatmaps shown in the app as static figures. You can, however, take advantage of the `plotly` functions that appear in the top right corner when you hover over a figure. More details on this in the ["Interactive Plots"](#interactiveplots) section.
-
 ## Interactive Plots {#interactiveplots}
 All figures in the app are interactive. Some tips on interacting with figures are:
 
@@ -257,7 +240,7 @@ All figures in the app are interactive. Some tips on interacting with figures ar
 
 Plots are made interactive using `plotly`. As such, there are plot interaction tools that appear in the top right corner of a plot when you over over it. You can toggle the different tools on/off to take advantage of their functionality. 
 
-![Figure 2C. Interactive plots](screenshots/interactiveplots.png)
+![Figure 2A. Interactive plots](screenshots/interactiveplots.png)
 
 Descriptions of each tool in the tool bar in Figure 2C can be found [on the plotly website](https://plotly.com/chart-studio-help/getting-to-know-the-plotly-modebar/). Briefly, in order from left to right:
 
@@ -275,6 +258,30 @@ Descriptions of each tool in the tool bar in Figure 2C can be found [on the plot
 * displays data for all points with the same x-value
 * plotly logo links to plotly website
 
+
+### Downloading Figures
+All plots have a save icon (`r shiny::icon('save')`) that contains a drop-down menu of the different ways the plot can be downloaded.
+
+![Figure 2B. Saving plots](screenshots/saveplot.png)
+
+* "Original plot" downloads the static figure as a .png file. Note this defaults to 5in x 7in so large figures may looked squished
+* "Interactive plot" downloads the interactive figure as a .html file.
+* "Plot data" downloads the data used to generate the plot as a .csv file. This may be useful if you wish to recreate the plot yourself in R or using other software.
+* "RDS" downloads the plot as an R object in the form of an .RDS file. In most cases, this is a `ggplot` object, while heatmaps are saved as an object of class `heatmapr` from the R package `heatmaply`. This is is useful if you wish to modify the plot in R.
+* "All" downloads "Original plot," "Interactive Plot," "Plot data," and "RDS" in a .zip file.
+
+Note: Given constraints with the `heatmaply` package used to generate interactive heatmaps, you cannot download heatmaps shown in the app as static figures. You can, however, take advantage of the `plotly` functions that appear in the top right corner when you hover over a figure. More details on this in the ["Interactive Plots"](#interactiveplots) section.
+
+## Interactive Tables {#interactivetables}
+Most tables in the app are interactive such that they are searchable. A search bar in the top right corner of each table. This allows you to search the entire contents of the table. Some tables have search bars under each column, which allows you to search the table by columns values. Tables are paginated, showing the number of total entries (bottom left corner) and number of pages in the table (bottom right corner). You can control the number of rows to show on each page the "show entries" drop-down list in the top left corner of the table.
+
+Some tables allow you to select rows. In those cases, you can select multiple consecutive rows at once by clicking the first row, hold down shift, then click the last row. You can deselect any row by clicking on the selected row. 
+
+![Figure 3. Saving and interacting with tables](screenshots/savetable.png){width=100%}
+
+### Downloading Tables
+All tables shown in the app are downloadable via the "copy" and "csv" buttons in the top left corner of the table. The "copy" button copies the entire table to your clipboard, while the "csv" button allows you to save to your computer. 
+
 ## Downloading reports
 Each analysis module produces a report in the form of a downloadable pdf or html file. The report will include parameters applied in the analysis and tables and figures generated in the task.
 
@@ -284,17 +291,17 @@ Details on data files to upload and their required formatting are provided in th
 
 Click 'Browse' to select the database file and metadata file from your computer. Once data has been uploaded, click the 'Launch Dataset' button. Alternatively, you can use the example dataset that accompanies the app.
 
-![Figure 2. Import Data](screenshots/import1.png){width=100%}
+![Figure 4A. Import Data](screenshots/import1.png){width=100%}
 
 Once the uploaded data is validated, previews of the metadata, count data, and taxonomy data will become available in the side bar.
 
-![Figure 3. Import Data](screenshots/import2.png){width=100%}
+![Figure 4B. Import Data](screenshots/import2.png){width=100%}
 
 # QC Report {#QCReport}
 
 If ocms_16s pipeline was used to process your reads, a quality control report will be available. This report outlines all the processing steps that were applied to the raw sequence data and summarizes the pipeline parameters applied throughout.
 
-![Figure 4. QC report](screenshots/QCreport.png){width=100%}
+![Figure 5. QC report](screenshots/QCreport.png){width=100%}
 
 # Filter Samples {#FilterSample}
 
@@ -317,17 +324,17 @@ These analysis modules are all performed independently from one another, and the
 
 ## Common Data Processing Steps
 ### Aggregate Features {#aggregate_feature}
-This step allows you to aggregate counts at a given taxonomic level. Choosing to aggregate counts by `featureID` is equivalent to not applying any aggregation.
+This step allows you to aggregate counts at a given taxonomic level. Choosing to aggregate counts by `featureID` is equivalent to not applying any aggregation. You can always use the `r shiny::icon('undo-alt')` button to reset the aggregation.
 
-![Figure 5A. Aggregate counts](screenshots/aggregatefeat1.png){width=100%}
+![Figure 6A. Aggregate counts](screenshots/aggregatefeat1.png){width=100%}
 Once read counts have been aggregated, the taxonomy table is updated such that taxa beyond the level of aggregation are set to `NA`. Furthermore, the `n_collapse` column summarizes the number of features that were aggregated together. A preview of the aggregated taxonomy table and count table becomes available once aggregation is complete.
 
-![Figure 5B. Updated taxonomy table](screenshots/aggregatefeat2.png){width=100%}
+![Figure 6B. Updated taxonomy table](screenshots/aggregatefeat2.png){width=100%}
 
 ### Filter Features {#filter_feature}
 Sequences processing would have removed sequences based on quality and minimum count threshold. This step filters features (ASVs or OTUs) using one of two methods. The first method is based on feature abundance and prevalence (the number of samples in which the feature reaches the abundance threshold). The second method is based on selection, where you can choose which features to omit from the analysis. The second method should only be applied in a special use-case, which is described below.
 
-![Figure 6. Filter features](screenshots/filterfeature1.png){width=100%}
+![Figure 7. Filter features](screenshots/filterfeature1.png){width=100%}
 
 #### Filter by abundance and prevalence
 Filtering features based on abundance and prevalence is an effect means of reducing the amount of noise in your data set. For example, features that are observed at a very low abundance and only in a few samples are likely to be spurious, thus can be omitted. On the other hand, features that have low abundances but are found in most samples are likely to be real signals.
@@ -344,37 +351,37 @@ The default values are good starting places, but filter thresholds should always
 
 Once the threshold parameters have been set, click the "Filter features" button to apply the changes. You can use the `r shiny::icon('undo-alt')` button to clear previous filtering attempts.
 
-![Figure 6. Filter features](screenshots/filterfeature2.png){width=100%}
+![Figure 8A. Filter features](screenshots/filterfeature2.png){width=100%}
 
 It's recommended that you take an iterative approach to finding the filter parameters that best suit your data. To help you evaluate the effectiveness of the filter, we generate a scatter plot summarizing the features according read count abundance and prevalence, highlighting features that were filtered out. The scatter plot is shown in "Aggregated view" and "Expanded view" where the former shows one point per feature and the y-axis refers to the mean read count. The latter, expanded view, shows the feature read counts for every sample. Given the large number of data points, the expanded view may take a few minutes to render if you have a large data set (>100 samples)
 
 Finally, the filtered results are described in the right panel. Notice that the app applies a secondary check for empty samples or features after the filtering has been completed. Empty samples and features are automatically removed from the data set. Finally, a preview of the filtered data is shown in a table.
 
-![Figure 7a. Evaluting effectiveness of filter.](screenshots/filterfeature3.png){width=100%}
-![Figure 7b. Preview filtered features](screenshots/filterfeature4.png){width=100%}
+![Figure 8B. Evaluting effectiveness of filter.](screenshots/filterfeature3.png){width=100%}
+![Figure 8C. Preview filtered features](screenshots/filterfeature4.png){width=100%}
 
 #### Filter by selection
 Just like filtering samples by selection, you can select which features you want to omit. There are two specific use-cases for when you would want to selectively filter features. The first, is to drop features that have been identified as contaminants in preliminary analysis. The app currently does not include a feature to detect and address contaminants (such as using [Decontam](https://www.bioconductor.org/packages/release/bioc/html/decontam.html)), so any analysis for kit contamination would have to be done outside of OCMSlooksy.
 
 The second reason is if you want to perform specific analysis on a particular subset of features. For example, it may be desirable to omit features that are unclassified at the Kingdom of Phylum level. These features are not biologically informative. As such, you may want to filter out any features that are unclassified at high taxonomic levels.
 
-![Figure 8. Filter features by selection](screenshots/filterfeature5.png){width=100%}
+![Figure 9. Filter features by selection](screenshots/filterfeature5.png){width=100%}
 
 Another example of performing analysis on a subset of features is to perform downstream analysis on a specific taxonomic group. Such as creating a microbiome profile of only features in the phylum Actinobacteria. You can select all features that are not part of the phylum Actinobacteria, using the column filters to control which rows are shown in the table. Then opt to show the microbiome profile at the genus level. More details on the Microbiome Profile module below. 
 
 ## Microbiome Profile {#MicrobiomeProfile}
 Visualizing the microbiome profiles of samples or groups of samples is done in the Microbiome Profile analysis task. [Aggregate Features](#aggregate_feature) and [Filter Features](#filter_feature) are required data processing steps before you can move on to create microbiome profiles or visualize profile sparsity.
 
-![Figure 9A. Microbiome profile analysis](screenshots/microbiomeprofile1.png){width=100%}
+![Figure 10A. Microbiome profile analysis](screenshots/microbiomeprofile1.png){width=100%}
 
 Next, set the plot parameters and click "Apply changes" to show/update the plot. To view the microbiome profiles on a per-sample basis, set the `x-axis` to "sampleID." Setting the x-axis on a group of samples will show the mean abundance. The `panel_by` parameter allows you to visualize samples/sample groups in separate panels. You have the option to show profiles as relative abundance profiles or as read count abundances using the `y-axis` parameter. Lastly, you can select the taxonomic level used for visualization with `taxonomic level`. Note the taxonomy levels available for visualization is limited by the level used to aggregate features in the data processing step (i.e. you cannot visualize at the ASV level if you aggregated at the genus level).
 
-![Figure 9B. Microbiome profile parameters](screenshots/microbiomeprofile2.png){width=100%}
+![Figure 10B. Microbiome profile parameters](screenshots/microbiomeprofile2.png){width=100%}
 
 Applying changes will update an abundance table and show interactive plot of the microbiome profiles.
 
-![Figure 10A. Abundance table](screenshots/microbiomeprofile3.png){width=100%}
-![Figure 10B. Microbiome profile plot](screenshots/microbiomeprofile4.png){width=100%}
+![Figure 11A. Abundance table](screenshots/microbiomeprofile3.png){width=100%}
+![Figure 11B. Microbiome profile plot](screenshots/microbiomeprofile4.png){width=100%}
 
 ## Profile Sparsity
 Sparse microbiome profiles are commonly observed, particularly in the gut where diversity is high and microbiome members can be rare. In addition to being a descriptive characteristic of the microbiome profiles, sparsity also affects the performance of modelling methods used to identify differentially abundant taxa. The OCMSlooksy app is not currently equipped to apply different modelling methods to address model performance, such as inflated false positives due to high sparsity. Even so, Profile Sparsity provides two figures that illustrate how sparse your microbiome profiles are.
@@ -439,7 +446,7 @@ Sample dissimilarities can also be calculated within sample groups by selecting 
 
 In the example below, we've compare treatment groups for each host genotype. You can see that the within-group sample dissimilarity of DSS-treated mice is not statistically different than that of the control treatment, and the same trend is observed in both genotypes.
 
-![Figure 15B. Comparing within-group sample dissimilarity across treatment groups, for different genotypes, with statistical testing.](screenshots/sampledissimilarity2.png){width=100%}
+![Figure 15B. Comparing within-group sample dissimilarity across treatment groups, for different genotypes, with statistical testing. Calculated at the genus level.](screenshots/sampledissimilarity2.png){width=100%}
 
 As usual, the calculated Bray-Curtis dissimilarity values are displayed in a downloadable table.
 

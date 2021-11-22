@@ -23,41 +23,74 @@ app_server <- function(input, output, session) {
     if(cross_module1$import_status == "Data validation successful" &&
       'parameter_table' %in% names(cross_module1$data_db)) {
       showTab(inputId = 'tabs', target = 'qc')
-      callModule(mod_qc_server, "qc_ui_1", cross_module1)
     }
   })
+
+  observeEvent(input$tabs, {
+    if(input$tabs == 'qc') {
+      callModule(mod_qc_server, "qc_ui_1", cross_module1)
+    }
+  }, ignoreInit = TRUE)
 
   observe({
     hideTab(inputId = 'tabs', target = "qc")
     hideTab(inputId = 'tabs', target = 'qualityfilter')
-    hideTab(inputId = 'tabs', target = "analysis_tasks")
+    hideTab(inputId = 'tabs', target = "analysis_module")
   })
 
-  analysis_status <- reactiveVal(FALSE)
   observe({
     req(cross_module1$import_status)
     if(cross_module1$import_status == "Data validation successful") {
       showTab(inputId = 'tabs', target = 'qualityfilter')
-      showTab(inputId = 'tabs', target = "analysis_tasks")
-
-      cross_module2 <- callModule(mod_qualityfilter_server,
-                                  "qualityfilter_ui_1", cross_module1)
-
-      # relative abundance
-      callModule(mod_profile_server, "profile_ui_1", cross_module2)
-
-      # alpha diversity
-      callModule(mod_alpha_server, "alpha_ui_1", cross_module2)
-
-      # beta diversity
-      callModule(mod_beta_server, "beta_ui_1", cross_module2)
-
-      # # feature proportionality
-      callModule(mod_prop_server, "prop_ui_1", cross_module2)
-      #
-      # # differential abundance
-      callModule(mod_diff_abund_server, "diff_abund_ui_1", cross_module2)
     }
   })
+
+  cross_module2 <- callModule(mod_qualityfilter_server,
+                                  "qualityfilter_ui_1", cross_module1)
+
+  observe({
+    req(cross_module1$import_status)
+    if(cross_module1$import_status == "Data validation successful" &&
+       !is.null(cross_module2$work_db)) {
+      showTab(inputId = 'tabs', target = "analysis_module")
+    }
+  })
+
+  # relative abundance
+  observeEvent(input$tabs, {
+    if(input$tabs == 'profile') {
+      callModule(mod_profile_server, "profile_ui_1", cross_module2)
+    }
+
+  }, ignoreInit = TRUE)
+
+  # alpha diversity
+  observeEvent(input$tabs, {
+    if(input$tabs == 'alpha') {
+      callModule(mod_alpha_server, "alpha_ui_1", cross_module2)
+    }
+  }, ignoreInit = TRUE)
+
+  # beta diversity
+  observeEvent(input$tabs, {
+    if(input$tabs == 'beta') {
+      callModule(mod_beta_server, "beta_ui_1", cross_module2)
+    }
+  }, ignoreInit = TRUE)
+
+
+  # differential abundance
+  observeEvent(input$tabs, {
+    if(input$tabs == 'diff') {
+      callModule(mod_diff_abund_server, "diff_abund_ui_1", cross_module2)
+    }
+  }, ignoreInit = TRUE)
+
+  # feature proportionality
+  observeEvent(input$tabs, {
+    if(input$tabs == 'prop') {
+      callModule(mod_prop_server, "prop_ui_1", cross_module2)
+    }
+  }, ignoreInit = TRUE)
 
 }

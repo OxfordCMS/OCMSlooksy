@@ -7,6 +7,7 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @import propr
 mod_prop_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -26,7 +27,7 @@ mod_prop_ui <- function(id){
         # wellPanel(width = 12, h3('check'), br(), verbatimTextOutput(ns('check'))),
         # info tab body-----------------------------------------------------
         tabPanel(
-          "Task info",
+          "Module info",
           value = 'info_tab_prop',
           icon = icon('info-circle'),
           fluidRow(
@@ -35,7 +36,7 @@ mod_prop_ui <- function(id){
               width = 12,
               div(
                 h1("Feature Comparison"),
-                p("Task overview:"),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
@@ -65,7 +66,9 @@ mod_prop_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              div(id=ns('filtfeat_mod_div'),
+                mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              )
             )
           )
         ),
@@ -79,7 +82,7 @@ mod_prop_ui <- function(id){
               width = 12,
               h1('Pairwise Feature Comparison'),
               tags$div(
-                'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', code('propr'), 'is used to calculate proportionality. [link to propr vignettes]', br(),
+                'One approach to analyzing the microbiome is to look at features in a pairwise fashion, and evaluate their correlation with one another. Given the compositional nature of 16S gene sequencing, proportionality is used instead of correlation to evaluate the association between two features. The proportionality index, rho (\u03C1), ranges from -1 to 1, where the more extreme values indicate stronger associations. The R package', a(code('propr'), href="https://cran.r-project.org/web/packages/propr/"), 'is used to calculate proportionality.', br(),
                 "Proportionality is calculated on CLR-transformed counts. Please note that the CLR-transformation applied does not impute zeroes. Rather, all zero counts are replaced with 1, and then CLR-transformed. This is different than CLR-transformation performed by ", code('ALDEx2'), "applied elsewhere in the app, which imputes zero values from Monte-Carlo sampling of a Dirichlet distribution. Please take caution that spurious correlations may occur with zero counts if your dataset is sparse (high proportion of zeros)" ,
                 br()
               ),
@@ -92,9 +95,8 @@ mod_prop_ui <- function(id){
               column(
                 width = 4,
                 tags$div(
-                  "When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho \u2265 |0.6|."), br()
-              ),
-              br()
+                  "When comparing features in a pairwise manner, caution must be taken to account for the accumulation false positives. To account the this, the false discovery rate (FDR) is estimated for varying rho values. It is recommended that you choose the largest rho cutoff that limits the FDR to below 0.05. Empirically, a good starting place for 16S data is rho \u2265 |0.6|.")
+              )
             ) # end column 12
           ), # end fulidRow
           fluidRow(
@@ -267,24 +269,53 @@ mod_prop_ui <- function(id){
 mod_prop_server <- function(input, output, session, improxy){
   ns <- session$ns
 
+  # initiate a reactive to track/permit progress through analysis module--------
+  progress <- reactiveValues(complete_agg = 0, complete_featfilt = 0)
+
+  observeEvent(input[['aggregate_ui_1-agg_calculate']], {
+    progress$complete_agg <- 1
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['aggregate_ui_1-agg_clear']], {
+    progress$complete_agg <- 0
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['filterfeat_ui_1-submit_asv']], {
+    progress$complete_featfilt <- 1
+  })
+
+  observeEvent(input[['filterfeat_ui_1-clear_asv']], {
+    progress$complete_featfilt <- 0
+  })
+
+  observe({
+    if(progress$complete_featfilt == 0) {
+      reset('filtfeat_mod_div')
+      hide('filterfeat_ui_1-prev_filter_div')
+      hide('filterfeat_ui_1-preview_asv_div')
+    }
+
+  })
+
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#prop_menu li a[data-value=filter_prop_tab]",
-                condition = !is.null(agg_output$output) &&
-                  agg_output$output$agg_calculate > 0)
+                condition = progress$complete_agg == 1)
   })
 
   observe({
     toggleState(selector = "#prop_menu li a[data-value=prop_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
 
   observe({
     toggleState(selector = "#prop_menu li a[data-value=prop_report_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues(transform_method = NULL, aggregate_by = NULL)
+  bridge <- reactiveValues()
   observe({
     bridge$qualfilt_db <- improxy$work_db
   })
@@ -314,8 +345,6 @@ mod_prop_server <- function(input, output, session, improxy){
         asv = agg_output$output$aggregated_count,
         tax = tax_entry
       )
-      # record aggregate by
-      bridge$aggregate_by <- agg_output$output$aggregate_by
     } else {
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
@@ -325,7 +354,7 @@ mod_prop_server <- function(input, output, session, improxy){
 
   observe({
     # add aggregate features to report params
-    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregate_by <- input[['aggregate_ui_1-aggregate_by']]
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
@@ -344,12 +373,13 @@ mod_prop_server <- function(input, output, session, improxy){
   # update report params
   observe({
     #feature filter
-    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_select_prompt <-
+      input[['filterfeat_ui_1-asv_select_prompt']]
     for_report$params$asv_filter_options <-
-      filter_output$params$asv_filter_options
-    for_report$params$cutoff_method <- filter_output$params$cutoff_method
-    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
-    for_report$params$prevalence <- filter_output$params$prevalence
+      input[['filterfeat_ui_1-asv_filter_options']]
+    for_report$params$cutoff_method <- input[['filterfeat_ui_1-cutoff_method']]
+    for_report$params$asv_cutoff <- input[['filterfeat_ui_1-asv_cutoff']]
+    for_report$params$prevalence <- input[['filterfeat_ui_1-prevalence']]
     for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
     for_report$params$asv_remove <- filter_output$params$asv_remove
     for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot
@@ -388,7 +418,7 @@ mod_prop_server <- function(input, output, session, improxy){
   })
 
   output$hmap_tax_label_ui <- renderUI({
-    choices <- c('featureID','Taxon', bridge$aggregate_by)
+    choices <- c('featureID','Taxon', input[['aggregate_ui_1-aggregate_by']])
     selectInput(
       ns('hmap_tax_label'), 'Label taxa by:',
       choices = choices, selected = 'featureID')
@@ -545,7 +575,8 @@ mod_prop_server <- function(input, output, session, improxy){
     convert <- data.frame(featureID = rownames(out))
     convert <- convert %>%
       left_join(bridge$filtered$tax %>%
-                  select(featureID, Taxon, .data[[bridge$aggregate_by]]),
+                  select(featureID, Taxon,
+                         .data[[input[['aggregate_ui_1-aggregate_by']]]]),
                 'featureID')
     rownames(out) <- convert[, input$hmap_tax_label]
     colnames(out) <- convert[, input$hmap_tax_label]

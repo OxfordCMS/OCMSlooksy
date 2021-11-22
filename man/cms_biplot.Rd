@@ -162,11 +162,7 @@ cms_biplot(
 \item{asp}{default NULL}
 
 \item{loadings_data}{loading data, features in rows}
-
-\item{xPC}{numeric; PC number for x axis. default 1}
-
-\item{yPC}{number; PC number for y axis. default 2}
 }
 \description{
-Modification of \code{ggfortify::ggbiplot} to allow for selection of PCs
+Modification of \code{ggfortify::ggbiplot} to allow for variables in aes_string (not just colour specification)
 }

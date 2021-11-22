@@ -7,6 +7,8 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @import heatmaply
+
 mod_profile_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -26,7 +28,7 @@ mod_profile_ui <- function(id){
         widths=c(3,9),
         # info tab----------------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           value = "info_tab_profile",
           icon = icon('info-circle'), selected = TRUE,
           fluidRow(
@@ -36,7 +38,7 @@ mod_profile_ui <- function(id){
               h1('Microbiome Profile'),
               div(
                 p("Examine the relative abundance microbiome profile at various taxonomic levels."),
-                p("Task overview:"),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
@@ -68,7 +70,9 @@ mod_profile_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              div(id=ns('filtfeat_mod_div'),
+                mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              )
             )
           )
         ), # end tabItem
@@ -83,6 +87,7 @@ mod_profile_ui <- function(id){
               width = 4,
               # Bar plot controls---------------------------------------------------
               wellPanel(
+                id=ns('profile_param_div'),
                 tags$div(style = 'text-align: center',
                          tags$b('Plot Parameters')),
                 uiOutput(ns('bar_x_ui')),
@@ -101,22 +106,24 @@ mod_profile_ui <- function(id){
             ),
             hr()
           ),
-          fluidRow(
-            h3(textOutput(ns('bar_title'))),
-            DT::dataTableOutput(ns('bar_table'))  %>%
-              shinycssloaders::withSpinner()
-          ),
-          fluidRow(
-            column(
-              width = 1, style = 'padding:0px;',
-              mod_download_ui(ns("download_bar"))
-            ),
-            column(
-              width = 11, style = 'padding:0px;',
-              plotlyOutput(ns('bar_plot'), width = '100%') %>%
+          hidden(div(id=ns('profile_result_div'),
+            fluidRow(
+              h3(textOutput(ns('bar_title'))),
+              DT::dataTableOutput(ns('bar_table'))  %>%
                 shinycssloaders::withSpinner()
+            ),
+            fluidRow(
+              column(
+                width = 1, style = 'padding:0px;',
+                mod_download_ui(ns("download_bar"))
+              ),
+              column(
+                width = 11, style = 'padding:0px;',
+                plotlyOutput(ns('bar_plot'), width = '100%') %>%
+                  shinycssloaders::withSpinner()
+              )
             )
-          )
+          )) # end div
         ), # end profile tab
         # sparsity tab------------------------------------------------------
         tabPanel(
@@ -127,7 +134,7 @@ mod_profile_ui <- function(id){
             column(
               width = 12,
               h1("Profile Sparsity"),
-              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity). Sparsity is evaluated at the level of count aggregation in the first step of this analysis task.")
+              tags$div("It is a good idea to check the zero content of microbiome data. The proportion of zeros in the data set is an indication of whether features are prevalent throughout samples (low sparsity) or are rarely observed in the dataset (high sparsity). Sparsity is evaluated at the level of count aggregation in the first step of this analysis module")
             )
           ),
           fluidRow(
@@ -182,29 +189,68 @@ mod_profile_ui <- function(id){
 mod_profile_server <- function(input, output, session, improxy){
   ns <- session$ns
 
+  # initiate a reactive to track/permit progress through analysis module--------
+  progress <- reactiveValues(complete_agg = 0, complete_featfilt = 0)
+
+  observeEvent(input[['aggregate_ui_1-agg_calculate']], {
+    progress$complete_agg <- 1
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['aggregate_ui_1-agg_clear']], {
+    progress$complete_agg <- 0
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['filterfeat_ui_1-submit_asv']], {
+    progress$complete_featfilt <- 1
+  })
+
+  observeEvent(input[['filterfeat_ui_1-clear_asv']], {
+    progress$complete_featfilt <- 0
+  })
+
+  observe({
+    if(progress$complete_featfilt == 0) {
+      reset('filtfeat_mod_div')
+      hide('filterfeat_ui_1-prev_filter_div')
+      hide('filterfeat_ui_1-preview_asv_div')
+      reset('profile_param_div')
+      hide('profile_result_div')
+    }
+
+  })
+
+  # output$check <- renderPrint({
+  #
+  # })
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#profile_menu li a[data-value=filter_prof_tab]",
-                condition = !is.null(agg_output$output) &&
-                  agg_output$output$agg_calculate > 0)
+                condition = progress$complete_agg == 1)
   })
 
   observe({
     toggleState(selector = "#profile_menu li a[data-value=profile_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
 
   observe({
     toggleState(selector = "#profile_menu li a[data-value=sparsity_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
 
   observe({
     toggleState(selector = "#profile_menu li a[data-value=profile_report_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
+  })
+
+  # toggle/show/hide ui elements------------------------------------------------
+  observeEvent(input$submit_bar, {
+    show('profile_result_div')
   })
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues(dummy=NULL)
+  bridge <- reactiveValues()
   observe({
     bridge$qualfilt_db <- improxy$work_db
   })
@@ -239,12 +285,11 @@ mod_profile_server <- function(input, output, session, improxy){
       # agg_output starts out as NULL initially. else statement stops that from causing app to crash
       bridge$work_db <- 'tempstring'
     }
-
   })
 
   observe({
     # add aggregate features to report params
-    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregate_by <- input[['aggregate_ui_1-aggregate_by']]
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
@@ -263,11 +308,13 @@ mod_profile_server <- function(input, output, session, improxy){
   # update report params
   observe({
     #feature filter
-    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
-    for_report$params$asv_filter_options <- filter_output$params$asv_filter_options
-    for_report$params$cutoff_method <- filter_output$params$cutoff_method
-    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
-    for_report$params$prevalence <- filter_output$params$prevalence
+    for_report$params$asv_select_prompt <-
+      input[['filterfeat_ui_1-asv_select_prompt']]
+    for_report$params$asv_filter_options <-
+      input[['filterfeat_ui_1-asv_filter_options']]
+    for_report$params$cutoff_method <- input[['filterfeat_ui_1-cutoff_method']]
+    for_report$params$asv_cutoff <- input[['filterfeat_ui_1-asv_cutoff']]
+    for_report$params$prevalence <- input[['filterfeat_ui_1-prevalence']]
     for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
     for_report$params$asv_remove <- filter_output$params$asv_remove
     for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot
@@ -277,7 +324,6 @@ mod_profile_server <- function(input, output, session, improxy){
     for_report$params$met2 <- filter_output$filtered$met
     for_report$params$tax2 <- filter_output$filtered$tax
   })
-
 
   # render controls bar plot----------------------------------------------------
   output$bar_x_ui <- renderUI({
@@ -293,10 +339,12 @@ mod_profile_server <- function(input, output, session, improxy){
   })
 
   output$tax_level_ui <- renderUI({
-    choices <- c('Phylum','Class','Order','Family','Genus')
+    choices <- c('Kingdom','Phylum','Class','Order','Family','Genus','Species','featureID')
     selectInput(ns('tax_level'), 'Taxonomic level',
-                choices= choices[1:which(choices == agg_output$output$aggregate_by)], selected = agg_output$output$aggregate_by)
+                choices= choices[1:which(choices == input[['aggregate_ui_1-aggregate_by']])],
+                selected = input[['aggregate_ui_1-aggregate_by']])
   })
+
   # calculate output bar plot---------------------------------------------------
   bar_data <- eventReactive(input$submit_bar, {
 
@@ -523,10 +571,6 @@ mod_profile_server <- function(input, output, session, improxy){
   # plot heat map
   output$binary_hmap <- renderPlotly({
     binary_hmap()
-  })
-
-
-  output$check <- renderPrint({
   })
 
   # download data

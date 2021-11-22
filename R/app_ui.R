@@ -15,7 +15,7 @@ app_ui <- function() {
               mod_intro_ui("intro_ui_1")),
 
       # Import data----------------------------------------------------
-      tabPanel(title = "Import Database", value = 'import', icon = icon("database"),
+      tabPanel(title = "Import Data", value = 'import', icon = icon("database"),
               mod_import_ui("import_ui_1")),
 
       # # QC report----------------------------------------------------
@@ -32,9 +32,8 @@ app_ui <- function() {
               mod_qualityfilter_ui("qualityfilter_ui_1")),
 
       navbarMenu(
-        title = "Analysis Tasks",
-        menuName = 'analysis_tasks',
-
+        title = "Analysis Modules",
+        menuName = 'analysis_module',
         # relative abundance profiles------------------------------------
         tabPanel(title = "Microbiome Profile", value = 'profile',
                 icon = icon("chart-bar"), mod_profile_ui("profile_ui_1")),

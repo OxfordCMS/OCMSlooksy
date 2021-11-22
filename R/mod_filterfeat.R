@@ -26,7 +26,7 @@ mod_filterfeat_ui <- function(id){
       ), # end fluidRow
       fluidRow(
         # filter menu controls------------------------------------------------
-        wellPanel(
+        wellPanel(id=ns('filt_param'),
           fluidRow(
             column(
               width=3,
@@ -274,9 +274,11 @@ mod_filterfeat_server <- function(input, output, session, bridge){
                     dom = 'lfrtip',
                     filter = 'top'))
   })
+
   # # check
   # output$check <- renderPrint({
   # })
+
   # prepare asv dataframe-------------------------------------------------------
   asv_mat <- reactive({
     as.data.frame(asv()) %>%
@@ -463,6 +465,8 @@ mod_filterfeat_server <- function(input, output, session, bridge){
   })
 
   observeEvent(input$clear_asv, {
+    reset('filt_param')
+    hide('prev_filter_div')
     filter_result$to_keep <- NULL
     filter_result$asv_remove <- NULL
     selectRows(dataTableProxy('asv_table_select'), NULL)
@@ -716,22 +720,14 @@ withBusyIndicatorServer('submit_asv', 'filterfeat_ui_1', {
   })
   observe({
     cross_mod$params <- list(
-      filter_submit = input$submit_asv,
-      asv_select_prompt = input$asv_select_prompt
+      asv_cutoff_msg = asv_cutoff_msg(),
+      to_keep = filter_result$to_keep,
+      asv_remove = filter_result$asv_remove,
+      prev_agg_plot = prev_agg_plot(),
+      prev_read_plot = prev_read_plot(),
+      empty_sample = empty_sample(),
+      empty_asv = empty_asv()
     )
-  })
-  observe({
-    cross_mod$params$asv_filter_options <- input$asv_filter_options
-    cross_mod$params$cutoff_method <- input$cutoff_method
-    cross_mod$params$asv_cutoff <- input$asv_cutoff
-    cross_mod$params$prevalence <- input$prevalence
-    cross_mod$params$asv_cutoff_msg <- asv_cutoff_msg()
-    cross_mod$params$to_keep <- filter_result$to_keep
-    cross_mod$params$asv_remove <- filter_result$asv_remove
-    cross_mod$params$prev_agg_plot <- prev_agg_plot()
-    cross_mod$params$prev_read_plot <- prev_read_plot()
-    cross_mod$params$empty_sample <- empty_sample()
-    cross_mod$params$empty_asv <- empty_asv()
   })
   return(cross_mod)
 }

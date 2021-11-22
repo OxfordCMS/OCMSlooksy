@@ -14,7 +14,6 @@
 #' @export
 #' @importFrom shiny NS tagList
 #' @import shinyjs
-#' @import shinydashboard
 #' @import dplyr
 #' @import forcats
 #' @import DBI

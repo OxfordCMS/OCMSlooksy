@@ -7,6 +7,8 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
+#' @import DESeq2
+#' @import SummarizedExperiment
 mod_diff_abund_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -27,7 +29,7 @@ mod_diff_abund_ui <- function(id){
 
         # info tab body-----------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           value = 'info_tab_diff',
           icon = icon('info-circle'),
           fluidRow(
@@ -36,12 +38,12 @@ mod_diff_abund_ui <- function(id){
               width = 12,
               div(
                 h1("Differential Abundance"),
-                p("Compare groups to see what taxa are differentially abundant between the groups. This task uses DESeq2 and provides a couple different methods of visualising the results. "),
-                p("Task overview:"),
+                p("Compare groups to see what taxa are differentially abundant between the groups. This module uses DESeq2 and provides a couple different methods of visualising the results. "),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
-                  tags$li(tags$b("Differential Abundance:"), "Compare groups within an experiment variable and measure the log-fold change and statistical significance of taxa. This task employs ", code("DESeq2"), " to assess differential abundance.")
+                  tags$li(tags$b("Differential Abundance:"), "Compare groups within an experiment variable and measure the log-fold change and statistical significance of taxa. This module employs ", code("DESeq2"), " to assess differential abundance.")
                 )
               )
             )
@@ -67,7 +69,9 @@ mod_diff_abund_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              div(id=ns('filtfeat_mod_div'),
+                mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              )
             )
           )
         ), # end tabPanel
@@ -101,7 +105,7 @@ mod_diff_abund_ui <- function(id){
                 column(
                   width = 9,
                   # normalisation and transformation definitions from biostars discussion https://www.biostars.org/p/275010/
-                  p("Compare groups using DESeq2. DESeq2 normalises counts by dividing read count by the geometric mean of that taxon across all samples. Normalised counts are then transformed by ", code("log2"), ". DESeq2 assess differential abundance using negative bionmial generalized linear models and tests model fit with the Wald test. Details on ", code("DESeq2"), " can be found in the ", a("package vignette", href="https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html"), ".")
+                  p("Compare groups using DESeq2. DESeq2 normalises counts by dividing read count by the geometric mean of that taxon across all samples. Normalised counts are then transformed by ", code("log2"), ". DESeq2 assess differential abundance using negative binomial generalized linear models and tests model fit with the Wald test. Details on ", code("DESeq2"), " can be found in the ", a("package vignette", href="https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html"), ".")
                 )
               ),
               fluidRow(
@@ -196,21 +200,49 @@ mod_diff_abund_ui <- function(id){
 mod_diff_abund_server <- function(input, output, session, improxy){
   ns <- session$ns
 
+  # initiate a reactive to track/permit progress through analysis module--------
+  progress <- reactiveValues(complete_agg = 0, complete_featfilt = 0)
+
+  observeEvent(input[['aggregate_ui_1-agg_calculate']], {
+    progress$complete_agg <- 1
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['aggregate_ui_1-agg_clear']], {
+    progress$complete_agg <- 0
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['filterfeat_ui_1-submit_asv']], {
+    progress$complete_featfilt <- 1
+  })
+
+  observeEvent(input[['filterfeat_ui_1-clear_asv']], {
+    progress$complete_featfilt <- 0
+  })
+
+  observe({
+    if(progress$complete_featfilt == 0) {
+      reset('filtfeat_mod_div')
+      hide('filterfeat_ui_1-prev_filter_div')
+      hide('filterfeat_ui_1-preview_asv_div')
+    }
+  })
+
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#diffabund_menu li a[data-value=filter_diff_tab]",
-                condition = !is.null(agg_output$output) &&
-                  agg_output$output$agg_calculate > 0)
+                condition = progress$complete_agg == 1)
   })
 
   observe({
     toggleState(selector = "#diffabund_menu li a[data-value=deseq_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
 
   observe({
     toggleState(selector = "#diffabund_menu li a[data-value=diffabund_report_tab]",
-                condition = filter_output$params$filter_submit > 0)
+                condition = progress$complete_featfilt == 1)
   })
 
   observe({
@@ -218,7 +250,7 @@ mod_diff_abund_server <- function(input, output, session, improxy){
     toggle('include_intxn_div', condition = input$covariate != 'none')
   })
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues(transform_method = NULL)
+  bridge <- reactiveValues()
   observe({
     bridge$qualfilt_db <- improxy$work_db
   })
@@ -258,7 +290,7 @@ mod_diff_abund_server <- function(input, output, session, improxy){
 
   observe({
     # add aggregate features to report params
-    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregate_by <- input[['aggregate_ui_1-aggregate_by']]
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
@@ -277,12 +309,13 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   # update report params
   observe({
     #feature filter
-    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
+    for_report$params$asv_select_prompt <-
+      input[['filterfeat_ui_1-asv_select_prompt']]
     for_report$params$asv_filter_options <-
-      filter_output$params$asv_filter_options
-    for_report$params$cutoff_method <- filter_output$params$cutoff_method
-    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
-    for_report$params$prevalence <- filter_output$params$prevalence
+      input[['filterfeat_ui_1-asv_filter_options']]
+    for_report$params$cutoff_method <- input[['filterfeat_ui_1-cutoff_method']]
+    for_report$params$asv_cutoff <- input[['filterfeat_ui_1-asv_cutoff']]
+    for_report$params$prevalence <- input[['filterfeat_ui_1-prevalence']]
     for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
     for_report$params$asv_remove <- filter_output$params$asv_remove
     for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot
@@ -413,7 +446,7 @@ mod_diff_abund_server <- function(input, output, session, improxy){
   output$dds_summary <- renderPrint({
     req(input$variable)
     cat('Model design:\n')
-    print(sprintf("~%s", input$variable))
+    print(paste(as.character(deseq_design()), collapse=''))
     cat('\nModel summary:\n')
     print(summary(dds_obj()))
     cat('\nEstimated effects of the Model"\n')

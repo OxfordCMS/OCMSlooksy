@@ -28,7 +28,7 @@ mod_alpha_ui <- function(id){
         widths=c(3,9),
         # info tab body-----------------------------------------------------
         tabPanel(
-          'Task Info',
+          'Module Info',
           value = 'info_tab_alpha',
           icon = icon('info-circle'),
           fluidRow(
@@ -37,8 +37,8 @@ mod_alpha_ui <- function(id){
               width = 12,
               h1("\u03B1-Diversity"),
               div(
-                p("This analysis task evalutes the microbiome on the basis of u03B1-diversity. u03B1-Diversity is measured on a per-sample basis and is quantified using an u03B1-diversity index, such as Shannon's D. More detail is provided of different u03B1-diversity indeces in the 'u03B1-Diversity Analysis' tab."),
-                p("Task overview:"),
+                p("This analysis module evalutes the microbiome on the basis of u03B1-diversity. u03B1-Diversity is measured on a per-sample basis and is quantified using an u03B1-diversity index, such as Shannon's D. More detail is provided of different u03B1-diversity indeces in the 'u03B1-Diversity Analysis' tab."),
+                p("Module overview:"),
                 tags$ul(
                   tags$li(tags$b("Aggregate Features:"), "Select the taxonomic level at which you want to examine the microbiome profiles"),
                   tags$li(tags$b("Filter Features:"), "Filter aggregated features based on feature abundance and prevalence"),
@@ -70,7 +70,9 @@ mod_alpha_ui <- function(id){
             br(),br(),
             column(
               width = 12,
-              mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              div(id=ns('filtfeat_mod_div'),
+                mod_filterfeat_ui(ns("filterfeat_ui_1"))
+              )
             )
           )
         ), # end tabPanel
@@ -81,8 +83,8 @@ mod_alpha_ui <- function(id){
           fluidRow(
             br(),br(),
             h1("\u03B1-Diversity"),
-            p("Alpha diversity assesses the diversity of sets of communities (or sets of samples). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon's index (H) and Simpson index are measures of uncertainty in the species identity of a sample (", a("Jost 2006", href="https://doi.org/10.1111/j.2006.0030-1299.14714.x"), ")."),
-            p("Diversity measures, such as Shannon's Diversity and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diveristy measures are equivalent. Entropy indeces can be converted to diversity by mathematical transformation."),
+            p("Alpha diversity assesses the diversity of a community (within one sample). Species richness is the number of unique species. Species evenness is a measure of the consistency of species abundances (uneven data sets have community members that dominate in abundance). Entropy measures such as Shannon's index (H) and Simpson index are measures of uncertainty in the species identity of a sample (", a("Jost 2006", href="https://doi.org/10.1111/j.2006.0030-1299.14714.x"), ")."),
+            p("Diversity measures, such as Shannon's Diversity and Inverse Simpson's Index, takes into account of the abundance of species in the community. In fact, when all species in a community are equally common, entropy and diversity measures are equivalent. Entropy indices can be converted to diversity by mathematical transformation."),
             p("Diversity indecies are calculated with", a(code("vegan::diversity"), href="https://cran.r-project.org/web/packages/vegan/vignettes/diversity-vegan.pdf"), "Shannon's D index is calculated as ", code("exp(Shannon's Index)"), "Richness is calculated with", a(code("vegan::specnum"), href="https://cran.r-project.org/web/packages/vegan/vignettes/diversity-vegan.pdf"), ", and evenness is calculated as ", code("Shannon's Index/log(Richness)"), ".")
           ),
           fluidRow(
@@ -141,28 +143,56 @@ mod_alpha_ui <- function(id){
 #' @noRd
 mod_alpha_server <- function(input, output, session, improxy){
   ns <- session$ns
+  # output$check <- renderPrint({
+  # })
 
-  output$check <- renderPrint({
+  # initiate a reactive to track/permit progress through analysis module--------
+  progress <- reactiveValues(complete_agg = 0, complete_featfilt = 0)
+
+  observeEvent(input[['aggregate_ui_1-agg_calculate']], {
+    progress$complete_agg <- 1
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['aggregate_ui_1-agg_clear']], {
+    progress$complete_agg <- 0
+    progress$complete_featfilt <- 0
+  })
+
+  observeEvent(input[['filterfeat_ui_1-submit_asv']], {
+    progress$complete_featfilt <- 1
+  })
+
+  observeEvent(input[['filterfeat_ui_1-clear_asv']], {
+    progress$complete_featfilt <- 0
+  })
+
+  observe({
+    if(progress$complete_featfilt == 0) {
+      reset('filtfeat_mod_div')
+      hide('filterfeat_ui_1-prev_filter_div')
+      hide('filterfeat_ui_1-preview_asv_div')
+    }
+
   })
 
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#alpha_menu li a[data-value=filter_asv_alpha]",
-           condition = !is.null(agg_output$output) &&
-             agg_output$output$agg_calculate > 0)
+           condition = progress$complete_agg == 1)
   })
 
   observe({
     toggleState(selector = "#alpha_menu li a[data-value=alpha_tab]",
-           condition = filter_output$params$filter_submit > 0)
+           condition = progress$complete_featfilt == 1)
   })
 
   observe({
     toggleState(selector = "#alpha_menu li a[data-value=alpha_report_tab]",
-           condition = filter_output$params$filter_submit > 0)
+           condition = progress$complete_featfilt == 1)
   })
   # initiate value to pass into submodules--------------------------------------
-  bridge <- reactiveValues(dummy=NULL)
+  bridge <- reactiveValues()
   observe({
     bridge$qualfilt_db <- improxy$work_db
   })
@@ -180,7 +210,8 @@ mod_alpha_server <- function(input, output, session, improxy){
   })
 
   # aggregate features----------------------------------------------------------
-  agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge)
+  agg_output <- callModule(mod_aggregate_server, "aggregate_ui_1", bridge,
+                           default_tax = 'featureID')
 
   # store data in reactiveValues to pass onto submodules
   observe({
@@ -203,7 +234,7 @@ mod_alpha_server <- function(input, output, session, improxy){
 
   observe({
     # add aggregate features to report params
-    for_report$params$aggregate_by <- agg_output$output$aggregate_by
+    for_report$params$aggregate_by <- input[['aggregate_ui_1-aggregate_by']]
     for_report$params$aggregated_count <- agg_output$output$aggregated_count
     for_report$params$aggregated_tax <- agg_output$output$aggregated_tax
   })
@@ -221,11 +252,13 @@ mod_alpha_server <- function(input, output, session, improxy){
   # update report params
   observe({
     #feature filter
-    for_report$params$asv_select_prompt <- filter_output$params$asv_select_prompt
-    for_report$params$asv_filter_options <- filter_output$params$asv_filter_options
-    for_report$params$cutoff_method <- filter_output$params$cutoff_method
-    for_report$params$asv_cutoff <- filter_output$params$asv_cutoff
-    for_report$params$prevalence <- filter_output$params$prevalence
+    for_report$params$asv_select_prompt <-
+      input[['filterfeat_ui_1-asv_select_prompt']]
+    for_report$params$asv_filter_options <-
+      input[['filterfeat_ui_1-asv_filter_options']]
+    for_report$params$cutoff_method <- input[['filterfeat_ui_1-cutoff_method']]
+    for_report$params$asv_cutoff <- input[['filterfeat_ui_1-asv_cutoff']]
+    for_report$params$prevalence <- input[['filterfeat_ui_1-prevalence']]
     for_report$params$asv_cutoff_msg <- filter_output$params$asv_cutoff_msg
     for_report$params$asv_remove <- filter_output$params$asv_remove
     for_report$params$prev_agg_plot <- filter_output$params$prev_agg_plot

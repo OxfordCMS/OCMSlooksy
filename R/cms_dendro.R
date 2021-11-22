@@ -1,7 +1,11 @@
 #' dendro_data_k
 #'
 #' Extract dendrogram data for plot customized dendrogram.
-#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/
+#'
+#'@param hc hclust object
+#'@param k number of k-means cluster
+#'@import ggdendro
 
 dendro_data_k <- function(hc, k) {
 
@@ -33,7 +37,11 @@ dendro_data_k <- function(hc, k) {
 #' set_label_param
 #'
 #' set parameters of labels for plotting customized dendrogram.
-#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms
+#' @param nbLabels number of labels
+#' @param direction direction of level tob-bottom ('tb'), bottom-top ('bt'),
+#'                   left-right ('lr'), right-left ('rl')
+#' @param fan fan the labels
 
 set_labels_params <- function(nbLabels,
                               direction = c("tb", "bt", "lr", "rl"),
@@ -56,7 +64,22 @@ set_labels_params <- function(nbLabels,
 #' plot_ggdendro
 #'
 #' use ggplot to make customized dendrogram.
-#' following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+#' following https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/
+#'
+#' @param hcdata dendrogram data
+#' @param metadata dataframe containing metadata used to annotate dendrogram
+#' @param fan fan the dendrogram
+#' @param direction direction of level tob-bottom ('tb'), bottom-top ('bt'),
+#'                 left-right ('lr'), right-left ('rl')
+#' @param branch.size branch size
+#' @param label.size label size
+#' @param label.category colour label by
+#' @param nudge.label nudge label spacing
+#' @param expand.y expand y axis limit to this value
+#' @param category colour dendrogram leaves by
+#' @param id variable to label dendrogram by
+#'
+#' @import ggdendro
 
 plot_ggdendro <- function(hcdata,
                           metadata,

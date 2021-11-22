@@ -8,7 +8,6 @@ cms_rarefy(df)
 }
 \arguments{
 \item{x}{matrix with samples in columns, feature in rows
-import foreach
 import vegan}
 }
 \description{

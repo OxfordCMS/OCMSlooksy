@@ -6,7 +6,12 @@
 \usage{
 dendro_data_k(hc, k)
 }
+\arguments{
+\item{hc}{hclust object}
+
+\item{k}{number of k-means cluster}
+}
 \description{
 Extract dendrogram data for plot customized dendrogram.
-following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+following https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/
 }

@@ -6,8 +6,8 @@
 #'
 #' @noRd
 #'
-#' @import rmarkdown
 #' @importFrom shiny NS tagList
+#' @import rmarkdown
 mod_report_ui <- function(id){
   ns <- NS(id)
   tagList(
@@ -22,7 +22,7 @@ mod_report_ui <- function(id){
         radioButtons(ns("report_type"), "Report type",
                      c("html", "pdf")),
         withBusyIndicatorUI(
-          myDownloadBttn(ns("report"), "Export Report",
+          myDownloadBttn(ns("report"), "Download Report",
                          style = "bordered", size = "sm")
         )
       )
@@ -35,7 +35,6 @@ mod_report_ui <- function(id){
 #' @noRd
 mod_report_server <- function(input, output, session, bridge, template, file_name){
   ns <- session$ns
-
   withBusyIndicatorServer("report", 'report_ui_1',{
     output$report <- downloadHandler(
 

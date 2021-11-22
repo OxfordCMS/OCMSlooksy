@@ -30,7 +30,9 @@ params:
   p_pcoa: NA
   pca_scale: NA
   pca_summary: NA
-  p_pca: NA
+  p_score: NA
+  p_load: NA
+  p_biplot: NA
   diss_grp: NA
   diss_panel: NA
   validation_msg: NA
@@ -272,10 +274,23 @@ kable(params$pca_summary) %>%
   scroll_box(width="100%", height="250px")
 ```
 
-`r if(params$transform_method != 'percent') {"### PCA Plot"}`
 
-```{r pca-plot, eval=params$transform_method != 'percent'}
-params$p_pca
+`r if(params$transform_method != 'percent') {"### PCA Scores Plot"}`
+
+```{r pca-score, eval=params$transform_method != 'percent'}
+params$p_score
+```
+
+`r if(params$transform_method != 'percent') {"### PCA Loadings Plot"}`
+
+```{r pca-load, eval=params$transform_method != 'percent'}
+params$p_load
+```
+
+`r if(params$transform_method != 'percent') {"### PCA Biplot"}`
+
+```{r pca-biplot, eval=params$transform_method != 'percent'}
+params$p_biplot
 ```
 
 ## PERMANOVA

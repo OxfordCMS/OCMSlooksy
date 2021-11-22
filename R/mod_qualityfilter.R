@@ -121,7 +121,7 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
   })
 
   # filter samples in data set
-  met_filtered <- eventReactive(rows_selected(), {
+  met_filtered <- reactive({
     withBusyIndicatorServer('submit_sample', "setup_ui_1", {
       Sys.sleep(1)
       met() %>%
@@ -137,8 +137,7 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
   })
 
   output$preview_sample <- DT::renderDataTable(server = FALSE, {
-    req(rows_selected())
-
+    validate(need(!is.null(rows_selected()), "No samples selected. If you wish to continue analysis with all samples, select 'Use all samples' and click 'filter samples'"))
     DT::datatable(met_filtered(), filter='top', extensions = 'Buttons',
                   rownames = FALSE,
                   options = list(scrollX = TRUE,
@@ -148,14 +147,13 @@ mod_qualityfilter_server <- function(input, output, session, improxy){
 
 
   # update ASV with filtered samples
-  samp_filtered <- eventReactive(rows_selected(), {
+  samp_filtered <- reactive({
     improxy$asv_gather %>%
       filter(sampleID %in% unique(met_filtered()$sampleID))
   })
 
   # store prepared data to pass on to next next module--------------------------
   working_set <- reactive({
-    req(input$sample_select_prompt)
     # keep in wide format to be consistent with db format
     list(met = met_filtered(),
          asv = samp_filtered() %>% spread(sampleID, read_count),

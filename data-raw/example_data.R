@@ -54,6 +54,8 @@ omit <- c('stool-2DSS__12',
 
 metadata$seq_success <- ifelse(metadata$sampleID %in% omit, FALSE, TRUE)
 
+# add interaction group
+metadata$treat.geno <- paste(metadata$Treatment, metadata$Genotype, sep='.')
 example_data$metadata <- metadata
 
 save(example_data, 'example_data', file = './data/example_data.RData')

@@ -18,7 +18,31 @@ plot_ggdendro(
   id = "sampleID"
 )
 }
+\arguments{
+\item{hcdata}{dendrogram data}
+
+\item{metadata}{dataframe containing metadata used to annotate dendrogram}
+
+\item{direction}{direction of level tob-bottom ('tb'), bottom-top ('bt'),
+left-right ('lr'), right-left ('rl')}
+
+\item{fan}{fan the dendrogram}
+
+\item{branch.size}{branch size}
+
+\item{label.size}{label size}
+
+\item{label.category}{colour label by}
+
+\item{nudge.label}{nudge label spacing}
+
+\item{expand.y}{expand y axis limit to this value}
+
+\item{category}{colour dendrogram leaves by}
+
+\item{id}{variable to label dendrogram by}
+}
 \description{
 use ggplot to make customized dendrogram.
-following \href{https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/}
+following https://atrebas.github.io/post/2019-06-08-lightweight-dendrograms/
 }

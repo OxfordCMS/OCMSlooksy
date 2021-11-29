@@ -145,3 +145,6 @@ OCMSlooksy::run_app()
 The app will launch in your browser (you don't need internet access to run the app) so you may have change your browser settings to allow pop-up windows if pop-ups are disabled.
 
 ![](vignettes/screenshots/intro.png)
+
+# Vignette
+A full vignette on how to use the app and its interactive features can be found on the [wiki page](https://github.com/OxfordCMS/OCMSlooksy/wiki)

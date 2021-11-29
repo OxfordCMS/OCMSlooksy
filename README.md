@@ -1,18 +1,26 @@
 # OCMSlooksy
-OCMSlooksy is a RShiny app dedicated for exploration of 16S rRNA gene data in microbiome research. This app was made by the Oxford Centre for Microbiome Studies with the intention that collaborators can have a look-see at their microbiome data in an accessible and interactive way. The app does not process raw sequence data. Rather, it focuses on data analysis downstream of sequence processing pipelines, such as [Dada2](https://benjjneb.github.io/dada2/tutorial.html). In particular, OCMSlooksy is an extension of [OCMS_16S](https://ocms-16s.readthedocs.io/en/latest/), a 16S sequence processing pipeline that runs Dada2 as a [cgat-core](https://cgat-core.readthedocs.io/en/latest/) pipeline. OCMS 16S generates a SQLite database that is used as the input for OCMSlooksy. 16S data generated from other 16S sequence processing pipelines can still be analysed with OCMSlooksy, using the [`OCMSlooksy::create_db`](#FromCountTable) function. 
+OCMSlooksy is a RShiny app dedicated for exploration of 16S rRNA gene data in microbiome research. This app was made by the Oxford Centre for Microbiome Studies with the intention that collaborators can have a look-see at their microbiome data in an accessible and interactive way. The app does not process raw sequence data. Rather, it focuses on data analysis downstream of sequence processing pipelines, such as [Dada2](https://benjjneb.github.io/dada2/tutorial.html). In particular, OCMSlooksy is an extension of [OCMS_16S](https://ocms-16s.readthedocs.io/en/latest/), a 16S sequence processing pipeline that runs Dada2 as a [cgat-core](https://cgat-core.readthedocs.io/en/latest/) pipeline. OCMS 16S generates a SQLite database that is used as the input for OCMSlooksy. 16S data generated from other 16S sequence processing pipelines can still be analysed with OCMSlooksy, using the [`OCMSlooksy::create_db`](#preparing-input-data-prepareinput) function. 
 
-![](/screenshots/workflow.png)
+![](vignettes/screenshots/workflow.png)
 
 # Installing OCMSlooksy
-OCMSlooksy is an R package that contains the app and several helper functions that help prepare input files required for the app. The OCMSlooksy R package can be installed from the [OCMS github](https://github.com/OxfordCMS).
+OCMSlooksy is an R package that contains the app and several helper functions that help prepare input files required for the app. The OCMSlooksy R package can be installed from the [OCMS github](https://github.com/OxfordCMS/OCMSlooksy) by running the following code in R:
 
-# Preparing Input Data {#PrepareInput}
+```
+# download and install package
+devtools::install_github("https://github.com/OxfordCMS/OCMSlooksy", 
+                         build_vignettes = TRUE)
+# load OCMSlooksy package
+library(OCMSlooksy)
+```
+
+# Preparing Input Data
 The app requires two input files: a SQLite database file and a metadata file. Both of these files have specific formatting requirements, which are detailed in this section.
 
 ## From OCMS 16S
 The OCMS 16S output database would have been specified in the pipeline config file (`pipeline.yml`). The database is a SQLite database file and can be directly used as the input into OCMSlooksy.
 
-## From count and taxonomy tables {#FromCountTable}
+## From count and taxonomy tables
 
 The OCMSlooksy package includes several functions that facilitate preparing input data for the app. The `create_db()` function creates a SQLite database file from tab-delimited or comma-delimited files and configures the database such that it can be used as the input file for the OCMSlooksy app.
 
@@ -45,7 +53,7 @@ create_db(counts = 'my_count_table.tsv',
  
  Example count table:
  
-![](/screenshots/examplecount.png)
+![](vignettes/screenshots/examplecount.png)
  
  taxonomy table requirements:
  
@@ -61,14 +69,14 @@ create_db(counts = 'my_count_table.tsv',
 
 Example taxonomy table:
 
-![](/screenshots/exampletaxonomy.png)
+![](vignettes/screenshots/exampletaxonomy.png)
 
 The count and taxonomy tables can be supplied as .tsv or .csv files by setting `fromfile = TRUE` (default). Alternatively, if count and taxonomy tables are already in R, set `fromfile = FALSE` and supply dataframes to the `counts` and `taxonomy` arguments, respectively.
 
 
 Example code to make database file from count and taxonomy tables already in R as `dataframe`'s
 
-![](/screenshots/exampledataframe.png)
+![](vignettes/screenshots/exampledataframe.png)
 
 ```{r example-createdb3, echo=TRUE, eval=FALSE}
 # not run
@@ -89,7 +97,7 @@ The second input file required by OCMSlooksy is a metadata file that contains sa
 
 Example metadata file:
 
-![](/screenshots/examplemetadata.png)
+![](vignettes/screenshots/examplemetadata.png)
 
 Metadata files can be manually created in a spreadsheet and saved as a .csv or .tsv file. Alternatively, the `metfile_init` function initiates a metadata file from the database file or a tab-delimited count table file. This function reads your database file and creates a bare-bones metadata file that you can add to.
 
@@ -98,7 +106,7 @@ Metadata files can be manually created in a spreadsheet and saved as a .csv or .
 * `db_file` -- SQLite database file used as OCMSlooksy app input. Set to `FALSE` to use a count table in a tab-delimited file
 * `out_dir` -- output directory where initiated metadata file will be saved. Default `NULL` means output not written to file but returns a dataframe.
 * `ref_table` -- name of table in database from which sampleID are generated. default `NULL`. When `NULL`, assumes table is `merged_abundance_id` which is the count table produced from the ocms_16s dada2 pipeline or produced from `create_db`. When initiating the metadata file from a count table, set `db_file`
-   to `FALSE` and count table is supplied in `ref_table` as a tab-delimited file. The count table file supplied has the same [requirements](#FromCountTable) as `counts` count table in `create_db` 
+   to `FALSE` and count table is supplied in `ref_table` as a tab-delimited file. The count table file supplied has the same requirements as `counts` count table in `create_db` 
 * `id_orient` -- indicates orientation of sample IDs. default 'col' indicates
    samples are in columns. 'row' indicates samples are in rows and
    sample IDs are in the first column
@@ -106,7 +114,7 @@ Metadata files can be manually created in a spreadsheet and saved as a .csv or .
 
 Example code to initiate metadata file from database:
 
-```{r example-metfile1, echo=TRUE, eval=FALSE}
+```
 # not run
 metfile_init(db_file = 'mydatabase.db',
              out_dir = '/path/to/output/directory',
@@ -116,7 +124,7 @@ metfile_init(db_file = 'mydatabase.db',
 ```
 
 Example code to initiate metadata file from count table file:
-```{r example-metfile2, echo=TRUE, eval=FALSE}
+```
 # not run
 metfile_init(db_file = FALSE,
              out_dir = '/path/to/output/directory',
@@ -130,10 +138,10 @@ Setting the `dummy=treatment` means the metadata file initiated will have a colu
 # Launching the OCMSlooksy app
 The app is launched from within R. To start the app, write the following command in the R console:
 
-```{r launch-app, echo=TRUE, eval=FALSE}
+```
 OCMSlooksy::run_app()
 ```
 
 The app will launch in your browser (you don't need internet access to run the app) so you may have change your browser settings to allow pop-up windows if pop-ups are disabled.
 
-![](screenshots/intro.png){width=100%}
+![](vignettes/screenshots/intro.png)

@@ -32,7 +32,7 @@ OCMSlooksy is a RShiny app dedicated for exploration of 16S rRNA gene data in mi
 ![](/screenshots/workflow.png)
 
 # Installing OCMSlooksy
-OCMSlooksy is an R package that contains the app and several helper functions that help prepare input files required for the app. The OCMSlooksy R package can be installed from the [OCMS github](https://github.com/OxfordCMS).
+OCMSlooksy is an R package that contains the app and several helper functions that help prepare input files required for the app. The OCMSlooksy R package can be installed from the [OCMS github](https://github.com/OxfordCMS/OCMSlooksy).
 
 ```{r looksy-install, echo=TRUE, eval = FALSE}
 # download and install package

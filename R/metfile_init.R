@@ -2,7 +2,7 @@
 #'
 #' Initiate a metadata file that is compatible with OCMSlooksy from OCMS 16S database file or from a tab-delimited file of a count table.
 #'
-#' @param db_file rsqlite database file. Set to \code{FALSE} to use a count table in a tab-delimited file
+#' @param db_file rsqlite database file. Set to \code{NULL} to use a count table in a tab-delimited file
 #'
 #' @param out_dir output directory. default \code{NULL} means output not written to file
 #'
@@ -31,9 +31,9 @@ metfile_init <- function(db_file, out_dir=NULL, ref_table=NULL, id_orient = 'col
                          dummy = NULL) {
 
   # check inputs----------------------------------------------------------------
-  if(!db_file){
+  if(is.null(db_file)){
     if(!file.exists(ref_table)) {
-      stop("db_file set to FALSE but file provided in ref_table is not found")
+      stop("db_file set to NULL but file provided in ref_table is not found")
     }
   } else if(!file.exists(db_file)) {
     stop("db_file not found")
@@ -50,7 +50,7 @@ metfile_init <- function(db_file, out_dir=NULL, ref_table=NULL, id_orient = 'col
   }
 
   # read in data----------------------------------------------------------------
-  if(!db_file) {
+  if(is.null(db_file)) {
 
     ref_df <- read.table(ref_table, header=TRUE, sep="\t")
     if(id_orient == 'row') {
@@ -78,6 +78,8 @@ metfile_init <- function(db_file, out_dir=NULL, ref_table=NULL, id_orient = 'col
 
     # read in count data
     ref_df <- dbGetQuery(con, query)
+    rownames(ref_df) <- ref_df[,1]
+    ref_df <- ref_df[,2:ncol(ref_df)]
 
     # disconenct dabase
     dbDisconnect(con)

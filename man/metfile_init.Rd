@@ -13,7 +13,7 @@ metfile_init(
 )
 }
 \arguments{
-\item{db_file}{rsqlite database file. Set to \code{FALSE} to use a count table in a tab-delimited file}
+\item{db_file}{rsqlite database file. Set to \code{NULL} to use a count table in a tab-delimited file}
 
 \item{out_dir}{output directory. default \code{NULL} means output not written to file}
 

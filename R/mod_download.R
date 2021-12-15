@@ -1,13 +1,13 @@
 #' download UI Function
 #'
 #' @description UI function to make a dropdown menu from icon to save plot in various formats
-#' 
+#'
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
 #'
-#' @noRd 
+#' @noRd
 #'
-#' @importFrom shiny NS tagList 
+#' @importFrom shiny NS tagList
 #' @import shinyWidgets
 mod_download_ui <- function(id){
   ns <- NS(id)
@@ -18,11 +18,17 @@ mod_download_ui <- function(id){
       animate = animateOptions(
         enter = shinyWidgets::animations$fading_entrances$fadeInLeft,
         exit = shinyWidgets::animations$fading_exits$fadeOutLeft),
-      
+
       hidden(div(
         id =ns('dl_fig_div'),
         myDownloadBttn(ns('dl_fig'), icon_name = 'file-image',
-                       label = "Original plot",
+                       label = "Image (png)",
+                       size = 'xs', style = 'minimal')
+      )),
+      hidden(div(
+        id = ns('dl_pdf_div'),
+        myDownloadBttn(ns('dl_pdf'), icon_name = 'file-image',
+                       label = "Image (pdf)",
                        size = 'xs', style = 'minimal')
       )),
       hidden(div(
@@ -36,12 +42,6 @@ mod_download_ui <- function(id){
         myDownloadBttn(ns('dl_data'), icon_name = 'file-alt',
                        label = "Plot data",
                        size = 'xs', style = 'minimal')
-      )), 
-      hidden(div(
-        id = ns('dl_rds_div'),
-        myDownloadBttn(ns('dl_rds'), icon_name = 'file-prescription', 
-                       label = "RDS",
-                       size = 'xs', style = 'minimal')
       )),
       hidden(div(
         id = ns('dl_all_div'),
@@ -52,30 +52,30 @@ mod_download_ui <- function(id){
     )
   )
 }
-    
+
 #' download Server Function
 #'
 #' @param input,output,session Internal parameters for {shiny}.
 #' @param bridge reactiveValues. contains objects to be passed from outer module
 #' @param file_name string. default file name used when downloading
-#' @param dl_options determins which download buttons/options to allow in 
+#' @param dl_options determins which download buttons/options to allow in
 #'  dropdown menu. defaults to all: png, html, RDS, zip.
-#'  
-#' @noRd 
+#'
+#' @noRd
 mod_download_server <- function(input, output, session, bridge, file_name,
-                                dl_options = c('png','html','csv','RDS','zip')){
+                                dl_options = c('png','html','csv','pdf','zip')){
   ns <- session$ns
-  
+
   # generate file names based on options and file_name supplied
   file_ext <- sprintf("%s.%s", file_name, dl_options)
-  
+
   observe({
     # download plot png
     if('png' %in% dl_options) {
       show('dl_fig_div')
-      
+
       output$dl_fig <- downloadHandler(
-        
+
         filename = function() {
           file_ext[grepl('png', file_ext)]
         },
@@ -84,13 +84,13 @@ mod_download_server <- function(input, output, session, bridge, file_name,
         },
         contentType = 'image/png'
       )
-      
+
     }
-    
+
     # download interactiv eplot
     if('html' %in% dl_options) {
       show('dl_html_div')
-      
+
       output$dl_html <- downloadHandler(
         filename = function() {
           file_ext[grepl('html', file_ext)]
@@ -102,11 +102,11 @@ mod_download_server <- function(input, output, session, bridge, file_name,
         contentType = 'text/html'
       )
     }
-  
-    # download plot data  
+
+    # download plot data
     if('csv' %in% dl_options) {
       show('dl_data_div')
-     
+
       output$dl_data <- downloadHandler(
         filename = function() {
           file_ext[grepl('csv', file_ext)]
@@ -115,26 +115,26 @@ mod_download_server <- function(input, output, session, bridge, file_name,
           write.csv(bridge$fig_data, file, row.names = FALSE)
         },
         contentType = 'text/csv'
-      )    
-    }
-    
-    # download plot as rds
-    if('RDS' %in% dl_options) {
-      show('dl_rds_div')
-      
-      output$dl_rds <- downloadHandler(
-        filename = function() {file_ext[grepl('RDS', file_ext)]},
-        content = function(file) {
-          saveRDS(bridge$figure, file)
-        },
-        contentType = 'application/rds'
       )
     }
-    
+
+    # download plot as rds
+    if('pdf' %in% dl_options) {
+      show('dl_pdf_div')
+
+      output$dl_pdf <- downloadHandler(
+        filename = function() {file_ext[grepl('pdf', file_ext)]},
+        content = function(file) {
+          ggsave(file, bridge$figure)
+        },
+        contentType = 'application/pdf'
+      )
+    }
+
     # download all in zip file
     if('zip' %in% dl_options) {
       show('dl_all_div')
-      
+
       output$dl_all <- downloadHandler(
         filename = function() {file_ext[grepl('zip', file_ext)]},
         content = function(file) {
@@ -143,13 +143,13 @@ mod_download_server <- function(input, output, session, bridge, file_name,
           # create temporary directory
           tmpdir <- tempdir()
           setwd(tempdir())
-          
+
           if('png' %in% dl_options) {
-            ggsave(file_ext[grepl('png', file_ext)], bridge$figure)  
+            ggsave(file_ext[grepl('png', file_ext)], bridge$figure)
           }
           if('html' %in% dl_options) {
-            htmlwidgets::saveWidget(as_widget(ggplotly(bridge$figure)), 
-                                    file_ext[grepl('html', file_ext)])  
+            htmlwidgets::saveWidget(as_widget(ggplotly(bridge$figure)),
+                                    file_ext[grepl('html', file_ext)])
           }
           if('RDS' %in% dl_options) {
             saveRDS(bridge$figure, file_ext[grepl('RDS', file_ext)])
@@ -157,9 +157,9 @@ mod_download_server <- function(input, output, session, bridge, file_name,
           if('csv' %in% dl_options) {
             for(i in file_ext[grepl('csv', file_ext)]) {
               write.csv(bridge$fig_data, i, row.names = FALSE)
-            }  
+            }
           }
-          
+
           #create the zip file
           zip(file, file_ext[!grepl('zip', file_ext)])
           setwd(mydir)
@@ -169,10 +169,10 @@ mod_download_server <- function(input, output, session, bridge, file_name,
     }
   })
 }
-    
+
 ## To be copied in the UI
 # mod_download_ui("download_ui_1")
-    
+
 ## To be copied in the server
 # callModule(mod_download_server, "download_ui_1")
- 
+

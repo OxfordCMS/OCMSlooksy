@@ -629,7 +629,7 @@ mod_prop_server <- function(input, output, session, improxy){
   })
 
   callModule(mod_download_server, "download_prop_hmap", bridge = for_download1,
-             'heatmap', dl_options = c('html','csv','RDS','zip'))
+             'heatmap', dl_options = c('html','csv','pdf','zip'))
 
   # select ASV pairs from table
   output$prop_table <- DT::renderDataTable(server = FALSE, {

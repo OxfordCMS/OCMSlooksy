@@ -29,7 +29,7 @@ require(kableExtra)
 # Scope of OCMSlooksy
 OCMSlooksy is a RShiny app dedicated for exploration of 16S rRNA gene data in microbiome research. This app was made by the Oxford Centre for Microbiome Studies with the intention that collaborators can have a look-see at their microbiome data in an accessible and interactive way. The app does not process raw sequence data. Rather, it focuses on data analysis downstream of sequence processing pipelines, such as [Dada2](https://benjjneb.github.io/dada2/tutorial.html). In particular, OCMSlooksy is an extension of [OCMS 16S](https://ocms-16s.readthedocs.io/en/latest/), a 16S sequence processing pipeline that runs Dada2 as a [cgat-core](https://cgat-core.readthedocs.io/en/latest/) pipeline. OCMS 16S generates a SQLite database that is used as the input for OCMSlooksy. 16S data generated from other 16S sequence processing pipelines can still be analysed with OCMSlooksy, using the [`OCMSlooksy::create_db`](#FromCountTable) function. 
 
-![](/screenshots/workflow.png)
+![](screenshots/workflow.png)
 
 # Installing OCMSlooksy
 OCMSlooksy is an R package that contains the app and several helper functions that help prepare input files required for the app. The OCMSlooksy R package can be installed from the [OCMS github](https://github.com/OxfordCMS/OCMSlooksy).
@@ -260,17 +260,16 @@ Descriptions of each tool in the tool bar in Figure 2C can be found [on the plot
 * displays data for all points with the same x-value
 * plotly logo links to plotly website
 
-
 ### Downloading Figures
 All plots have a save icon (`r shiny::icon('save')`) that contains a drop-down menu of the different ways the plot can be downloaded.
 
 ![Figure 2B. Saving plots](screenshots/saveplot.png)
 
-* "Original plot" downloads the static figure as a .png file. Note this defaults to 5in x 7in so large figures may looked squished
+* "Image (png)" downloads the static figure as a .png file. Note this defaults to 5in x 7in so large figures may looked squished
+* "Image (pdf)" downloads the static figure as a .png file.
 * "Interactive plot" downloads the interactive figure as a .html file.
 * "Plot data" downloads the data used to generate the plot as a .csv file. This may be useful if you wish to recreate the plot yourself in R or using other software.
-* "RDS" downloads the plot as an R object in the form of an .RDS file. In most cases, this is a `ggplot` object, while heatmaps are saved as an object of class `heatmapr` from the R package `heatmaply`. This is is useful if you wish to modify the plot in R.
-* "All" downloads "Original plot," "Interactive Plot," "Plot data," and "RDS" in a .zip file.
+* "All" downloads "Image (png)," "Image (pdf)", "Interactive Plot," and "Plot data"in a .zip file.
 
 Note: Given constraints with the `heatmaply` package used to generate interactive heatmaps, you cannot download heatmaps shown in the app as static figures. You can, however, take advantage of the `plotly` functions that appear in the top right corner when you hover over a figure. More details on this in the ["Interactive Plots"](#interactiveplots) section.
 

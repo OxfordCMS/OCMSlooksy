@@ -59,7 +59,7 @@ mod_download_ui <- function(id){
 #' @param bridge reactiveValues. contains objects to be passed from outer module
 #' @param file_name string. default file name used when downloading
 #' @param dl_options determins which download buttons/options to allow in
-#'  dropdown menu. defaults to all: png, html, RDS, zip.
+#'  dropdown menu. defaults to all: png, html, pdf, csv, zip.
 #'
 #' @noRd
 mod_download_server <- function(input, output, session, bridge, file_name,
@@ -80,7 +80,7 @@ mod_download_server <- function(input, output, session, bridge, file_name,
           file_ext[grepl('png', file_ext)]
         },
         content = function(file) {
-          ggsave(file, bridge$figure)
+          ggsave(file, bridge$figure, height=5.21, width= 7.21, units='in')
         },
         contentType = 'image/png'
       )
@@ -125,7 +125,7 @@ mod_download_server <- function(input, output, session, bridge, file_name,
       output$dl_pdf <- downloadHandler(
         filename = function() {file_ext[grepl('pdf', file_ext)]},
         content = function(file) {
-          ggsave(file, bridge$figure)
+          ggsave(file, bridge$figure, height=5.21, width = 7.21, units='in')
         },
         contentType = 'application/pdf'
       )
@@ -151,8 +151,8 @@ mod_download_server <- function(input, output, session, bridge, file_name,
             htmlwidgets::saveWidget(as_widget(ggplotly(bridge$figure)),
                                     file_ext[grepl('html', file_ext)])
           }
-          if('RDS' %in% dl_options) {
-            saveRDS(bridge$figure, file_ext[grepl('RDS', file_ext)])
+          if('pdf' %in% dl_options) {
+            ggsave(file_ext[grepl('pdf', file_ext)], bridge$figure)
           }
           if('csv' %in% dl_options) {
             for(i in file_ext[grepl('csv', file_ext)]) {

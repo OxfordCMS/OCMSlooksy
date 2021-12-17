@@ -221,9 +221,6 @@ mod_profile_server <- function(input, output, session, improxy){
 
   })
 
-  # output$check <- renderPrint({
-  #
-  # })
   # enable tabs sequentially----------------------------------------------------
   observe({
     toggleState(selector = "#profile_menu li a[data-value=filter_prof_tab]",
@@ -496,7 +493,8 @@ mod_profile_server <- function(input, output, session, improxy){
     for_report$params$p_bar <- p_bar()
   })
   # sparsity--------------------------------------------------------------------
-
+  # output$check <- renderPrint({
+  # })
   # convert count data into binary present-absent
   # assess proportion of zeros in data
   binary_mat <- reactive({
@@ -543,7 +541,6 @@ mod_profile_server <- function(input, output, session, improxy){
   # download data
   for_download2 <- reactiveValues()
   observeEvent(bridge$filtered,{
-    req(input$agg_calculate, input$submit_asv)
     for_download2$figure <- p_zero()
     for_download2$fig_data <- zero_content()
   })
@@ -576,7 +573,6 @@ mod_profile_server <- function(input, output, session, improxy){
   # download data
   for_download3 <- reactiveValues()
   observeEvent(bridge$filtered,{
-    req(input$agg_calculate, input$submit_asv)
     for_download3$figure <- binary_hmap()
     for_download3$fig_data <- as.data.frame(binary_mat()) %>%
       tibble::rownames_to_column('featureID')
@@ -584,7 +580,7 @@ mod_profile_server <- function(input, output, session, improxy){
 
   callModule(mod_download_server, "download_binary_hmap",
              bridge = for_download3, 'sparsity_hmap',
-             dl_options=c('html','csv','RDS','zip'))
+             dl_options=c('html','csv','zip'))
 
 
   # send to report

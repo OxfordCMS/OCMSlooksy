@@ -266,10 +266,10 @@ All plots have a save icon (`r shiny::icon('save')`) that contains a drop-down m
 ![Figure 2B. Saving plots](screenshots/saveplot.png)
 
 * "Image (png)" downloads the static figure as a .png file. Note this defaults to 5in x 7in so large figures may looked squished
-* "Image (pdf)" downloads the static figure as a .png file.
+* "Image (pdf)" downloads the static figure as a .pdf file.
 * "Interactive plot" downloads the interactive figure as a .html file.
 * "Plot data" downloads the data used to generate the plot as a .csv file. This may be useful if you wish to recreate the plot yourself in R or using other software.
-* "All" downloads "Image (png)," "Image (pdf)", "Interactive Plot," and "Plot data"in a .zip file.
+* "All" downloads "Image (png)," "Image (pdf)," "Interactive Plot," and "Plot data"in a .zip file.
 
 Note: Given constraints with the `heatmaply` package used to generate interactive heatmaps, you cannot download heatmaps shown in the app as static figures. You can, however, take advantage of the `plotly` functions that appear in the top right corner when you hover over a figure. More details on this in the ["Interactive Plots"](#interactiveplots) section.
 

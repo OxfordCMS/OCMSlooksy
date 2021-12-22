@@ -1,6 +1,6 @@
 Package: OCMSlooksy
 Title: OCMSlooksy
-Version: 0.0.0.9000
+Version: 0.0.1
 Authors@R: person('Sandi', 'Yen', email = 'sandi.yen@kennedy.ox.ac.uk', role = c('cre', 'aut'))
 Description: Shiny app to browse and explore 16S rRNA data analyzed by OCMS.
 License: MIT + file LICENSE

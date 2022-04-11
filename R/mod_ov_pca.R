@@ -361,23 +361,45 @@ mod_ov_pca_server <- function(input, output, session, bridge){
 
   # summary of pca
   pcx_summary <- reactive({
-    summary_pcx <- summary(d_pcx())
-    summary_df <- unclass(summary_pcx)[['importance']]
 
+    summary_pcx <- d_pcx()
+
+    ## Nick Ilott: 10/04/2022
+    ## As of R version 4.1.3 there seemed to be an issue
+    ## with calling summary on the reactive object d_pcx.
+    ## I re-wrote this so that the summary() function
+    ## isn't used and hopefully is backwards compatible.
+    
+    # get the PCs
+    pcs <- colnames(summary_pcx$x)
+    
     # check variation explained by each PC
     variance_pc <- summary_pcx$sdev**2
     variance_pc <- variance_pc/sum(variance_pc)*100
 
-    summary_wip <- rbind(summary_df, variance_pc)
-    rownames(summary_wip)[4] <- 'Variance Explained'
+    # cumulative proportion
+    var_cumsum <- cumsum(variance_pc)
+    
+    summary_wip <- data.frame("PC" = pcs,
+                               "Variance_explained" = variance_pc,
+                               "Cumulative_variance" = var_cumsum)
+    
+    rownames(summary_wip) <- summary_wip$PC
+    summary_wip <- summary_wip[,c(2:3)]
+    
     summary_wip
+
   })
 
   output$summary_pca <- DT::renderDataTable(server = FALSE, {
     DT::datatable(pcx_summary(), extensions = 'Buttons',
                   options = list(scrollX = TRUE,
-                                 dom = 'Blfrtip', buttons = c('copy','csv'))) %>%
-      DT::formatRound(column = colnames(pcx_summary()), digits = 3)
+                                 dom = 'Blfrtip', buttons = c('copy','csv')))
+
+ # Nick Ilott:
+ # Removed to be compatible with above changes to summary_wip
+ # %>%
+ #     DT::formatRound(column = colnames(pcx_summary()), digits = 3)
   })
 
   # pca plot parameters---------------------------------------------------------
@@ -491,10 +513,10 @@ mod_ov_pca_server <- function(input, output, session, bridge){
       theme_bw(12) +
       xlab(sprintf("PC%s (%s%%)",
                    input$xPC,
-                   round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
+                   round(pcx_summary()[input$xPC, 'Variance_explained']), 2)) +
       ylab(sprintf("PC%s (%s%%)",
                    input$yPC,
-                   round(pcx_summary()['Variance Explained', input$yPC]), 2))
+                   round(pcx_summary()[input$xPC, 'Variance_explained']), 2))
     p
   })
 
@@ -568,10 +590,10 @@ mod_ov_pca_server <- function(input, output, session, bridge){
       theme_bw(12) +
       xlab(sprintf("PC%s (%s%%)",
                    input$xPC,
-                   round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
+                   round(pcx_summary()[input$xPC, 'Variance_explained']), 2)) +
       ylab(sprintf("PC%s (%s%%)",
                    input$yPC,
-                   round(pcx_summary()['Variance Explained', input$yPC]), 2))
+                   round(pcx_summary()[input$xPC, 'Variance_explained']), 2))
     p
   })
 
@@ -649,10 +671,10 @@ mod_ov_pca_server <- function(input, output, session, bridge){
       theme_bw(12) +
       xlab(sprintf("PC%s (%s%%)",
                    input$xPC,
-                   round(pcx_summary()['Variance Explained', input$xPC]), 2)) +
+                   round(pcx_summary()[input$xPC, 'Variance_explained']), 2)) +
       ylab(sprintf("PC%s (%s%%)",
                    input$yPC,
-                   round(pcx_summary()['Variance Explained', input$yPC]), 2))
+                   round(pcx_summary()[input$xPC, 'Variance_explained']), 2))
 
     p_biplot
   })

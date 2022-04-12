@@ -24,20 +24,27 @@ mod_ov_permanova_ui <- function(id){
         uiOutput(ns('stratify_ui')),
         uiOutput(ns('permanova_dist_ui')),
         br(), br(),
-        actionButton(ns('permanova_calculate'), 'Calculate PERMANOVA')
+        actionButton(ns('permanova_calculate'), 'Calculate PERMANOVA'),
+        
+        ## Nick Ilott: R4.1.3 I was having issues with the hidden
+        ## div so have put this in here. It's not pretty but
+        ## works :)      
+        br(), br(),
+        h4('PERMANOVA Results'),
+        DT::dataTableOutput(ns('permanova_summary'))
       )
-    ),
-    hidden(div(ns('permanova_result_div'),
-      fluidRow(
-        column(
-          width = 12,
-          h3('PERMANOVA Results'),
-          DT::dataTableOutput(ns('permanova_summary'))
-        )
-      )
-    ))
+    )
   )
-}
+} 
+
+## Nick Ilott: Keeping this here commented out so 
+## is easy to re-implement if required
+#    hidden(div(ns('permanova_result_div'),
+#      fluidRow(
+#        column(
+#          width = 12,
+#          h3('PERMANOVA Results'),
+#          DT::dataTableOutput(ns('permanova_summary'))
 
 #' ov_permanova Server Function
 #'
@@ -49,10 +56,11 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   # bridge$filtered$met # metadata table
   # bridge$filtered$tax # taxonomy table
 
+  ## Nick Ilott: Keeping here in case we decide to re-implement
   # render input ui-------------------------------------------------------------
-  observeEvent(input$permanova_calculate, {
-    show('permanova_result_div')
-  })
+  #  observeEvent(input$permanova_calculate, {
+  #    show('permanova_result_div')
+  #  })
 
   output$formula_ui <- renderUI({
     bucket_list(
@@ -135,21 +143,22 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
                     method = input$permanova_dist,
                     permutations = perm)
     }
-    out$aov.tab <- suppressWarnings(broom::tidy(out))
-    out
+    ## Nick Ilott: I think this is all we need and
+    ## stops errors with calling as.data.frame on
+    ## reactive objects later on
+    as.data.frame(suppressWarnings(broom::tidy(out)))
   })
 
   # permanova result summary
-  output$permanova_summary <- DT::renderDataTable(server = FALSE, {
-    out <- as.data.frame(fit()$aov.tab)
-    DT::datatable(out, rownames = FALSE)
+  output$permanova_summary <- DT::renderDataTable({
+    fit()
   })
 
   cross_module <- reactiveValues()
   observe({
     cross_module$output <- list(
       permanova_formula = formula_preview(),
-      permanova_summary = as.data.frame(fit()$aov.tab)
+      permanova_summary = fit())
     )
   })
 

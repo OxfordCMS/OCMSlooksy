@@ -438,7 +438,8 @@ mod_diff_abund_server <- function(input, output, session, improxy){
 
   # deseq contrasts in results
   contrast_avail <- reactive({
-    out <- DESeq2::resultsNames(dds_obj())
+    out <- dds_obj()
+    out <- DESeq2::resultsNames(out)
     out <- out[2:length(out)]
     rev(out)
   })
@@ -447,8 +448,12 @@ mod_diff_abund_server <- function(input, output, session, improxy){
     req(input$variable)
     cat('Model design:\n')
     print(paste(as.character(deseq_design()), collapse=''))
-    cat('\nModel summary:\n')
-    print(summary(dds_obj()))
+
+    ## Nick Ilott: I have removed this summary
+    ## section until I find out how to reproduce
+    ## the output without using summary()
+    #cat('\nModel summary:\n')
+    #print(summary(dds_obj()))
     cat('\nEstimated effects of the Model"\n')
     print(contrast_avail())
   })

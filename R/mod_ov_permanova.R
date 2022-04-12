@@ -158,7 +158,7 @@ mod_ov_permanova_server <- function(input, output, session, bridge){
   observe({
     cross_module$output <- list(
       permanova_formula = formula_preview(),
-      permanova_summary = fit())
+      permanova_summary = fit()
     )
   })
 

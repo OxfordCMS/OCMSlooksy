@@ -438,7 +438,8 @@ mod_diff_abund_server <- function(input, output, session, improxy){
 
   # deseq contrasts in results
   contrast_avail <- reactive({
-    out <- DESeq2::resultsNames(dds_obj())
+    out <- dds_obj()
+    out <- DESeq2::resultsNames(out)
     out <- out[2:length(out)]
     rev(out)
   })

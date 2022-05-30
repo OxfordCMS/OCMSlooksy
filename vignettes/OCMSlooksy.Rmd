@@ -580,7 +580,7 @@ The proportionality analysis may take several minutes, particularly for data set
 
 Once rho values have been calculated, a false discovery rate (FDR) table is displayed to help you choose an appropriate rho cut-off. This table shows the FDR expected at different rho cut-offs. Typically, you want to limit your FDR to less than 0.05. Empirically, for 16S, rho of 0.6 is a good starting place. We can see in our example below that at rho > |0.65| we can expect a FDR of 0.01.
 
-![Figure 26. FDR table for choosing a rho cut-off](screenshot/propr1.png){width=100%}
+![Figure 26. FDR table for choosing a rho cut-off](screenshots/propr1.png){width=100%}
 
 In addition to the FDR table, a summary of rho values is shown in the form of a histogram is given to help you limit the number of features pairs to visualize. You can choose to show features inside the range (weak associations) or outside the range (strong associations).
 

@@ -108,8 +108,8 @@ mod_aggregate_server <- function(input, output, session, bridge,
     yvar <- paste(as.character(sampleID), collapse=',')
     f <- sprintf("cbind(%s) ~ featureID", yvar)
 
-    # perform aggregation with base::aggregate
-    out <- aggregate(formula = formula(f), data = count_df, FUN = sum)
+    # perform aggregation with stats::aggregate
+    out <- stats::aggregate(formula(f), data = count_df, FUN = sum)
 
     aggregated_count(out)
   })
